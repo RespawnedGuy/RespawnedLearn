@@ -1,7 +1,7 @@
 // Ein Index über alle Textdateien, jederzeit neu aufbaubar (Vertrag 1.1). Rein funktional, damit die Tests
 // ohne Browser laufen. Die Apps bauen ihn nach jeder Änderung neu; bei einigen tausend Dateien reicht das.
 import { felder, linkZiel, zerlege, type Wert } from './frontmatter'
-import { gliedere, blockText, type Gliederung, type Aufgabe, type Blockade, type ProjektBlock, type Abschnitt } from './journal'
+import { gliedere, blockText, type Gliederung, type Aufgabe, type Blockade, type ProjektBlock, type Abschnitt, type Teil } from './journal'
 import { liesMarken, type Marke } from './marken'
 import { findeLinks } from './links'
 import { istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
@@ -36,6 +36,25 @@ export interface ChronikEintrag {
   pfad: string
   block: ProjektBlock
   text: string
+}
+
+/** Ein Eintrag aus einem Tagesjournal, wie ihn der Review zeigt */
+export interface JournalEintrag {
+  datum: string
+  pfad: string
+  teil: Teil
+  /** Text ohne die H1 */
+  rumpf: string
+}
+
+export interface Bericht {
+  id: string
+  titel: string
+  pfad: string
+  kuerzel: string | null
+  von: string
+  bis: string
+  status: string
 }
 
 export interface Offen {
@@ -174,6 +193,31 @@ export class Bestand {
     const p = linkZiel(e.felder.projekt)
     if (p) return this.projekt(p)?.kuerzel ?? null
     return this.fundstellen(id).find((f) => f.projekt)?.projekt ?? null
+  }
+
+  /** Alle Journaleinträge, neueste Tage zuerst, innerhalb eines Tages in Schreibreihenfolge */
+  eintraege(): JournalEintrag[] {
+    const out: JournalEintrag[] = []
+    for (const j of this.journale) {
+      for (const t of j.gliederung.teile) {
+        const text = blockText(j.text, t)
+        out.push({ datum: j.datum, pfad: j.pfad, teil: t, rumpf: t.kopf ? text.split('\n').slice(1).join('\n') : text })
+      }
+    }
+    return out
+  }
+
+  /** Berichte, optional nur die eines Projekts; neueste zuerst */
+  berichte(kuerzel?: string): Bericht[] {
+    const out: Bericht[] = []
+    for (const e of this.dokumente.values()) {
+      if (e.typ !== 'bericht') continue
+      const pid = linkZiel(e.felder.projekt)
+      const k = (pid && this.projekte.find((p) => p.id === pid)?.kuerzel) || (typeof e.felder.kuerzel === 'string' ? e.felder.kuerzel : null)
+      if (kuerzel !== undefined && k !== kuerzel) continue
+      out.push({ id: e.id, titel: e.titel, pfad: e.pfad, kuerzel: k, von: String(e.felder.von ?? ''), bis: String(e.felder.bis ?? e.felder.von ?? ''), status: String(e.felder.status ?? '') })
+    }
+    return out.sort((a, b) => b.bis.localeCompare(a.bis) || a.titel.localeCompare(b.titel, 'de'))
   }
 
   /** Offene Aufgaben, Blockaden und Überschriften mit Status blockiert/offen/wartet */

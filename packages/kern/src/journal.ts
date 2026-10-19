@@ -10,6 +10,8 @@ export interface Abschnitt {
   titel: string
   status: Status | null
   anker: string | null
+  /** `#wichtig` an der Überschrift */
+  wichtig: boolean
   /** Projektkürzel aus der umgebenden H1, null außerhalb eines Projekts */
   projekt: string | null
   /** Zeile der Überschrift */
@@ -47,9 +49,28 @@ export interface Blockade {
   pfad: string[]
 }
 
+/**
+ * Ein Eintrag im Journal: alles unter einer H1 bis zur nächsten, mit oder ohne Projekttag. Text vor der
+ * ersten H1 zählt als eigener Eintrag ohne Kopf. Das ist die Einheit, mit der der Review arbeitet.
+ */
+export interface Teil {
+  /** der wievielte Eintrag in der Datei (0-basiert) */
+  nr: number
+  von: number
+  /** erste Zeile nach dem Eintrag (exklusiv) */
+  bis: number
+  /** die H1-Zeile im Rohtext, '' beim Text vor der ersten H1 */
+  kopf: string
+  kuerzel: string | null
+  /** Text der H1 ohne Projekttag, z. B. „Begehung“ oder „Allgemein“ */
+  zusatz: string
+  wichtig: boolean
+}
+
 export interface Gliederung {
   abschnitte: Abschnitt[]
   bloecke: ProjektBlock[]
+  teile: Teil[]
   aufgaben: Aufgabe[]
   blockaden: Blockade[]
   /** Zeile, an der der Rumpf beginnt (nach dem Frontmatter) */
@@ -62,6 +83,7 @@ const STATUS_ENDE = new RegExp(`\\s+[-–]\\s+(${STATUS.join('|')})$`, 'i')
 const ANKER_ENDE = /\s+\^([a-z0-9-]+)$/i
 const AUFGABE = /^(\s*)[-*] \[( |x|X)\] (.*)$/
 const BLOCKADE = /^>\s*\[!blockade\][+-]?\s*(.*)$/i
+const WICHTIG = /(^|\s+)#wichtig(?=\s|$)/gi
 
 export function rumpfStart(zeilen: string[]): number {
   if (zeilen[0]?.trim() !== '---') return 0
@@ -69,7 +91,7 @@ export function rumpfStart(zeilen: string[]): number {
   return 0
 }
 
-export function zerlegeUeberschrift(roh: string): { titel: string; status: Status | null; anker: string | null } {
+export function zerlegeUeberschrift(roh: string): { titel: string; status: Status | null; anker: string | null; wichtig: boolean } {
   let titel = roh
   let anker: string | null = null
   const a = ANKER_ENDE.exec(titel)
@@ -77,13 +99,16 @@ export function zerlegeUeberschrift(roh: string): { titel: string; status: Statu
     anker = a[1]
     titel = titel.slice(0, a.index)
   }
+  const ohne = titel.replace(WICHTIG, '')
+  const wichtig = ohne !== titel
+  titel = ohne
   let status: Status | null = null
   const s = STATUS_ENDE.exec(titel)
   if (s) {
     status = s[1].toLowerCase() as Status
     titel = titel.slice(0, s.index)
   }
-  return { titel: titel.trim(), status, anker }
+  return { titel: titel.trim(), status, anker, wichtig }
 }
 
 export function projektTag(h1Titel: string): { kuerzel: string; zusatz: string } | null {
@@ -98,7 +123,9 @@ export function gliedere(text: string): Gliederung {
   const bloecke: ProjektBlock[] = []
   const aufgaben: Aufgabe[] = []
   const blockaden: Blockade[] = []
+  const teile: Teil[] = []
   const zaehler = new Map<string, number>()
+  let teil: Teil | null = null
 
   let projekt: string | null = null
   let block: ProjektBlock | null = null
@@ -118,10 +145,12 @@ export function gliedere(text: string): Gliederung {
     if (u) {
       const ebene = u[1].length
       schliesse(ebene, i)
-      const teile = zerlegeUeberschrift(u[2])
+      const zerlegt = zerlegeUeberschrift(u[2])
       if (ebene === 1) {
         if (block) block.bis = i
-        const tag = projektTag(u[2])
+        if (teil) teil.bis = i
+        else if (zeilen.slice(start, i).some((x) => x.trim() !== '')) teile.push({ nr: 0, von: start, bis: i, kopf: '', kuerzel: null, zusatz: '', wichtig: false })
+        const tag = projektTag(zerlegt.titel)
         projekt = tag?.kuerzel ?? null
         block = null
         if (tag) {
@@ -130,8 +159,10 @@ export function gliedere(text: string): Gliederung {
           block = { kuerzel: tag.kuerzel, zusatz: tag.zusatz, von: i, bis: zeilen.length, nr }
           bloecke.push(block)
         }
+        teil = { nr: teile.length, von: i, bis: zeilen.length, kopf: z, kuerzel: projekt, zusatz: tag ? tag.zusatz : zerlegt.titel, wichtig: zerlegt.wichtig }
+        teile.push(teil)
       }
-      const a: Abschnitt = { ebene, ...teile, projekt, von: i, bis: zeilen.length }
+      const a: Abschnitt = { ebene, ...zerlegt, projekt, von: i, bis: zeilen.length }
       abschnitte.push(a)
       stapel.push(a)
       continue
@@ -155,7 +186,8 @@ export function gliedere(text: string): Gliederung {
       blockaden.push(bl)
     }
   }
-  return { abschnitte, bloecke, aufgaben, blockaden, rumpfStart: start }
+  if (!teil && zeilen.slice(start).some((x) => x.trim() !== '')) teile.push({ nr: 0, von: start, bis: zeilen.length, kopf: '', kuerzel: null, zusatz: '', wichtig: false })
+  return { abschnitte, bloecke, teile, aufgaben, blockaden, rumpfStart: start }
 }
 
 /** Hakt eine Aufgabe ab oder wieder auf. Ändert nur die eine Zeile. */
@@ -173,8 +205,97 @@ export function setzeStatus(text: string, zeile: number, status: Status | null):
   const u = UEBERSCHRIFT.exec(zeilen[zeile] ?? '')
   if (!u) return text
   const t = zerlegeUeberschrift(u[2])
-  zeilen[zeile] = `${u[1]} ${t.titel}${status ? ` - ${status}` : ''}${t.anker ? ` ^${t.anker}` : ''}`
+  zeilen[zeile] = ueberschrift(u[1], t.titel, t.wichtig, status, t.anker)
   return zeilen.join('\n')
+}
+
+function ueberschrift(rauten: string, titel: string, wichtig: boolean, status: Status | null, anker: string | null) {
+  return `${rauten} ${titel}${wichtig ? ' #wichtig' : ''}${status ? ` - ${status}` : ''}${anker ? ` ^${anker}` : ''}`.replace(/^(#+)  +/, '$1 ')
+}
+
+/** Markiert eine Überschrift als wichtig (`#wichtig` vor dem Status) oder nimmt die Markierung weg. */
+export function setzeWichtig(text: string, zeile: number, wichtig: boolean): string {
+  const zeilen = text.split('\n')
+  const u = UEBERSCHRIFT.exec(zeilen[zeile] ?? '')
+  if (!u) return text
+  const t = zerlegeUeberschrift(u[2])
+  if (t.wichtig === wichtig) return text
+  zeilen[zeile] = ueberschrift(u[1], t.titel, wichtig, t.status, t.anker)
+  return zeilen.join('\n')
+}
+
+/** Text eines Eintrags ohne Leerzeilen am Ende */
+export function teilText(text: string, t: { von: number; bis: number }): string {
+  return blockText(text, t)
+}
+
+/**
+ * Ersetzt einen Eintrag (Zeilen von..bis, inklusive H1). Der Eintrag wird über Nummer und Kopfzeile
+ * wiedererkannt; ist er nicht mehr eindeutig zu finden (anderes Gerät war schneller), bleibt der Text unverändert.
+ * Leerer neuer Text löscht den Eintrag samt Abstand.
+ */
+export function ersetzeTeil(text: string, nr: number, kopf: string, neu: string): string {
+  const alle = gliedere(text).teile
+  let t = alle.find((x) => x.nr === nr && x.kopf === kopf)
+  // Hat sich die Nummer verschoben (Eintrag davor gelöscht), reicht eine eindeutige Kopfzeile
+  if (!t) {
+    const gleich = alle.filter((x) => x.kopf === kopf)
+    if (gleich.length !== 1) return text
+    t = gleich[0]
+  }
+  const zeilen = text.split('\n')
+  let ende = t.bis
+  while (ende > t.von + 1 && zeilen[ende - 1].trim() === '') ende--
+  if (neu.trim() === '') {
+    // Leerzeilen danach mitnehmen, damit keine Lücke bleibt
+    while (ende < zeilen.length && zeilen[ende].trim() === '') ende++
+    zeilen.splice(t.von, ende - t.von)
+  } else zeilen.splice(t.von, ende - t.von, ...neu.replace(/\n+$/, '').split('\n'))
+  return zeilen.join('\n').replace(/\n*$/, '\n')
+}
+
+const OFFEN_STATUS = new Set<Status>(['offen', 'blockiert', 'wartet'])
+
+/**
+ * Trennt einen Eintrag für einen Bericht: Was noch offen ist (Aufgaben `- [ ]`, ungelöste Blockaden und
+ * Überschriften mit Status offen/blockiert/wartet), bleibt im Journal, damit „Offen“ vollständig bleibt.
+ * Alles andere wandert in den Bericht. Die Reihenfolge bleibt erhalten.
+ */
+export function trenneOffenes(rumpf: string): { bleibt: string[]; bericht: string[] } {
+  const zeilen = rumpf.replace(/\n+$/, '').split('\n')
+  const g = gliedere(rumpf)
+  const halten = new Set<number>()
+  for (const a of g.aufgaben) if (!a.erledigt) halten.add(a.zeile)
+  for (const a of g.abschnitte) if (a.status && OFFEN_STATUS.has(a.status)) halten.add(a.von)
+  for (const b of g.blockaden) {
+    const huelle = g.abschnitte.filter((x) => x.von < b.zeile && x.bis > b.zeile && x.ebene > 1).pop()
+    if (huelle && (huelle.status === 'erledigt' || huelle.status === 'gelöst')) continue
+    for (let j = b.zeile; j < zeilen.length && (j === b.zeile || zeilen[j].startsWith('>')); j++) halten.add(j)
+  }
+  // Überschriften über allem, was bleibt, bleiben mit: Sie geben den offenen Punkten ihren Zusammenhang
+  for (const z of [...halten]) for (const a of g.abschnitte) if (a.von < z && a.bis > z) halten.add(a.von)
+  const bleibt: string[] = []
+  const bericht: string[] = []
+  zeilen.forEach((z, i) => {
+    if (halten.has(i)) bleibt.push(z)
+    // eine offene Überschrift steht in beiden: im Journal für „Offen“, im Bericht für den Zusammenhang
+    if (!halten.has(i) || UEBERSCHRIFT.test(z)) bericht.push(z)
+  })
+  return { bleibt, bericht }
+}
+
+/** Überschriften um n Ebenen tiefer setzen (höchstens H6), damit Einträge unter einem Datum stehen können */
+export function tieferSetzen(text: string, n = 1): string {
+  let imCode = false
+  return text
+    .split('\n')
+    .map((z) => {
+      if (/^\s*(```|~~~)/.test(z)) imCode = !imCode
+      if (imCode) return z
+      const u = /^(#{1,6})([ \t].*)$/.exec(z)
+      return u ? '#'.repeat(Math.min(6, u[1].length + n)) + u[2] : z
+    })
+    .join('\n')
 }
 
 /** Text eines Projektblocks (Zeilen von..bis) */

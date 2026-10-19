@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 
-export function Dialog({ titel, children, onZu }: { titel: string; children: ReactNode; onZu: () => void }) {
+export function Dialog({ titel, children, onZu, breit }: { titel: string; children: ReactNode; onZu: () => void; breit?: boolean }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onZu()
     addEventListener('keydown', esc)
@@ -8,7 +8,7 @@ export function Dialog({ titel, children, onZu }: { titel: string; children: Rea
   }, [onZu])
   return (
     <div className="dialog-huelle" onPointerDown={(e) => e.target === e.currentTarget && onZu()}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-label={titel}>
+      <div className={breit ? 'dialog breit' : 'dialog'} role="dialog" aria-modal="true" aria-label={titel}>
         <h2>{titel}</h2>
         {children}
       </div>

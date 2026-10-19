@@ -151,6 +151,7 @@ class Wissen extends WidgetType {
 const UEBERSCHRIFT = /^(#{1,6})( +)(.*)$/
 const STATUS = /\s+[-–]\s+(offen|blockiert|wartet|erledigt|gelöst)(?=\s+\^[a-z0-9-]+$|$)/i
 const AUFGABE = /^(\s*)([-*] \[( |x|X)\] )/
+const WICHTIG = /(?:^|\s+)#wichtig(?=\s|$)/i
 
 function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
   const doc = view.state.doc
@@ -195,10 +196,15 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       deko.push(Decoration.mark({ class: 'cm-zeichen' }).range(zeile.from, zeile.from + ebene))
       if (ebene === 1) {
         const tag = /^#[\p{L}\d_][\p{L}\d_/-]*/u.exec(u[3])
-        if (tag) {
+        if (tag && tag[0].toLowerCase() !== '#wichtig') {
           const von = zeile.from + ebene + u[2].length
           deko.push(Decoration.mark({ class: 'cm-projekttag' }).range(von, von + tag[0].length))
         }
+      }
+      const w = WICHTIG.exec(u[3])
+      if (w && !roh) {
+        const von = zeile.from + ebene + u[2].length + w.index
+        deko.push(Decoration.replace({ widget: new StatusMarke('wichtig') }).range(von, von + w[0].length))
       }
       const s = STATUS.exec(t)
       if (s && !roh) deko.push(Decoration.replace({ widget: new StatusMarke(s[1].toLowerCase()) }).range(zeile.from + s.index, zeile.from + s.index + s[0].length))
