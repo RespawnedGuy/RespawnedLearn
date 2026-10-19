@@ -5,6 +5,7 @@ import {
   Bestand,
   loeseLinksAuf,
   setzeAufgabenStatus,
+  trenneOffenes,
   ersetzeBlock,
   felder,
   findeLinks,
@@ -255,5 +256,14 @@ describe('Aufgaben als Objekte', () => {
   it('schlägt eigene Aufgaben in „Passt dazu“ direkt als Link vor', () => {
     const v = passtDazu(bestand(), { kuerzel: 'dd_os_76', text: 'Müll' })
     expect(v.find((x) => x.id === '01JMUELL')?.einfuegen).toBe('[[01JMUELL|am Dienstag Müll rausbringen]]')
+  })
+})
+
+describe('Bericht und eigene Aufgaben', () => {
+  it('hält Sätze mit offenen Aufgaben im Journal und übernimmt sie in den Bericht', () => {
+    const rumpf = 'Kabel gezogen.\nWir müssen [[01JA|Melder tauschen]], wenn das Teil da ist.\nAuch [[01JB|Doku]] ist fertig.'
+    const { bleibt, bericht } = trenneOffenes(rumpf, (id) => id === '01JA')
+    expect(bleibt).toEqual(['Wir müssen [[01JA|Melder tauschen]], wenn das Teil da ist.'])
+    expect(bericht).toEqual(rumpf.split('\n'))
   })
 })

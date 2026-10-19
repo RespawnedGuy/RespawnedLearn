@@ -2,6 +2,8 @@
 // darunter dem Projekt zu, bis zur nächsten H1. Status steht am Ende einer Überschrift (`### Mangel 1 - blockiert`).
 // Alle Zeilennummern zählen in der ganzen Datei (inklusive Frontmatter), damit Änderungen genau zurückfinden.
 
+import { findeLinks } from './links'
+
 export const STATUS = ['offen', 'blockiert', 'wartet', 'erledigt', 'gelöst'] as const
 export type Status = (typeof STATUS)[number]
 
@@ -261,10 +263,14 @@ const OFFEN_STATUS = new Set<Status>(['offen', 'blockiert', 'wartet'])
  * Überschriften mit Status offen/blockiert/wartet), bleibt im Journal, damit „Offen“ vollständig bleibt.
  * Alles andere wandert in den Bericht. Die Reihenfolge bleibt erhalten.
  */
-export function trenneOffenes(rumpf: string): { bleibt: string[]; bericht: string[] } {
+export function trenneOffenes(rumpf: string, offeneAufgabe?: (id: string) => boolean): { bleibt: string[]; bericht: string[] } {
   const zeilen = rumpf.replace(/\n+$/, '').split('\n')
   const g = gliedere(rumpf)
   const halten = new Set<number>()
+  // Sätze mit einer offenen Aufgabe (`[[ID|…]]`) bleiben im Journal und stehen zugleich im Bericht
+  const mitAufgabe = new Set<number>()
+  if (offeneAufgabe) zeilen.forEach((z, i) => z.includes('[[') && findeLinks(z).some((l) => !l.einbettung && offeneAufgabe(l.ziel)) && mitAufgabe.add(i))
+  for (const i of mitAufgabe) halten.add(i)
   for (const a of g.aufgaben) if (!a.erledigt) halten.add(a.zeile)
   for (const a of g.abschnitte) if (a.status && OFFEN_STATUS.has(a.status)) halten.add(a.von)
   for (const b of g.blockaden) {
@@ -279,7 +285,7 @@ export function trenneOffenes(rumpf: string): { bleibt: string[]; bericht: strin
   zeilen.forEach((z, i) => {
     if (halten.has(i)) bleibt.push(z)
     // eine offene Überschrift steht in beiden: im Journal für „Offen“, im Bericht für den Zusammenhang
-    if (!halten.has(i) || UEBERSCHRIFT.test(z)) bericht.push(z)
+    if (!halten.has(i) || UEBERSCHRIFT.test(z) || mitAufgabe.has(i)) bericht.push(z)
   })
   return { bleibt, bericht }
 }
