@@ -1,0 +1,57 @@
+/* Lern-App: ruhig, eine Sache zur Zeit. Akzent Violett (.app-lernen). */
+.seite { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.seite-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.seite-kopf h1 { margin: 0; font-size: 26px; font-weight: 800; }
+.raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.projekt-karte { padding: 18px 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 6px; }
+.projekt-karte .titel { font-size: 17px; font-weight: 700; }
+.passt-titel { font-size: 13px; font-weight: 700; color: var(--leise); }
+.plan-leiste { display: flex; gap: 8px; align-items: center; padding: 12px 24px; flex-wrap: wrap; }
+.knopf.aus { pointer-events: none; opacity: 0.4; }
+.unsichtbar { position: absolute; left: -9999px; }
+
+/* Sammeln: Skript und Blatt nebeneinander, tauschbar */
+.uebungsplatz { display: flex; gap: 16px; padding: 0 24px 110px; align-items: flex-start; }
+.uebungsplatz.getauscht { flex-direction: row-reverse; }
+.platz-skript { flex: 3 1 0; min-width: 0; }
+.platz-blatt { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.blatt-titel { font-size: 12px; color: var(--leise); }
+.blatt-flaeche { width: 100%; aspect-ratio: 1 / 1.414; background-color: #fff; background-image: linear-gradient(#eeeaf6 1px, transparent 1px), linear-gradient(90deg, #eeeaf6 1px, transparent 1px); background-size: 26px 26px; }
+@media (max-width: 900px) {
+  .uebungsplatz, .uebungsplatz.getauscht { flex-direction: column; padding: 0 8px 110px; }
+  .platz-skript, .platz-blatt { width: 100%; flex: none; }
+}
+
+/* Lernen */
+.lernen-seite { max-width: 820px; margin: 0 auto; padding: 32px 24px 60px; display: flex; flex-direction: column; gap: 18px; }
+.fortschritt { display: flex; gap: 6px; }
+.fortschritt span { height: 6px; flex: 1; border-radius: 3px; background: #e3deef; }
+.fortschritt span.fertig { background: var(--akzent); }
+.fortschritt span.jetzt { background: #b7a8e6; }
+.lern-karte { padding: 32px 36px; display: flex; flex-direction: column; gap: 18px; border-radius: 20px; }
+.lern-karte .art { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: var(--akzent-text); }
+.lern-karte .frage { font-size: 22px; font-weight: 600; line-height: 1.45; }
+.schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fbfafe; background-image: linear-gradient(#eeeaf6 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
+.antwort { border-top: 1px solid var(--linie); padding-top: 14px; font-size: 17px; }
+
+/* Nutzen */
+.nutzen-seite { display: flex; flex-direction: column; align-items: center; padding: 36px 24px; gap: 24px; }
+.nutzen-suche { width: 100%; max-width: 980px; }
+.suchfeld { width: 100%; height: 56px; border: none; border-radius: 16px; background: #fff; box-shadow: var(--schatten); padding: 0 22px; font-size: 18px; }
+.nutzen-raster { width: 100%; max-width: 980px; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 800px) {
+  .nutzen-raster { grid-template-columns: 1fr; }
+  .lern-karte { padding: 22px 20px; }
+}
+.nutzen-karte { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; border-radius: 20px; }
+.nutzen-karte h1 { margin: 0; font-size: 28px; font-weight: 800; }
+
+.inhalt { display: flex; flex-direction: column; gap: 10px; font-size: 17px; line-height: 1.6; }
+.inhalt p { margin: 0; }
+.inhalt h3 { margin: 6px 0 0; font-size: 17px; }
+.formel { font-family: var(--serif); font-size: 22px; text-align: center; padding: 6px 0; overflow-x: auto; }
+.abruf-frage { font-weight: 700; }
+.abruf-antwort { color: var(--tinte); }
+.ausschnitt { display: inline-block; vertical-align: middle; border-radius: 8px; border: 1px solid var(--linie); overflow: hidden; background: #fff; outline: 2px solid rgba(106, 79, 196, 0.35); outline-offset: -4px; max-width: 100%; }
+.ausschnitt img { display: block; max-width: 100%; max-height: 240px; }
+.ausschnitt .platz { display: block; width: 140px; height: 70px; background: var(--mulde); }

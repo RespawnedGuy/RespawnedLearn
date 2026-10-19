@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+*.local
+# Testdaten für die lokale Entwicklung, nie einchecken
+daten/

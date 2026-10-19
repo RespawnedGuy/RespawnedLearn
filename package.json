@@ -1,0 +1,28 @@
+{
+  "name": "respawnednotes",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "server"
+  ],
+  "scripts": {
+    "dev:arbeit": "npm run dev -w apps/arbeit",
+    "dev:lernen": "npm run dev -w apps/lernen",
+    "server": "node server/index.mjs",
+    "build": "npm run build -w apps/arbeit && npm run build -w apps/lernen",
+    "test": "vitest run",
+    "check": "npm run test && npm run build",
+    "beispiel": "node tools/beispieldaten.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}
