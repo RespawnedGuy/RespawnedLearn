@@ -6,6 +6,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { autocompletion, completionKeymap, type CompletionSource } from '@codemirror/autocomplete'
 import { projektTag } from '@rvx/kern'
 import { darstellung, type DarstellungHilfen } from './darstellung'
+import { beobachteTastatur } from '../tastatur'
 
 export interface EditorKontext {
   kuerzel: string | null
@@ -70,6 +71,7 @@ export const Editor = forwardRef<EditorGriff, EditorProps>(function Editor(p, gr
   const kontextTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    beobachteTastatur()
     const erweiterungen: Extension[] = [
       history(),
       drawSelection(),

@@ -201,12 +201,12 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 
 button.marke { padding: 0; }
 
-/* Auf dem Handy erscheint das „/“-Menü als Blatt von unten (wie im Entwurf) */
+/* Auf dem Handy erscheinen Vorschläge als Blatt von unten, direkt über der Tastatur (--tastatur, siehe tastatur.ts) */
 @media (max-width: 720px) {
   .cm-tooltip.cm-tooltip-autocomplete {
-    position: fixed !important; left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important;
+    position: fixed !important; left: 0 !important; right: 0 !important; top: auto !important; bottom: var(--tastatur, 0px) !important;
     border-radius: 22px 22px 0 0; padding: 10px 12px 24px; box-shadow: 0 -8px 30px rgba(31, 34, 39, 0.14);
   }
-  .cm-tooltip.cm-tooltip-autocomplete > ul { max-height: 50vh; min-width: 0; max-width: none !important; }
+  .cm-tooltip.cm-tooltip-autocomplete > ul { max-height: min(50vh, calc(var(--sichtbar, 100vh) * 0.45)); min-width: 0; max-width: none !important; }
   .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 12px 12px !important; font-size: 16px; }
 }
