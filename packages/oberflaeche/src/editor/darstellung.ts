@@ -1,6 +1,6 @@
 // Darstellung im Editor: Markdown bleibt der gespeicherte Text, angezeigt wird es ruhig und direkt bedienbar.
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import type { Range } from '@codemirror/state'
+import { StateEffect, type Range } from '@codemirror/state'
 import { ankerParameter, findeLinks, type Link } from '@rvx/kern'
 
 export interface DarstellungHilfen {
@@ -12,7 +12,12 @@ export interface DarstellungHilfen {
   wissen(id: string): { titel: string; text: string } | null
   titel(id: string): string | null
   oeffne(l: Link): void
+  /** Zustand einer eigenen Aufgabe (offen, wartet, blockiert, faellig, erledigt, verworfen), null bei allem anderen */
+  zustand?(id: string): string | null
 }
+
+/** Neu zeichnen, ohne dass sich der Text geändert hat (z. B. eine Aufgabe wurde im Popup erledigt) */
+export const neuZeichnen = StateEffect.define<null>()
 
 class Kasten extends WidgetType {
   constructor(readonly an: boolean, readonly pos: number) {
@@ -53,15 +58,17 @@ class StatusMarke extends WidgetType {
 }
 
 class Verweis extends WidgetType {
-  constructor(readonly text: string, readonly link: Link, readonly oeffne: (l: Link) => void) {
+  constructor(readonly text: string, readonly link: Link, readonly oeffne: (l: Link) => void, readonly zustand: string | null = null) {
     super()
   }
   eq(o: Verweis) {
-    return o.text === this.text && o.link.ziel === this.link.ziel && o.link.anker === this.link.anker
+    return o.text === this.text && o.link.ziel === this.link.ziel && o.link.anker === this.link.anker && o.zustand === this.zustand
   }
   toDOM() {
     const s = document.createElement('span')
-    s.className = 'cm-link'
+    // Eigene Aufgabe: die Farbe zeigt den Zustand, der Kreis davor macht sie im Satz als Aufgabe erkennbar
+    s.className = this.zustand ? `cm-link cm-aufgabe zustand-${this.zustand}` : 'cm-link'
+    if (this.zustand) s.title = ZUSTAND_TEXT[this.zustand] ?? this.zustand
     s.textContent = this.text
     s.addEventListener('mousedown', (e) => {
       e.preventDefault()
@@ -72,6 +79,15 @@ class Verweis extends WidgetType {
   ignoreEvent() {
     return true
   }
+}
+
+const ZUSTAND_TEXT: Record<string, string> = {
+  offen: 'Aufgabe, offen',
+  wartet: 'Aufgabe, wartet',
+  blockiert: 'Aufgabe, blockiert',
+  faellig: 'Aufgabe, fällig',
+  erledigt: 'Aufgabe, erledigt',
+  verworfen: 'Aufgabe, verworfen'
 }
 
 class Bild extends WidgetType {
@@ -197,10 +213,12 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       if (an && zeile.to > von + a[2].length) deko.push(Decoration.mark({ class: 'cm-erledigt-text' }).range(von + a[2].length, zeile.to))
     }
 
-    if (roh) continue
     for (const l of findeLinks(t)) {
       const von = zeile.from + l.von
       const bis = zeile.from + l.bis
+      // In der Cursorzeile bleibt nur der Link roh, in dem der Cursor steht. So steht nach einer neuen
+      // Aufgabe im Satz nicht plötzlich die ID da, während man weiterschreibt.
+      if (roh && view.state.selection.ranges.some((r) => r.from < bis && r.to > von)) continue
       const p = ankerParameter(l.anker)
       let w: WidgetType
       if (l.einbettung && p.marke) {
@@ -211,7 +229,7 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       } else if (l.einbettung) {
         w = new Bild(l.ziel, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
       } else {
-        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne)
+        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, h.zustand?.(l.ziel) ?? null)
       }
       deko.push(Decoration.replace({ widget: w }).range(von, bis))
     }
@@ -227,7 +245,8 @@ export function darstellung(hilfen: () => DarstellungHilfen) {
         this.decorations = baue(view, hilfen())
       }
       update(u: ViewUpdate) {
-        if (u.docChanged || u.selectionSet || u.viewportChanged || u.focusChanged) this.decorations = baue(u.view, hilfen())
+        const neu = u.transactions.some((t) => t.effects.some((e) => e.is(neuZeichnen)))
+        if (neu || u.docChanged || u.selectionSet || u.viewportChanged || u.focusChanged) this.decorations = baue(u.view, hilfen())
       }
     },
     { decorations: (v) => v.decorations }

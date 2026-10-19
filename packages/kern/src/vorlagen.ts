@@ -12,7 +12,7 @@ export interface Einfuegen {
 }
 
 export const FEST: Einfuegen[] = [
-  { id: 'aufgabe', titel: 'Aufgabe', art: 'text', text: '- [ ] ', hinweis: 'Etwas, das zu tun ist' },
+  { id: 'aufgabe', titel: 'Aufgabe', art: 'text', text: '- [ ] ', hinweis: 'Eigene Aufgabe, im Satz verlinkt' },
   {
     id: 'blockade',
     titel: 'Blockade',
@@ -20,7 +20,6 @@ export const FEST: Einfuegen[] = [
     text: '> [!blockade] {{cursor}}\n> Wenn: \n> Dann: \n> Prüfen: {{heute+7}}',
     hinweis: 'Woran es hängt, mit Wenn-dann und Prüftermin'
   },
-  { id: 'checkliste', titel: 'Checkliste', art: 'text', text: '- [ ] {{cursor}}\n- [ ] \n- [ ] ', hinweis: 'Mehrere Punkte' },
   { id: 'plan', titel: 'Stelle im Plan', art: 'aktion', hinweis: 'Markierung auf einem Plan des Projekts' },
   { id: 'foto', titel: 'Foto', art: 'aktion', hinweis: 'Bild oder Screenshot einfügen' },
   { id: 'projekt', titel: 'Projekt', art: 'aktion', hinweis: 'Ab hier gehört alles zu einem Projekt' },

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  aufgabeDokument,
+  benenneLinksUm,
   Bestand,
+  loeseLinksAuf,
+  setzeAufgabenStatus,
   ersetzeBlock,
   felder,
   findeLinks,
@@ -210,5 +214,46 @@ describe('Sonstiges', () => {
   it('speichert Tinte als SVG und liest sie zurück', () => {
     const s = [{ farbe: 'wichtig' as const, breite: 3, punkte: [[1, 2, 0.5], [3, 4, 0.7]] as [number, number, number][], d: 'M1 2L3 4Z' }]
     expect(liesTinte(tinteSvg(s, 1414))).toEqual(s)
+  })
+})
+
+describe('Aufgaben als Objekte', () => {
+  const projekt = neuesDokument([['id', '01JPROJ'], ['typ', 'projekt'], ['titel', 'BMZ'], ['kuerzel', 'dd_os_76']])
+  const muell = aufgabeDokument({ id: '01JMUELL', titel: 'am Dienstag Müll rausbringen', jetzt: '2026-10-19T20:00:00+02:00' })
+  const tonne = setzeFeld(aufgabeDokument({ id: '01JTONNE', titel: 'Tonne leeren', jetzt: '2026-10-19T20:00:00+02:00' }), 'status', 'wartet')
+  const journal = `---\nid: 01JJOUR\ntyp: journal\ntitel: J\ndatum: 2026-10-19\n---\n# #dd_os_76\nWir müssen [[01JMUELL|am Dienstag Müll rausbringen]], wenn die Tonne wieder leer ist.\n`
+  const bestand = (m = muell) =>
+    new Bestand(new Map([['arbeit/projekte/dd_os_76.md', projekt], ['arbeit/aufgaben/01JMUELL.md', m], ['arbeit/aufgaben/01JTONNE.md', tonne], ['arbeit/journal/2026/2026-10-19.md', journal]]))
+
+  it('findet die Aufgabe mitten im Satz und ordnet sie dem Projekt zu', () => {
+    const b = bestand()
+    expect(b.fundstellen('01JMUELL')).toMatchObject([{ datum: '2026-10-19', zeile: 7, projekt: 'dd_os_76' }])
+    expect(b.projektVonAufgabe('01JMUELL')).toBe('dd_os_76')
+    const o = b.offen('dd_os_76')
+    expect(o.map((x) => x.aufgabeId)).toEqual(['01JMUELL'])
+    expect(o[0]).toMatchObject({ art: 'aufgabe', datum: '2026-10-19', zeile: 7, zustand: 'offen' })
+  })
+
+  it('leitet den Zustand für die Linkfarbe ab', () => {
+    expect(bestand().zustand('01JTONNE')).toBe('wartet')
+    const blockiert = setzeFeld(muell, 'blockiert_durch', ['[[01JTONNE]]'])
+    expect(bestand(blockiert).zustand('01JMUELL')).toBe('blockiert')
+    expect(bestand(setzeFeld(muell, 'faellig', '2026-10-01')).zustand('01JMUELL', '2026-10-19')).toBe('faellig')
+    const erledigt = setzeAufgabenStatus(blockiert, 'erledigt', '2026-10-20')
+    expect(felder(zerlege(erledigt).kopf)).toMatchObject({ status: 'erledigt', erledigt_am: '2026-10-20' })
+    expect(bestand(erledigt).zustand('01JMUELL')).toBe('erledigt')
+    expect(felder(zerlege(setzeAufgabenStatus(erledigt, 'offen')).kopf).erledigt_am).toBeUndefined()
+    expect(bestand().zustand('01JPROJ')).toBeNull()
+  })
+
+  it('benennt Links mit um und löst sie beim Löschen in Text auf', () => {
+    const t = 'A [[01JMUELL|am Dienstag Müll rausbringen]] B [[01JMUELL|eigener Text]] ![[01JMUELL]] [[01JX|x]]'
+    expect(benenneLinksUm(t, '01JMUELL', 'am Dienstag Müll rausbringen', 'Müll | Di')).toBe('A [[01JMUELL|Müll Di]] B [[01JMUELL|eigener Text]] ![[01JMUELL]] [[01JX|x]]')
+    expect(loeseLinksAuf(t, '01JMUELL', 'Müll')).toBe('A am Dienstag Müll rausbringen B eigener Text ![[01JMUELL]] [[01JX|x]]')
+  })
+
+  it('schlägt eigene Aufgaben in „Passt dazu“ direkt als Link vor', () => {
+    const v = passtDazu(bestand(), { kuerzel: 'dd_os_76', text: 'Müll' })
+    expect(v.find((x) => x.id === '01JMUELL')?.einfuegen).toBe('[[01JMUELL|am Dienstag Müll rausbringen]]')
   })
 })

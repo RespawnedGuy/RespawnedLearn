@@ -5,7 +5,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown } from '@codemirror/lang-markdown'
 import { autocompletion, completionKeymap, type CompletionSource } from '@codemirror/autocomplete'
 import { projektTag } from '@rvx/kern'
-import { darstellung, type DarstellungHilfen } from './darstellung'
+import { darstellung, neuZeichnen, type DarstellungHilfen } from './darstellung'
 import { beobachteTastatur } from '../tastatur'
 
 export interface EditorKontext {
@@ -32,6 +32,8 @@ export interface EditorProps {
   autofokus?: boolean
   /** Zeile (0-basiert), an die der Cursor beim Öffnen springt */
   startZeile?: number
+  /** weitere CodeMirror-Erweiterungen der App (nur beim Öffnen gelesen) */
+  erweiterungen?: Extension[]
 }
 
 function kontextAus(state: EditorState): EditorKontext {
@@ -95,6 +97,7 @@ export const Editor = forwardRef<EditorGriff, EditorProps>(function Editor(p, gr
       })
     ]
     if (p.platzhalter) erweiterungen.push(platzhalter(p.platzhalter))
+    if (p.erweiterungen) erweiterungen.push(...p.erweiterungen)
     const start = p.startZeile !== undefined ? Math.min(p.startZeile + 1, p.wert.split('\n').length) : null
     const state = EditorState.create({ doc: p.wert, extensions: erweiterungen })
     const v = new EditorView({
@@ -126,6 +129,11 @@ export const Editor = forwardRef<EditorGriff, EditorProps>(function Editor(p, gr
     gesendet.current = [p.wert]
     v.dispatch({ changes: { from: a, to: alt.length - e, insert: p.wert.slice(a, p.wert.length - e) }, annotations: Transaction.remote.of(true) })
   }, [p.wert])
+
+  // Neue Hilfen heißen neuer Bestand: Verweise neu zeichnen (Linkfarbe einer Aufgabe, geänderte Titel)
+  useEffect(() => {
+    ansicht.current?.dispatch({ effects: neuZeichnen.of(null) })
+  }, [p.hilfen])
 
   useImperativeHandle(griff, () => ({
     einfuegen(text: string) {
