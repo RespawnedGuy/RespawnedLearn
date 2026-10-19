@@ -8,6 +8,7 @@ export const pfade = {
   journal: (datum: string) => `arbeit/journal/${datum.slice(0, 4)}/${datum}.md`,
   projekt: (kuerzel: string) => `arbeit/projekte/${kuerzel}.md`,
   vorlage: (id: string) => `arbeit/vorlagen/${id}.md`,
+  bericht: (id: string) => `arbeit/berichte/${id}.md`,
   anhang: (id: string) => `gemeinsam/anhaenge/${id}.md`,
   original: (datum: string, id: string, name: string) =>
     `anhaenge/${datum.slice(0, 4)}/${datum.slice(5, 7)}/${id.slice(-6).toLowerCase()}-${dateiname(name)}`,
