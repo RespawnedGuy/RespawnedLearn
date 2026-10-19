@@ -5,10 +5,10 @@ import { tag } from './datum'
 import { linkZiel, neuesDokument, setzeFeld, type Wert } from './frontmatter'
 import { findeLinks } from './links'
 
-export const AUFGABEN_STATUS = ['offen', 'naechste', 'wartet', 'erledigt', 'verworfen'] as const
+export const AUFGABEN_STATUS = ['offen', 'naechste', 'wartet', 'blockiert', 'erledigt', 'verworfen'] as const
 export type AufgabenStatus = (typeof AUFGABEN_STATUS)[number]
 
-/** Was die Linkfarbe zeigt. `blockiert` und `faellig` sind abgeleitet, nicht gespeichert. */
+/** Was die Linkfarbe zeigt. `faellig` ist immer abgeleitet, `blockiert` gesetzt (`status`) oder abgeleitet (`blockiert_durch`). */
 export type Zustand = 'offen' | 'wartet' | 'blockiert' | 'faellig' | 'erledigt' | 'verworfen'
 
 export function istAbgeschlossen(status: unknown): boolean {
@@ -30,6 +30,7 @@ export function zustandAus(f: Record<string, Wert>, statusVon: (id: string) => u
   const status = String(f.status ?? 'offen')
   if (status === 'erledigt') return 'erledigt'
   if (status === 'verworfen') return 'verworfen'
+  if (status === 'blockiert') return 'blockiert'
   if (blockiertDurch(f).some((id) => {
     const s = statusVon(id)
     return s !== undefined && !istAbgeschlossen(s)

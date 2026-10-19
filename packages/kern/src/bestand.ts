@@ -71,6 +71,8 @@ export interface Offen {
   /** eigene Aufgabe (Datei `arbeit/aufgaben/<id>.md`); pfad zeigt dann auf die Aufgabe, datum/zeile auf die erste Fundstelle */
   aufgabeId?: string
   zustand?: Zustand
+  /** woran eine blockierte Aufgabe hängt (`blockiert_weil`) */
+  grund?: string
   blockade?: Blockade
   abschnitt?: Abschnitt
 }
@@ -256,7 +258,9 @@ export class Bestand {
         projekt,
         pfad_: [],
         aufgabeId: e.id,
-        zustand: this.zustand(e.id) ?? 'offen'
+        zustand: this.zustand(e.id) ?? 'offen',
+        pruefen: typeof e.felder.pruefen === 'string' ? e.felder.pruefen : null,
+        grund: typeof e.felder.blockiert_weil === 'string' ? e.felder.blockiert_weil : undefined
       })
     }
     return out

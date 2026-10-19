@@ -245,6 +245,9 @@ describe('Aufgaben als Objekte', () => {
     expect(bestand(erledigt).zustand('01JMUELL')).toBe('erledigt')
     expect(felder(zerlege(setzeAufgabenStatus(erledigt, 'offen')).kopf).erledigt_am).toBeUndefined()
     expect(bestand().zustand('01JPROJ')).toBeNull()
+    const direkt = setzeFeld(setzeFeld(setzeAufgabenStatus(muell, 'blockiert'), 'blockiert_weil', 'Tonne voll'), 'pruefen', '2026-10-26')
+    expect(bestand(direkt).zustand('01JMUELL')).toBe('blockiert')
+    expect(bestand(direkt).offen('dd_os_76')[0]).toMatchObject({ zustand: 'blockiert', grund: 'Tonne voll', pruefen: '2026-10-26' })
   })
 
   it('benennt Links mit um und löst sie beim Löschen in Text auf', () => {
