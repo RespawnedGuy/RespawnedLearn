@@ -9,7 +9,7 @@ import { App } from './App'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Die Lern-App kennt keine Projekte: arbeit/ wird gar nicht erst abgeglichen */}
-    <DatenAnbieter optionen={{ app: 'lernen', filter: (p) => !p.startsWith('arbeit/') }}>
+    <DatenAnbieter optionen={{ app: 'lernen', filter: (p) => !p.startsWith('arbeit/') && !p.startsWith('gemeinsam/kontakte/') }}>
       <App />
     </DatenAnbieter>
   </StrictMode>

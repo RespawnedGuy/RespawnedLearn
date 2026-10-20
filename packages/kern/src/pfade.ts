@@ -14,6 +14,9 @@ export const pfade = {
   original: (datum: string, id: string, name: string) =>
     `anhaenge/${datum.slice(0, 4)}/${datum.slice(5, 7)}/${id.slice(-6).toLowerCase()}-${dateiname(name)}`,
   quelle: (id: string) => `gemeinsam/quellen/${id}.md`,
+  entitaet: (id: string) => `gemeinsam/entitaeten/${id}.md`,
+  /** Abbild einer Kontaktquelle (Outlook, Google …) als vCard */
+  kontakte: (quelle: string) => `gemeinsam/kontakte/${quelle}.vcf`,
   marken: (app: App, anhangId: string) => `${app}/markierungen/${anhangId}.md`,
   tinte: (app: App, anhangId: string, seite: number) => `${app}/tinte/${anhangId}/S${drei(seite)}.svg`,
   blatt: (anhangId: string, seite: number) => `lernen/blaetter/${anhangId}/S${drei(seite)}.svg`,
@@ -33,5 +36,5 @@ export function dateiname(name: string): string {
 
 /** Textdateien werden vollständig synchronisiert, Binärdateien erst beim Öffnen geladen */
 export function istText(pfad: string): boolean {
-  return /\.(md|svg|json|jsonl|txt)$/i.test(pfad)
+  return /\.(md|svg|json|jsonl|txt|vcf)$/i.test(pfad)
 }
