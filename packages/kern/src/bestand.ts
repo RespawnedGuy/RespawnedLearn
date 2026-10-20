@@ -4,7 +4,7 @@ import { felder, linkZiel, zerlege, type Wert } from './frontmatter'
 import { gliedere, blockText, type Gliederung, type Aufgabe, type Blockade, type ProjektBlock, type Abschnitt, type Teil } from './journal'
 import { liesMarken, type Marke } from './marken'
 import { findeLinks } from './links'
-import { istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
+import { blockiertDurch, istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
 
 export interface Eintrag {
   id: string
@@ -188,6 +188,15 @@ export class Bestand {
     return e ? zustandAus(e.felder, (x) => this.aufgabe(x)?.felder.status ?? (this.aufgabe(x) ? 'offen' : undefined), heute) : null
   }
 
+  /** Woran eine Aufgabe hängt: die offenen Aufgaben aus `blockiert_durch`, sonst ein alter Freitext */
+  private grund(e: Eintrag): string | undefined {
+    const offen = blockiertDurch(e.felder)
+      .map((x) => this.aufgabe(x))
+      .filter((a): a is Eintrag => !!a && !istAbgeschlossen(a.felder.status))
+    if (offen.length) return `durch ${offen.map((a) => a.titel).join(', ')}`
+    return typeof e.felder.blockiert_weil === 'string' ? e.felder.blockiert_weil : undefined
+  }
+
   /** Projekt einer Aufgabe: aus dem Feld `projekt`, sonst aus dem Journalabschnitt, in dem sie verlinkt ist */
   projektVonAufgabe(id: string): string | null {
     const e = this.aufgabe(id)
@@ -260,7 +269,7 @@ export class Bestand {
         aufgabeId: e.id,
         zustand: this.zustand(e.id) ?? 'offen',
         pruefen: typeof e.felder.pruefen === 'string' ? e.felder.pruefen : null,
-        grund: typeof e.felder.blockiert_weil === 'string' ? e.felder.blockiert_weil : undefined
+        grund: this.grund(e)
       })
     }
     return out

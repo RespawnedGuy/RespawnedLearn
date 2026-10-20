@@ -247,6 +247,8 @@ describe('Aufgaben als Objekte', () => {
     expect(bestand().zustand('01JPROJ')).toBeNull()
     const direkt = setzeFeld(setzeFeld(setzeAufgabenStatus(muell, 'blockiert'), 'blockiert_weil', 'Tonne voll'), 'pruefen', '2026-10-26')
     expect(bestand(direkt).zustand('01JMUELL')).toBe('blockiert')
+    const durch = setzeFeld(setzeAufgabenStatus(muell, 'blockiert'), 'blockiert_durch', ['[[01JTONNE]]'])
+    expect(bestand(durch).offen('dd_os_76').find((o) => o.aufgabeId === '01JMUELL')).toMatchObject({ zustand: 'blockiert', grund: 'durch Tonne leeren' })
     expect(bestand(direkt).offen('dd_os_76')[0]).toMatchObject({ zustand: 'blockiert', grund: 'Tonne voll', pruefen: '2026-10-26' })
   })
 
