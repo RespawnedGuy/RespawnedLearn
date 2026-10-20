@@ -167,6 +167,17 @@ class Bild extends WidgetType {
       e.preventDefault()
       this.klick()
     })
+    // Antippen am Handy: selbst erledigen, sonst setzt der Browser den Cursor und die Tastatur geht auf.
+    // Wer über das Bild scrollt, öffnet nichts.
+    let start: { x: number; y: number } | null = null
+    s.addEventListener('touchstart', (e) => (start = { x: e.touches[0].clientX, y: e.touches[0].clientY }), { passive: true })
+    s.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0]
+      if (!start || Math.abs(t.clientX - start.x) > 10 || Math.abs(t.clientY - start.y) > 10) return
+      e.preventDefault()
+      ;(document.activeElement as HTMLElement | null)?.blur()
+      this.klick()
+    })
     return s
   }
   ignoreEvent() {
