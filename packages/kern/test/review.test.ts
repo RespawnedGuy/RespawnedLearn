@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Bestand, ersetzeTeil, gliedere, neuesDokument, setzeStatus, setzeWichtig, tieferSetzen, trenneOffenes } from '../src'
+import { abschnitteImRumpf, Bestand, ersetzeRumpfAbschnitt, ersetzeTeil, gliedere, neuesDokument, setzeStatus, setzeWichtig, tieferSetzen, trenneOffenes } from '../src'
 
 const KOPF = `---
 id: 01JTEST0000000000000000009
@@ -105,5 +105,35 @@ describe('Review', () => {
     expect(b.berichte('dd_os_76').map((x) => [x.id, x.von, x.bis])).toEqual([['B1', '2026-10-14', '2026-10-16']])
     expect(b.berichte('privat_haus')[0]).toMatchObject({ id: 'B2', bis: '2026-10-01' })
     expect(b.berichte()).toHaveLength(2)
+  })
+})
+
+describe('Arbeitsabschnitte', () => {
+  const RUMPF = `Vorweg ein Satz
+## Nachrüstung Datendosen
+Dosen gesetzt
+
+## Service RAS
+- [ ] Filter tauschen
+Lüfter gereinigt
+
+## Störung FIBS und Parallelanzeige
+Ursache gefunden
+`
+  it('findet die obersten Abschnitte eines Eintrags', () => {
+    const a = abschnitteImRumpf(RUMPF)
+    expect(a.map((x) => [x.titel, x.von, x.bis])).toEqual([
+      ['Nachrüstung Datendosen', 1, 3],
+      ['Service RAS', 4, 7],
+      ['Störung FIBS und Parallelanzeige', 8, 10]
+    ])
+  })
+  it('ersetzt genau einen Abschnitt', () => {
+    const a = abschnitteImRumpf(RUMPF)[1]
+    const neu = ersetzeRumpfAbschnitt(RUMPF, a, [a.kopf, '- Bericht: [[X|Service RAS]]', '- [ ] Filter tauschen'])
+    expect(neu).toContain('## Nachrüstung Datendosen\nDosen gesetzt\n\n## Service RAS\n- Bericht: [[X|Service RAS]]\n- [ ] Filter tauschen\n\n## Störung')
+  })
+  it('hält eine Trennlinie am Anfang nicht für Frontmatter', () => {
+    expect(abschnitteImRumpf('---\n## A\nx\n---\n## B\ny').map((x) => x.titel)).toEqual(['A', 'B'])
   })
 })

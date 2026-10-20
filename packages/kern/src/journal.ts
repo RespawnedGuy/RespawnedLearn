@@ -345,3 +345,41 @@ export function haengeAn(text: string, kuerzel: string | null, zeilenNeu: string
   }
   return [...zeilen, ...zeilenNeu].join('\n') + '\n'
 }
+
+/** Ein Arbeitsabschnitt innerhalb eines Eintrags; Zeilen zählen im Rumpf (ohne die H1) */
+export interface RumpfAbschnitt {
+  titel: string
+  /** die Überschriftszeile im Rohtext */
+  kopf: string
+  von: number
+  /** erste Zeile nach dem Abschnitt (exklusiv) */
+  bis: number
+}
+
+/**
+ * Die obersten Abschnitte eines Eintrags (meist die H2 unter `# #projekt`). Jeder davon kann einzeln zum
+ * Bericht werden, wenn an einem Tag mehrere Arbeiten im selben Projekt stehen.
+ */
+export function abschnitteImRumpf(rumpf: string): RumpfAbschnitt[] {
+  // Leerzeile davor, damit eine Trennlinie `---` am Anfang nicht als Frontmatter gilt
+  const g = gliedere('\n' + rumpf)
+  const ebenen = g.abschnitte.map((a) => a.ebene)
+  if (!ebenen.length) return []
+  const oben = Math.min(...ebenen)
+  const zeilen = rumpf.split('\n')
+  return g.abschnitte
+    .filter((a) => a.ebene === oben)
+    .map((a) => {
+      const von = a.von - 1
+      let bis = Math.min(a.bis - 1, zeilen.length)
+      while (bis > von + 1 && zeilen[bis - 1].trim() === '') bis--
+      return { titel: a.titel, kopf: zeilen[von], von, bis }
+    })
+}
+
+/** Ersetzt die Zeilen von..bis eines Abschnitts im Rumpf */
+export function ersetzeRumpfAbschnitt(rumpf: string, a: { von: number; bis: number }, neu: string[]): string {
+  const zeilen = rumpf.split('\n')
+  zeilen.splice(a.von, a.bis - a.von, ...neu)
+  return zeilen.join('\n')
+}
