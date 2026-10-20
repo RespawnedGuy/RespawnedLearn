@@ -28,8 +28,7 @@ export function App() {
       eintraege: quellenPdfs(bestand)
         .slice(0, 8)
         .map((q) => ({ titel: q.titel, ziel: ortLink('sammeln', q.id, 1), aktiv: quelle?.id === q.id }))
-    },
-    { titel: 'Mehr', eintraege: [{ titel: 'Arbeit', ziel: '/' }] }
+    }
   ]
 
   return (

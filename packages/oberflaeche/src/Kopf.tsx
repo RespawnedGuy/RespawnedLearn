@@ -7,6 +7,8 @@ export interface MenueEintrag {
   ziel: string
   aktiv?: boolean
   zahl?: number | string
+  /** fett, z. B. „Alle Projekte“ */
+  betont?: boolean
 }
 
 export interface MenueGruppe {
@@ -79,6 +81,7 @@ export function Kopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: s
       <div className="kopf-zeile">
         <div className="kopf-links">
           <img className="kopf-logo" src={logo} alt="RespawnedNotes" />
+          <AppSchalter app={app} />
           <button type="button" className="kopf-ort" aria-expanded={sichtbar} onClick={() => (fixiert ? nadel() : setOffen(!offen))}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ort}</span>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flex: 'none', transform: sichtbar ? 'rotate(180deg)' : undefined }}>
@@ -99,7 +102,7 @@ export function Kopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: s
             <div className="kopf-gruppe" key={g.titel}>
               <div className="kopf-gruppe-titel">{g.titel}</div>
               {g.eintraege.map((e) => (
-                <a key={e.ziel + e.titel} className={`kopf-eintrag${e.aktiv ? ' aktiv' : ''}`} href={e.ziel}>
+                <a key={e.ziel + e.titel} className={`kopf-eintrag${e.aktiv ? ' aktiv' : ''}${e.betont ? ' betont' : ''}`} href={e.ziel}>
                   <span>{e.titel}</span>
                   {e.zahl !== undefined && e.zahl !== 0 && <span className="zahl">{e.zahl}</span>}
                 </a>
@@ -112,6 +115,20 @@ export function Kopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: s
         </nav>
       )}
     </header>
+  )
+}
+
+/** Wechsel zwischen den beiden Apps, immer sichtbar oben links */
+function AppSchalter({ app }: { app: string }) {
+  return (
+    <nav className="app-schalter" aria-label="App wechseln">
+      <a href="/" className={app === 'arbeit' ? 'aktiv' : ''} aria-current={app === 'arbeit' ? 'page' : undefined}>
+        Arbeiten
+      </a>
+      <a href="/lernen/" className={app === 'lernen' ? 'aktiv' : ''} aria-current={app === 'lernen' ? 'page' : undefined}>
+        Lernen
+      </a>
+    </nav>
   )
 }
 

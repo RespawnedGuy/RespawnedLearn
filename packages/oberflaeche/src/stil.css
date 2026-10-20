@@ -81,6 +81,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .kopf-eintrag.aktiv { background: var(--akzent-weich); color: var(--akzent-dunkel); font-weight: 700; }
 .kopf-eintrag .zahl { color: var(--leise); font-size: 13px; }
 .kopf-nadel { margin-left: auto; align-self: flex-start; }
+.kopf-eintrag.betont { font-weight: 700; }
+
+/* Schalter Arbeiten/Lernen: deutlich, die aktive App ist farbig gefüllt */
+.app-schalter { flex: none; display: flex; background: var(--mulde); border-radius: 999px; padding: 3px; margin: 0 4px; }
+.app-schalter a {
+  padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--leise); text-decoration: none; white-space: nowrap;
+}
+.app-schalter a:hover { color: var(--tinte); }
+.app-schalter a.aktiv { background: var(--akzent); color: #fff; box-shadow: 0 1px 3px rgba(31, 34, 39, 0.15); }
 
 .segmente { background: var(--mulde); border-radius: 12px; padding: 4px; display: flex; gap: 2px; }
 .segmente button { padding: 8px 18px; border-radius: 9px; border: none; background: transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
@@ -218,6 +227,16 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   .kopf-zeile { padding: 0 8px; gap: 6px; }
   .nur-breit { display: none !important; }
   .segmente button { padding: 8px 12px; }
+  .kopf-logo { display: none; }
+  .kopf-rechts { flex: none; }
+  .app-schalter { margin: 0; }
+  .app-schalter a { padding: 6px 9px; font-size: 13px; }
+  /* Bereiche in der Mitte (Lern-App) bekommen am Handy eine eigene Zeile unter dem Schalter */
+  .kopf-zeile:has(.kopf-mitte) { flex-wrap: wrap; height: auto; min-height: 60px; padding-bottom: 8px; row-gap: 0; }
+  .kopf-zeile:has(.kopf-mitte) .kopf-links, .kopf-zeile:has(.kopf-mitte) .kopf-rechts { height: 60px; }
+  .kopf-mitte { order: 3; flex-basis: 100%; }
+  .kopf-mitte .segmente { flex: 1; }
+  .kopf-mitte .segmente button { flex: 1; }
 }
 @media (min-width: 721px) {
   .nur-schmal { display: none !important; }

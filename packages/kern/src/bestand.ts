@@ -24,6 +24,8 @@ export interface Projekt {
   pfad: string
   /** Vaultwarden-Eintrag mit den Zugangsdaten (nur die ID) */
   zugang?: string
+  /** oben in der Projektliste */
+  favorit: boolean
 }
 
 export interface Journal {
@@ -124,7 +126,8 @@ export class Bestand {
           status: String(f.status ?? 'aktiv'),
           bereich: String(f.bereich ?? 'beruf'),
           pfad,
-          zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined
+          zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined,
+          favorit: f.favorit === true
         })
       }
       if (e.typ === 'journal' && typeof f.datum === 'string') {
