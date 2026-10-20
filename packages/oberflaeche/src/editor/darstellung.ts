@@ -156,13 +156,19 @@ class Bild extends WidgetType {
     const t = document.createElement('span')
     t.textContent = this.titel
     s.append(t)
-    void this.laden().then((url) => {
-      if (!url) return
-      const img = document.createElement('img')
-      img.src = url
-      img.alt = this.titel
-      platz.replaceWith(img)
-    })
+    // Fehlt das Bild noch auf dem Server, weil das andere Gerät es gerade hochlädt, später noch einmal versuchen
+    const lade = (versuch: number) =>
+      void this.laden().then((url) => {
+        if (!url) {
+          if (versuch < 30) setTimeout(() => s.isConnected && lade(versuch + 1), 5000)
+          return
+        }
+        const img = document.createElement('img')
+        img.src = url
+        img.alt = this.titel
+        platz.replaceWith(img)
+      })
+    lade(0)
     s.addEventListener('mousedown', (e) => {
       e.preventDefault()
       this.klick()

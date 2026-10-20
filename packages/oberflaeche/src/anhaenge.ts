@@ -45,7 +45,11 @@ export function bildUrl(speicher: Speicher, bestand: Bestand, id: string): Promi
   if (!pfad || !/\.(png|jpe?g|webp|gif|heic)$/i.test(pfad)) return Promise.resolve(null)
   let p = urls.get(pfad)
   if (!p) {
-    p = speicher.binaer(pfad).then((b) => (b ? URL.createObjectURL(b) : null))
+    p = speicher.binaer(pfad).then((b) => {
+      // Noch nicht da (das andere Gerät lädt das Foto erst nach dem Text hoch): später neu fragen
+      if (!b) urls.delete(pfad)
+      return b ? URL.createObjectURL(b) : null
+    })
     urls.set(pfad, p)
   }
   return p
@@ -72,7 +76,10 @@ export function bildMitTinte(speicher: Speicher, bestand: Bestand, app: App, id:
   let p = gemalt.get(schluessel)
   if (!p) {
     p = bildUrl(speicher, bestand, id).then(async (url) => {
-      if (!url) return null
+      if (!url) {
+        gemalt.delete(schluessel)
+        return null
+      }
       const img = new Image()
       img.src = url
       await img.decode()
