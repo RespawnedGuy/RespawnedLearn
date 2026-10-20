@@ -31,7 +31,9 @@ export function TintenEbene({
   werkzeug,
   farbe,
   onRechteck,
-  fluechtig
+  fluechtig,
+  finger,
+  breite: strichBreite
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -42,6 +44,10 @@ export function TintenEbene({
   onRechteck?: (b: Bereich, punkt: { x: number; y: number }) => void
   /** nur zum Schreiben im Moment, nichts wird gespeichert (z. B. Rechenweg beim Abrufen) */
   fluechtig?: boolean
+  /** auch der Finger zeichnet (Fotos am Handy), statt zu scrollen */
+  finger?: boolean
+  /** Strichbreite in Seitenkoordinaten, sonst 3 (Wichtig 4) */
+  breite?: number
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -81,7 +87,7 @@ export function TintenEbene({
 
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {
     if (werkzeug === 'lesen') return
-    if (e.pointerType === 'touch' && werkzeug !== 'markieren') {
+    if (e.pointerType === 'touch' && werkzeug !== 'markieren' && !finger) {
       // Finger scrollt. touch-action bleibt aus, sonst würde auch der Stift scrollen statt schreiben.
       modus.current = 'scrollen'
       letzter.current = { x: e.clientX, y: e.clientY }
@@ -100,7 +106,7 @@ export function TintenEbene({
       setRechteck({ x: p[0] / SEITE_BREITE, y: p[1] / hoehe, b: 0, h: 0 })
     } else {
       modus.current = 'zeichnen'
-      const breite = farbe === 'wichtig' ? 4 : 3
+      const breite = strichBreite ?? (farbe === 'wichtig' ? 4 : 3)
       setAktiv({ farbe, breite, punkte: [p], d: umriss([p], breite, e.pointerType === 'pen') })
     }
   }
@@ -163,7 +169,7 @@ export function TintenEbene({
       onPointerMove={bewegen}
       onPointerUp={hoch}
       onPointerCancel={hoch}
-      style={{ pointerEvents: werkzeug === 'lesen' ? 'none' : 'auto' }}
+      style={{ pointerEvents: werkzeug === 'lesen' ? 'none' : 'auto', touchAction: finger && werkzeug !== 'lesen' ? 'none' : undefined }}
     >
       {striche.map((s, i) => (
         <path key={i} d={s.d} fill={FARBEN[s.farbe]} />

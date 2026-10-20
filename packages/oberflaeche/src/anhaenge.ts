@@ -1,6 +1,6 @@
 // Originaldateien (PDF, Foto) ablegen: Original nach anhaenge/JJJJ/MM/, Sidecar nach gemeinsam/anhaenge/ (Vertrag 5.1).
 // Andere Dateien verweisen nur auf die ID des Sidecars, nie auf den Pfad.
-import { neuesDokument, pfade, tag, ulid, zeitstempel, type Bestand, type Wert } from '@rvx/kern'
+import { FARBEN, liesTinte, neuesDokument, pfade, SEITE_BREITE, tag, ulid, zeitstempel, type App, type Bestand, type Wert } from '@rvx/kern'
 import type { Speicher } from './daten/speicher'
 import { geraet } from './daten/speicher'
 
@@ -47,6 +47,59 @@ export function bildUrl(speicher: Speicher, bestand: Bestand, id: string): Promi
   if (!p) {
     p = speicher.binaer(pfad).then((b) => (b ? URL.createObjectURL(b) : null))
     urls.set(pfad, p)
+  }
+  return p
+}
+
+/** Zeichnung auf einem Foto: eigene Ebene wie auf Plänen, das Foto ist eine Seite (Vertrag 5.4) */
+export const bildTinte = (app: App, id: string) => pfade.tinte(app, id, 1)
+
+/** Ändert sich, sobald auf dem Bild gezeichnet oder radiert wurde (für die Vorschau im Editor) */
+export function tintenStand(speicher: Speicher, app: App, id: string): string {
+  const t = speicher.text(bildTinte(app, id))
+  return t ? `${t.length}:${t.slice(-48)}` : ''
+}
+
+const gemalt = new Map<string, Promise<string | null>>()
+const zuletzt = new Map<string, string>()
+
+/** Vorschau eines Fotos samt Zeichnung, als ein Bild zusammengesetzt. Das Original bleibt, wie es ist. */
+export function bildMitTinte(speicher: Speicher, bestand: Bestand, app: App, id: string, breite = 480): Promise<string | null> {
+  const svg = speicher.text(bildTinte(app, id)) ?? ''
+  const striche = liesTinte(svg)
+  if (!striche.length) return bildUrl(speicher, bestand, id)
+  const schluessel = `${id}|${breite}|${tintenStand(speicher, app, id)}`
+  let p = gemalt.get(schluessel)
+  if (!p) {
+    p = bildUrl(speicher, bestand, id).then(async (url) => {
+      if (!url) return null
+      const img = new Image()
+      img.src = url
+      await img.decode()
+      const b = Math.min(breite, img.naturalWidth)
+      const h = Math.round((b * img.naturalHeight) / img.naturalWidth)
+      const c = document.createElement('canvas')
+      c.width = b
+      c.height = h
+      const ctx = c.getContext('2d')!
+      ctx.drawImage(img, 0, 0, b, h)
+      ctx.scale(b / SEITE_BREITE, b / SEITE_BREITE)
+      for (const s of striche) {
+        ctx.fillStyle = FARBEN[s.farbe]
+        ctx.fill(new Path2D(s.d))
+      }
+      const blob = await new Promise<Blob | null>((r) => c.toBlob(r, 'image/jpeg', 0.85))
+      return blob ? URL.createObjectURL(blob) : null
+    })
+    gemalt.set(schluessel, p)
+    // Nur die neueste Fassung pro Bild behalten, ältere Vorschauen freigeben
+    const alt = zuletzt.get(`${id}|${breite}`)
+    zuletzt.set(`${id}|${breite}`, schluessel)
+    if (alt && alt !== schluessel) {
+      const weg = gemalt.get(alt)
+      gemalt.delete(alt)
+      void weg?.then((u) => u && setTimeout(() => URL.revokeObjectURL(u), 5000))
+    }
   }
   return p
 }

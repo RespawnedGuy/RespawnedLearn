@@ -8,6 +8,8 @@ export interface DarstellungHilfen {
   ausschnitt(anhangId: string, seite: number, markeId: string): Promise<string | null>
   /** Bild eines Anhangs (Foto, Screenshot) */
   bild(id: string): Promise<string | null>
+  /** Stand der Zeichnung auf einem Bild: ändert er sich, wird die Vorschau neu geladen */
+  bildStand?(id: string): string
   /** Wissen aus der Lern-App zum Einbetten, null wenn die ID kein Wissen ist */
   wissen(id: string): { titel: string; text: string } | null
   titel(id: string): string | null
@@ -233,7 +235,7 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
         const wi = h.wissen(l.ziel)!
         w = new Wissen(wi.titel, wi.text, () => h.oeffne(l))
       } else if (l.einbettung) {
-        w = new Bild(l.ziel, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
+        w = new Bild(`${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
       } else {
         w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, h.zustand?.(l.ziel) ?? null)
       }

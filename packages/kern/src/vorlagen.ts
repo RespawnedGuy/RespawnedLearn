@@ -21,6 +21,7 @@ export const FEST: Einfuegen[] = [
     hinweis: 'Woran es hängt, mit Wenn-dann und Prüftermin'
   },
   { id: 'plan', titel: 'Stelle im Plan', art: 'aktion', hinweis: 'Markierung auf einem Plan des Projekts' },
+  { id: 'kamera', titel: 'Kamera', art: 'aktion', hinweis: 'Foto aufnehmen' },
   { id: 'foto', titel: 'Foto', art: 'aktion', hinweis: 'Bild oder Screenshot einfügen' },
   { id: 'projekt', titel: 'Projekt', art: 'aktion', hinweis: 'Ab hier gehört alles zu einem Projekt' },
   { id: 'blockiert', titel: 'Status: blockiert', art: 'aktion', hinweis: 'An der Überschrift' },
