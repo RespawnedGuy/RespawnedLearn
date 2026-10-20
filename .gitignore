@@ -4,3 +4,4 @@ dist/
 *.local
 # Testdaten für die lokale Entwicklung, nie einchecken
 /daten/
+/vaultwarden-leer/
