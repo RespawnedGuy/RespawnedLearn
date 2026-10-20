@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import paket from '../../package.json'
+
+// Version oben rechts: Nummer aus der package.json im Wurzelordner, dazu der Zeitpunkt des Builds
+const version = paket.version
 
 // Entwicklung: API an den lokalen Server (npm run server) weiterreichen. Port nur lokal, nichts Internes.
 export default defineConfig({
+  define: { __VERSION__: JSON.stringify(version), __GEBAUT__: JSON.stringify(new Date().toISOString()) },
   base: '/lernen/',
   plugins: [
     react(),

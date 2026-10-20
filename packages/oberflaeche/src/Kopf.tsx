@@ -81,6 +81,7 @@ export function Kopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: s
         <div className="kopf-rechts">
           {rechts}
           <SyncAnzeige />
+          <Version />
         </div>
       </div>
       {sichtbar && (
@@ -116,6 +117,24 @@ export function SyncAnzeige() {
     <span className={`sync ${z}${n ? ' ungesichert' : ''}`} title={speicher.letzterFehler || undefined}>
       <span className="nur-breit">{text}</span>
       {k > 0 && <span className="chip rot">{k} Konflikt{k > 1 ? 'e' : ''}</span>}
+    </span>
+  )
+}
+
+// Kommen beim Build aus vite.config.ts (define)
+declare const __VERSION__: string
+declare const __GEBAUT__: string
+
+/** Versionsnummer und Build-Zeitpunkt, damit man sieht, ob der neue Stand schon angekommen ist */
+export function Version() {
+  const v = typeof __VERSION__ === 'string' ? __VERSION__ : '?'
+  const g = typeof __GEBAUT__ === 'string' ? new Date(__GEBAUT__) : null
+  const zwei = (n: number) => String(n).padStart(2, '0')
+  const stand = g ? `${zwei(g.getDate())}.${zwei(g.getMonth() + 1)}. ${zwei(g.getHours())}:${zwei(g.getMinutes())}` : ''
+  return (
+    <span className="version" title={g ? `Version ${v}, gebaut am ${g.toLocaleString('de-DE')}` : `Version ${v}`}>
+      v{v}
+      {stand && <span className="nur-breit"> · {stand}</span>}
     </span>
   )
 }
