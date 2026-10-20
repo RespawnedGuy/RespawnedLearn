@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   aufgabeDokument,
+  bilderIn,
+  haengeBilderAn,
   benenneLinksUm,
   Bestand,
   loeseLinksAuf,
@@ -270,5 +272,16 @@ describe('Bericht und eigene Aufgaben', () => {
     const { bleibt, bericht } = trenneOffenes(rumpf, (id) => id === '01JA')
     expect(bleibt).toEqual(['Wir müssen [[01JA|Melder tauschen]], wenn das Teil da ist.'])
     expect(bericht).toEqual(rumpf.split('\n'))
+  })
+})
+
+describe('Fotos an Aufgaben', () => {
+  it('findet nur eingebettete Fotos in der Notiz', () => {
+    const rumpf = 'Siehe ![[F1|Foto]] und [[F2|Link]]\n![[F3#seite=1&marke=a|Stelle]]\n![[F1|nochmal]] ![[X|Plan]]'
+    expect(bilderIn(rumpf, (id) => id.startsWith('F'))).toEqual(['F1'])
+  })
+  it('hängt Fotos unten an die Notiz', () => {
+    expect(haengeBilderAn('', ['A'])).toBe('![[A|Foto]]\n')
+    expect(haengeBilderAn('Text\n\n', ['A', 'B'])).toBe('Text\n![[A|Foto]]\n![[B|Foto]]\n')
   })
 })

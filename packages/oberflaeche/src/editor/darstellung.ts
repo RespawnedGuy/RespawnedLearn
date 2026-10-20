@@ -16,6 +16,8 @@ export interface DarstellungHilfen {
   oeffne(l: Link): void
   /** Zustand einer eigenen Aufgabe (offen, wartet, blockiert, faellig, erledigt, verworfen), null bei allem anderen */
   zustand?(id: string): string | null
+  /** Fotos in der Notiz einer Aufgabe; sie stehen im Journal klein direkt hinter dem Aufgabenlink */
+  aufgabeBilder?(id: string): string[]
 }
 
 /** Neu zeichnen, ohne dass sich der Text geändert hat (z. B. eine Aufgabe wurde im Popup erledigt) */
@@ -60,11 +62,24 @@ class StatusMarke extends WidgetType {
 }
 
 class Verweis extends WidgetType {
-  constructor(readonly text: string, readonly link: Link, readonly oeffne: (l: Link) => void, readonly zustand: string | null = null) {
+  constructor(
+    readonly text: string,
+    readonly link: Link,
+    readonly oeffne: (l: Link) => void,
+    readonly zustand: string | null = null,
+    readonly bilder: { id: string; stand: string }[] = [],
+    readonly laden: (id: string) => Promise<string | null> = async () => null
+  ) {
     super()
   }
   eq(o: Verweis) {
-    return o.text === this.text && o.link.ziel === this.link.ziel && o.link.anker === this.link.anker && o.zustand === this.zustand
+    return (
+      o.text === this.text &&
+      o.link.ziel === this.link.ziel &&
+      o.link.anker === this.link.anker &&
+      o.zustand === this.zustand &&
+      o.bilder.map((b) => `${b.id}|${b.stand}`).join() === this.bilder.map((b) => `${b.id}|${b.stand}`).join()
+    )
   }
   toDOM() {
     const s = document.createElement('span')
@@ -76,7 +91,40 @@ class Verweis extends WidgetType {
       e.preventDefault()
       this.oeffne(this.link)
     })
-    return s
+    if (!this.bilder.length) return s
+    // Fotos der Aufgabe klein direkt hinter dem Link, so stehen sie fast im Fließtext. Antippen öffnet das Foto.
+    const huelle = document.createElement('span')
+    huelle.append(s)
+    const reihe = document.createElement('span')
+    reihe.className = 'cm-aufgabe-bilder'
+    for (const b of this.bilder.slice(0, 3)) {
+      const k = document.createElement('span')
+      k.className = 'cm-aufgabe-bild'
+      void this.laden(b.id).then((url) => {
+        if (!url) return
+        const img = document.createElement('img')
+        img.src = url
+        img.alt = 'Foto'
+        k.append(img)
+      })
+      k.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        this.oeffne({ einbettung: true, ziel: b.id, anker: null, stand: null, anzeige: null, von: 0, bis: 0 })
+      })
+      reihe.append(k)
+    }
+    if (this.bilder.length > 3) {
+      const mehr = document.createElement('span')
+      mehr.className = 'cm-aufgabe-bild mehr'
+      mehr.textContent = `+${this.bilder.length - 3}`
+      mehr.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        this.oeffne(this.link)
+      })
+      reihe.append(mehr)
+    }
+    huelle.append(reihe)
+    return huelle
   }
   ignoreEvent() {
     return true
@@ -237,7 +285,9 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       } else if (l.einbettung) {
         w = new Bild(`${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
       } else {
-        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, h.zustand?.(l.ziel) ?? null)
+        const zustand = h.zustand?.(l.ziel) ?? null
+        const bilder = zustand ? (h.aufgabeBilder?.(l.ziel) ?? []).map((id) => ({ id, stand: h.bildStand?.(id) ?? '' })) : []
+        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, zustand, bilder, h.bild)
       }
       deko.push(Decoration.replace({ widget: w }).range(von, bis))
     }

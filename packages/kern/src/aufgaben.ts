@@ -89,3 +89,22 @@ export function benenneLinksUm(text: string, id: string, alt: string, neu: strin
 export function loeseLinksAuf(text: string, id: string, titel: string): string {
   return ersetzeLinksAuf(text, id, (a) => a ?? linkText(titel))
 }
+
+/**
+ * Fotos einer Aufgabe: Einbettungen in ihrer Notiz, deren Ziel ein Bild ist (`istBild` prüft die ID).
+ * Sie gehören der Aufgabe, im Journal werden sie nur am Link gezeigt und nie dorthin kopiert.
+ */
+export function bilderIn(rumpf: string, istBild: (id: string) => boolean): string[] {
+  const ids = findeLinks(rumpf)
+    .filter((l) => l.einbettung && !l.anker && istBild(l.ziel))
+    .map((l) => l.ziel)
+  return [...new Set(ids)]
+}
+
+/** Hängt Fotos unten an die Notiz an (je eine Zeile `![[ID|Foto]]`) */
+export function haengeBilderAn(rumpf: string, ids: string[], titel = 'Foto'): string {
+  if (!ids.length) return rumpf
+  const zeilen = ids.map((id) => `![[${id}|${titel}]]`).join('\n')
+  const basis = rumpf.replace(/\n*$/, '')
+  return basis ? `${basis}\n${zeilen}\n` : `${zeilen}\n`
+}

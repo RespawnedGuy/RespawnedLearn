@@ -184,6 +184,9 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-status-blockade { background: #fde7e5; color: #a3261d; margin: 0 8px 0 0; }
 .cm-feld { font-weight: 700; color: #a3261d; }
 .cm-callout { background: var(--mulde-hell); border-left: 3px solid var(--linie); padding-left: 12px !important; }
+.cm-aufgabe-bilder { display: inline-flex; gap: 3px; vertical-align: middle; margin: 0 2px 0 5px; }
+.cm-aufgabe-bild { display: inline-flex; align-items: center; justify-content: center; width: 2.4em; height: 2.4em; border-radius: 6px; overflow: hidden; background: var(--mulde); border: 1px solid var(--linie); cursor: pointer; font-size: 12px; font-weight: 700; color: var(--leise); }
+.cm-aufgabe-bild img { width: 100%; height: 100%; object-fit: cover; }
 .cm-ausschnitt { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; background: #fff; border: 1px solid var(--linie); border-radius: 10px; padding: 4px 10px 4px 4px; margin: 2px 0; cursor: pointer; font-size: 13px; color: var(--leise); max-width: 100%; }
 .cm-ausschnitt img, .cm-ausschnitt .platz { width: 120px; height: 64px; object-fit: contain; background: #fff; border-radius: 6px; background: var(--mulde); flex: none; }
 .cm-wissen { display: block; background: var(--akzent-weich); border-radius: 10px; padding: 8px 12px; margin: 4px 0; font-size: 15px; color: var(--tinte); white-space: normal; }
