@@ -53,6 +53,15 @@ export function Kopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: s
     return () => removeEventListener('hashchange', f)
   }, [])
 
+  // Höhe des Kopfs für alles, was darunter kleben bleiben soll (--kopf-hoehe)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--kopf-hoehe', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const nadel = () => {
     const neu = !fixiert
     setFixiert(neu)
