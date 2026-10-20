@@ -22,6 +22,8 @@ export interface Projekt {
   status: string
   bereich: string
   pfad: string
+  /** Vaultwarden-Eintrag mit den Zugangsdaten (nur die ID) */
+  zugang?: string
 }
 
 export interface Journal {
@@ -121,7 +123,8 @@ export class Bestand {
           titel: e.titel,
           status: String(f.status ?? 'aktiv'),
           bereich: String(f.bereich ?? 'beruf'),
-          pfad
+          pfad,
+          zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined
         })
       }
       if (e.typ === 'journal' && typeof f.datum === 'string') {
