@@ -56,6 +56,11 @@ export function konfliktPfad(pfad: string, g: string, d = new Date()): string {
   return punkt > pfad.lastIndexOf('/') ? `${pfad.slice(0, punkt)}.sync-conflict-${st}-${g}${pfad.slice(punkt)}` : `${pfad}.sync-conflict-${st}-${g}`
 }
 
+let hochladenLaeuft = 0
+
+/** Lädt gerade ein Original (PDF, Foto) hoch? Dann wartet das automatische Neuladen (aktualisierung.ts). */
+export const laedtHoch = () => hochladenLaeuft > 0
+
 export class Speicher {
   private db!: IDBDatabase
   private texte = new Map<string, TextEintrag>()
@@ -214,6 +219,22 @@ export class Speicher {
     return { ok: true, hash: ((await r.json()) as { hash: string }).hash }
   }
 
+  private async originaleHochladen() {
+    const binaer = (await anfrage(this.db.transaction('binaer').objectStore('binaer').getAll() as IDBRequest<BinaerEintrag[]>)).filter((b) => b.lokal)
+    if (!binaer.length) return
+    hochladenLaeuft++
+    this.melde() // Tinte und Notizen der anderen Geräte sind jetzt schon da
+    try {
+      for (const b of binaer) {
+        const r = await this.put(b.pfad, b.blob, b.basis)
+        // Originale sind unveränderlich (Vertrag 1.5): ein Konflikt heißt, die Datei gibt es schon
+        await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ ...b, lokal: false, basis: r.ok ? r.hash : null }))
+      }
+    } finally {
+      hochladenLaeuft--
+    }
+  }
+
   private async holeText(pfad: string): Promise<{ text: string; hash: string } | null> {
     const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`)
     if (r.status === 404) return null
@@ -244,28 +265,30 @@ export class Speicher {
           await this.speichereEintrag({ ...jetzt, basis: r.hash, lokal: jetzt.text !== e.text })
         } else await this.konflikt(e)
       }
-      const binaer = (await anfrage(this.db.transaction('binaer').objectStore('binaer').getAll() as IDBRequest<BinaerEintrag[]>)).filter((b) => b.lokal)
-      for (const b of binaer) {
-        const r = await this.put(b.pfad, b.blob, b.basis)
-        // Originale sind unveränderlich (Vertrag 1.5): ein Konflikt heißt, die Datei gibt es schon
-        await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ ...b, lokal: false, basis: r.ok ? r.hash : null }))
-      }
-
       // 2. Stand des Servers holen
       const r = await fetch(`${this.api}/liste`)
       if (!r.ok) throw new Error(`Server antwortet nicht (${r.status})`)
       const liste = (await r.json()) as { pfad: string; hash: string }[]
       this.fern = new Map(liste.map((x) => [x.pfad, x.hash]))
       await anfrage(this.db.transaction('meta', 'readwrite').objectStore('meta').put([...this.fern], 'fern'))
+      let gemeldet = Date.now()
       for (const { pfad, hash } of liste) {
         if (!istText(pfad) || !this.o.filter(pfad)) continue
         const e = this.texte.get(pfad)
         if (e?.lokal || e?.basis === hash) continue
         const t = await this.holeText(pfad)
         if (t) await this.speichereEintrag({ pfad, text: t.text, basis: t.hash, lokal: false })
+        // Beim ersten Abgleich sind es viele Dateien: Was schon da ist, gleich zeigen
+        if (Date.now() - gemeldet > 1000) {
+          gemeldet = Date.now()
+          this.melde()
+        }
       }
       // 3. Auf dem Server gelöschte Dateien auch hier entfernen (nur unveränderte)
       for (const e of [...this.texte.values()]) if (!e.lokal && e.basis !== null && !this.fern.has(e.pfad)) await this.entferneEintrag(e.pfad)
+      // 4. Neue Originale (PDF, Foto) zuletzt hochladen: Ein großes PDF dauert, und bricht es ab (Netz weg,
+      // Seite neu geladen), sollen Tinte und Notizen der anderen Geräte trotzdem schon angekommen sein.
+      await this.originaleHochladen()
 
       this.zustand = 'bereit'
       this.letzterFehler = ''

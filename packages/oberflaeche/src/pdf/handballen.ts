@@ -5,7 +5,16 @@
 // - Ihre Auflagefläche ist groß (Windows meldet sie, iPad meist nicht).
 // Ein bewusster Fingertipp kurz nach dem Schreiben (mehr als STIFT_NACHLAUF) geht weiter durch.
 
-let stiftGesehen = false
+// Einmal gesehen, gilt es für dieses Gerät dauerhaft: Nach dem Neuladen würde der Finger sonst wieder
+// schreiben und radieren, bis der Stift zum ersten Mal aufsetzt (Wischen zum Blättern löschte so Tinte).
+const STIFT_MERKER = 'rvx-stift'
+let stiftGesehen = (() => {
+  try {
+    return localStorage.getItem(STIFT_MERKER) === '1'
+  } catch {
+    return false
+  }
+})()
 let stiftUnten = false
 let stiftZuletzt = 0
 let gestartet = false
@@ -29,6 +38,13 @@ const stiftAktiv = () => stiftUnten || performance.now() - stiftZuletzt < STIFT_
 function runter(e: PointerEvent) {
   zuletztUnten = e.pointerType
   if (e.pointerType === 'pen') {
+    if (!stiftGesehen) {
+      try {
+        localStorage.setItem(STIFT_MERKER, '1')
+      } catch {
+        /* dann nur für diese Sitzung */
+      }
+    }
     stiftGesehen = true
     stiftUnten = true
     stiftZuletzt = performance.now()

@@ -96,9 +96,14 @@ export function TintenEbene({
 
   useEffect(beachteHandballen, [])
 
-  // Änderungen von anderen Geräten übernehmen, solange hier nicht gerade gezeichnet wird
+  // Änderungen von anderen Geräten übernehmen, solange hier nicht gerade gezeichnet wird. Kommen sie mitten im
+  // Strich an, werden sie beim Absetzen nachgeholt; sonst überschriebe der neue Strich die Tinte vom Server.
+  const verpasst = useRef<Strich[] | null>(null)
+  const radiert = useRef(new Set<string>())
   useEffect(() => {
-    if (!modus.current && !fluechtig) setStriche(gespeichert)
+    if (fluechtig) return
+    if (modus.current) verpasst.current = gespeichert
+    else setStriche(gespeichert)
   }, [gespeichert, fluechtig])
 
   const punkt = (e: React.PointerEvent): [number, number, number] => {
@@ -116,6 +121,7 @@ export function TintenEbene({
       const weg = new Set(getroffen(alt, x, y, 12))
       if (!weg.size) return alt
       geaendert.current = true
+      for (const i of weg) radiert.current.add(alt[i].d)
       return alt.filter((_, i) => !weg.has(i))
     })
   }
@@ -272,24 +278,33 @@ export function TintenEbene({
     zeiger.current = null
     const m = modus.current
     modus.current = null
+    const nachholen = verpasst.current
+    verpasst.current = null
     if (m === 'zeichnen' && aktiv) {
-      const neu = [...striche, aktiv]
+      const neu = [...(nachholen ?? striche), aktiv]
       setStriche(neu)
       setAktiv(null)
       sichern(neu)
     } else if (m === 'radieren' && geaendert.current) {
       geaendert.current = false
+      const weg = radiert.current
+      radiert.current = new Set()
       setStriche((s) => {
-        sichern(s)
-        return s
+        const neu = nachholen ? nachholen.filter((x) => !weg.has(x.d)) : s
+        sichern(neu)
+        return neu
       })
-    } else if (m === 'rechteck' && rechteck) {
-      setRechteck(null)
-      if (rechteck.b > 0.01 && rechteck.h > 0.005) {
-        const r = ref.current!.getBoundingClientRect()
-        onRechteck?.(rechteck, { x: e.clientX - r.left, y: e.clientY - r.top })
+    } else {
+      if (nachholen) setStriche(nachholen)
+      if (m === 'rechteck' && rechteck) {
+        setRechteck(null)
+        if (rechteck.b > 0.01 && rechteck.h > 0.005) {
+          const r = ref.current!.getBoundingClientRect()
+          onRechteck?.(rechteck, { x: e.clientX - r.left, y: e.clientY - r.top })
+        }
       }
     }
+    if (m !== 'radieren') radiert.current = new Set()
   }
 
   return (

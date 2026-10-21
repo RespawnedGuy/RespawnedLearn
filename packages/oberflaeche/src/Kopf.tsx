@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import logo from './logo.png'
 import { useDaten } from './daten/DatenKontext'
+import { laedtHoch } from './daten/speicher'
 
 export interface MenueEintrag {
   titel: string
@@ -278,7 +279,7 @@ export function SyncAnzeige() {
   const k = speicher.konflikte().length
   const z = speicher.zustand
   const text =
-    z === 'laeuft' ? 'gleicht ab' : z === 'offline' ? (n ? `offline · ${n} lokal` : 'offline') : z === 'fehler' ? 'Server nicht erreichbar' : n ? `${n} lokal` : 'gesichert'
+    z === 'laeuft' ? (laedtHoch() ? 'lädt Datei hoch' : 'gleicht ab') : z === 'offline' ? (n ? `offline · ${n} lokal` : 'offline') : z === 'fehler' ? 'Server nicht erreichbar' : n ? `${n} lokal` : 'gesichert'
   return (
     <span className={`sync ${z}${n ? ' ungesichert' : ''}`} title={speicher.letzterFehler || undefined}>
       <span className="nur-breit">{text}</span>
