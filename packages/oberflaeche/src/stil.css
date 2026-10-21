@@ -83,6 +83,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .kopf-nadel { margin-left: auto; align-self: flex-start; }
 .kopf-eintrag.betont { font-weight: 700; }
 
+/* Reiter (Arbeits-App): Journal, Projekte, Mehr; ein Klick klappt das Menü des Reiters auf */
+.kopf-reiter { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.kopf-reiter-knopf {
+  height: 40px; padding: 0 10px; border: none; background: transparent; border-radius: 10px; cursor: pointer;
+  font-size: 15px; font-weight: 600; color: var(--leise); display: flex; align-items: center; gap: 4px;
+  min-width: 0; white-space: nowrap; position: relative;
+}
+.kopf-reiter-text { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.kopf-reiter-knopf:hover { background: var(--mulde-hell); color: var(--tinte); }
+.kopf-reiter-knopf.aktiv { color: var(--tinte); font-weight: 700; }
+.kopf-reiter-knopf.aktiv::after {
+  content: ''; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 3px; border-radius: 2px; background: var(--akzent);
+}
+.kopf-reiter-knopf:not(.aktiv) { flex: none; }
+.kopf-reiter-knopf.auf { background: var(--mulde); color: var(--tinte); }
+.kopf-menue.reiter { gap: 8px 24px; }
+.kopf-menue.reiter .kopf-gruppe { min-width: 220px; max-width: 420px; flex: 1; }
+.kopf-menue.reiter.fixiert .kopf-gruppe { max-width: none; }
+
 /* Schalter Arbeiten/Lernen: deutlich, die aktive App ist farbig gefüllt */
 .app-schalter { flex: none; display: flex; background: var(--mulde); border-radius: 999px; padding: 3px; margin: 0 4px; }
 .app-schalter a {
@@ -235,6 +254,12 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   .kopf-rechts { flex: none; }
   .app-schalter { margin: 0; }
   .app-schalter a { padding: 6px 9px; font-size: 13px; }
+  .kopf-reiter-knopf { padding: 0 6px; font-size: 14px; height: 40px; }
+  .kopf-reiter-knopf.aktiv::after { left: 6px; right: 6px; }
+  .kopf-reiter { gap: 0; }
+  .kopf-reiter-knopf { flex: none; }
+  .kopf-reiter-pfeil { display: none; }
+  .kopf-menue.reiter .kopf-gruppe { max-width: none; }
   /* Bereiche in der Mitte (Lern-App) bekommen am Handy eine eigene Zeile unter dem Schalter */
   .kopf-zeile:has(.kopf-mitte) { flex-wrap: wrap; height: auto; min-height: 60px; padding-bottom: 8px; row-gap: 0; }
   .kopf-zeile:has(.kopf-mitte) .kopf-links, .kopf-zeile:has(.kopf-mitte) .kopf-rechts { height: 60px; }
