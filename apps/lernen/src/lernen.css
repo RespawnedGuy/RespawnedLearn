@@ -126,3 +126,24 @@ body.vollbild-an .blatt-flaeche { max-width: calc((var(--vollhoehe) - 24px) / 1.
 @media (max-width: 900px) {
   .plan-titel { max-width: 100%; flex-basis: 100%; }
 }
+
+/* Vorhandene Einträge: Liste in Nutzen und unter „Alle Lernkarten“ */
+.nutzen-alle { width: 100%; max-width: 980px; }
+.eintraege { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.eintraege-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.eintraege-filter .knopf { border-radius: 18px; }
+.eintraege-liste { display: flex; flex-direction: column; padding: 6px; }
+.eintrag-zeile { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 10px; text-decoration: none; color: inherit; min-height: 48px; }
+.eintrag-zeile + .eintrag-zeile { border-top: 1px solid var(--linie); }
+.eintrag-zeile:hover { background: var(--akzent-weich); color: inherit; }
+.eintrag-titel { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eintrag-datum { white-space: nowrap; }
+@media (max-width: 600px) {
+  .eintrag-datum { display: none; }
+}
+
+/* Eintrag bearbeiten */
+.bearbeiten { display: flex; flex-direction: column; gap: 12px; }
+.bearbeiten .titel-eingabe { width: 100%; }
+.bearbeiten-text { border: 1px solid var(--linie); border-radius: 12px; padding: 8px 12px; min-height: 180px; background: #fff; font-size: 16px; }
+.bearbeiten code { background: var(--mulde-hell); border-radius: 4px; padding: 0 4px; }

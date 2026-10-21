@@ -53,7 +53,7 @@ export function App() {
           </nav>
         }
       />
-      {bereich === 'lernen' ? <Lernen /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+      {bereich === 'lernen' ? <Lernen key={ort[1] ?? ''} ansicht={ort[1]} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
     </>
   )
 }

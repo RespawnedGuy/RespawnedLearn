@@ -15,6 +15,8 @@ import {
   setzeFeld,
   setzeMarke,
   stellenLink,
+  zerlege,
+  zusammen,
   tag,
   ulid,
   zeitstempel,
@@ -28,6 +30,36 @@ import {
 import { geraet, type Speicher } from '@rvx/oberflaeche'
 
 export const WISSEN = ['erklaerung', 'gleichung', 'thema', 'frage', 'uebung', 'notiz']
+
+export const TYPNAME: Record<string, string> = {
+  erklaerung: 'Erklärung',
+  gleichung: 'Gleichung',
+  thema: 'Thema',
+  frage: 'Lernkarte',
+  uebung: 'Übung',
+  notiz: 'Notiz'
+}
+
+/** Alles Wissen, zuletzt geänderte zuerst */
+export function alleEintraege(b: Bestand, typ?: string): Eintrag[] {
+  const liste = typ ? b.nachTyp(typ) : b.nachTyp(...WISSEN)
+  const zeit = (e: Eintrag) => String(e.felder.geaendert ?? e.felder.erstellt ?? '')
+  return [...liste].sort((x, y) => zeit(y).localeCompare(zeit(x)) || x.titel.localeCompare(y.titel, 'de'))
+}
+
+/** Wissen wird nie gelöscht, nur aktualisiert: Titel und Text ersetzen, der Rest des Kopfs bleibt */
+export function aendereEintrag(speicher: Speicher, e: Eintrag, neu: { titel?: string; rumpf?: string }) {
+  return aendere(
+    speicher,
+    e.pfad,
+    (t) => {
+      let out = neu.rumpf === undefined ? t : zusammen({ kopf: zerlege(t).kopf, rumpf: neu.rumpf })
+      if (neu.titel !== undefined && neu.titel.trim()) out = setzeFeld(out, 'titel', neu.titel.trim())
+      return out
+    },
+    () => ''
+  )
+}
 
 export function quellenPdfs(b: Bestand): Eintrag[] {
   return lernPdfs(b)
