@@ -2,7 +2,9 @@ import { Kopf, geheZu, ortLink, useDaten, useOrt, type MenueGruppe } from '@rvx/
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
-import { faellige, quellenPdfs } from './wissen'
+import { lernziele, ordneLernziele } from '@rvx/kern'
+import { faellige } from './wissen'
+import { zielLink } from './Start'
 
 const BEREICHE = [
   ['sammeln', 'Sammeln'],
@@ -15,7 +17,10 @@ export function App() {
   const ort = useOrt()
   const { bestand } = useDaten()
   const bereich = (ort[0] ?? 'sammeln') as (typeof BEREICHE)[number][0]
-  const quelle = bereich === 'sammeln' && ort[1] ? bestand.dokumente.get(ort[1]) : undefined
+  const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' ? bestand.dokumente.get(ort[1]) : undefined
+  const ziele = lernziele(bestand)
+  const modul = bereich === 'sammeln' && ort[1] === 'modul' ? ziele.find((z) => z.id === ort[2]) : undefined
+  const reihe = ordneLernziele(ziele)
   const faellig = faellige(bestand).length
 
   const gruppen: MenueGruppe[] = [
@@ -24,10 +29,10 @@ export function App() {
       eintraege: BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id, zahl: id === 'lernen' ? faellig : undefined }))
     },
     {
-      titel: 'Quellen',
-      eintraege: quellenPdfs(bestand)
+      titel: 'Module und Bücher',
+      eintraege: [...reihe.favoriten, ...reihe.kuerzlich]
         .slice(0, 8)
-        .map((q) => ({ titel: q.titel, ziel: ortLink('sammeln', q.id, 1), aktiv: quelle?.id === q.id }))
+        .map((z) => ({ titel: z.titel, ziel: zielLink(z), aktiv: modul?.id === z.id || (!!quelle && z.quellen.some((q) => q.id === quelle.id)) }))
     }
   ]
 
@@ -35,7 +40,7 @@ export function App() {
     <>
       <Kopf
         app="lernen"
-        ort={quelle ? quelle.titel : BEREICHE.find(([id]) => id === bereich)?.[1] ?? 'Lernen'}
+        ort={quelle ? quelle.titel : modul ? modul.titel : BEREICHE.find(([id]) => id === bereich)?.[1] ?? 'Lernen'}
         gruppen={gruppen}
         mitte={
           <nav className="segmente" aria-label="Bereiche">
@@ -48,7 +53,7 @@ export function App() {
           </nav>
         }
       />
-      {bereich === 'lernen' ? <Lernen /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln quelleId={ort[1]} seite={ort[2] ? Number(ort[2]) : undefined} />}
+      {bereich === 'lernen' ? <Lernen /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
     </>
   )
 }

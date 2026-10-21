@@ -1,0 +1,351 @@
+import { useRef, useState } from 'react'
+import { lernziele, lesestand, liesMarken, ordneLernziele, pfade, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
+import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rvx/oberflaeche'
+import { neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
+
+/** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
+export function zielLink(z: Lernziel): string {
+  if (z.zuletzt) return ortLink('sammeln', z.zuletzt.anhang, z.zuletzt.seite)
+  if (z.quellen[0]) return ortLink('sammeln', z.quellen[0].id, 1)
+  return z.modul ? ortLink('sammeln', 'modul', z.modul.id) : ortLink('sammeln')
+}
+
+export function wann(am: string, jetzt = new Date()): string {
+  const d = new Date(am.length === 10 ? `${am}T12:00:00` : am)
+  const tage = Math.round((new Date(jetzt.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 864e5)
+  if (tage <= 0) return 'heute'
+  if (tage === 1) return 'gestern'
+  if (tage < 14) return `vor ${tage} Tagen`
+  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: d.getFullYear() === jetzt.getFullYear() ? undefined : 'numeric' })
+}
+
+function stelleText(z: Lernziel): string {
+  const s = z.zuletzt
+  if (!s) return 'noch nicht begonnen'
+  const pdf = z.quellen.length > 1 ? `${z.quellen.find((q) => q.id === s.anhang)?.titel ?? 'PDF'}, ` : ''
+  return `Weiter bei ${pdf}S. ${s.seite} · ${wann(s.am)}`
+}
+
+/** Startseite der Lern-App: oben die Favoriten, darunter zuletzt bearbeitet. Ein Klick springt an die letzte Stelle. */
+export function Start() {
+  const { speicher, bestand } = useDaten()
+  const eingabe = useRef<HTMLInputElement>(null)
+  const [neu, setNeu] = useState(false)
+  const [suche, setSuche] = useState('')
+  const alle = lernziele(bestand)
+  const w = suche.trim().toLowerCase()
+  const gruppen = ordneLernziele(w ? alle.filter((z) => z.titel.toLowerCase().includes(w) || z.quellen.some((q) => q.titel.toLowerCase().includes(w))) : alle)
+  const leer = !alle.length
+
+  return (
+    <div className="seite">
+      <div className="seite-kopf">
+        <h1>Was lerne ich gerade?</h1>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="knopf" onClick={() => setNeu(true)}>
+          Neues Modul
+        </button>
+        <button type="button" className="knopf haupt" onClick={() => eingabe.current?.click()}>
+          Buch hinzufügen
+        </button>
+        <input
+          ref={eingabe}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+          onChange={async (e) => {
+            // Jedes einzelne PDF wird ein Buch: ein Modul mit genau diesem PDF
+            for (const f of Array.from(e.target.files ?? [])) {
+              const titel = f.name.replace(/\.[^.]+$/, '')
+              const id = await neuerAnhang(speicher, f, [['art', 'skript']])
+              await neuesModul(speicher, { titel, quellen: [id] })
+            }
+            e.target.value = ''
+          }}
+        />
+      </div>
+      <p className="klein-leise" style={{ marginTop: 0 }}>
+        Ein Modul bündelt mehrere PDFs zu einem Ziel, ein Buch ist ein Modul mit einem PDF. Du liest und schreibst selbst heraus, was wichtig ist.
+      </p>
+      {alle.length > 8 && (
+        <div className="lern-suche">
+          <input className="eingabe" type="search" placeholder="Modul oder PDF suchen" value={suche} onChange={(e) => setSuche(e.target.value)} />
+        </div>
+      )}
+      {gruppen.favoriten.length > 0 && <Gruppe titel="Favoriten" ziele={gruppen.favoriten} />}
+      {gruppen.kuerzlich.length > 0 && <Gruppe titel="Zuletzt bearbeitet" ziele={gruppen.kuerzlich} />}
+      {gruppen.weitere.length > 0 && <Gruppe titel={gruppen.favoriten.length || gruppen.kuerzlich.length ? 'Weitere' : undefined} ziele={gruppen.weitere} />}
+      {gruppen.abgeschlossen.length > 0 && <Gruppe titel="Abgeschlossen" ziele={gruppen.abgeschlossen} />}
+      {leer && <div className="leer">Noch nichts zum Lernen. Füge ein Buch (PDF) hinzu oder lege ein Modul an.</div>}
+      {!leer && w && !gruppen.favoriten.length && !gruppen.kuerzlich.length && !gruppen.weitere.length && !gruppen.abgeschlossen.length && (
+        <div className="leer">Nichts gefunden.</div>
+      )}
+      {neu && (
+        <NeuesModul
+          onZu={() => setNeu(false)}
+          onFertig={(id) => {
+            setNeu(false)
+            geheZu('sammeln', 'modul', id)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function Gruppe({ titel, ziele }: { titel?: string; ziele: Lernziel[] }) {
+  return (
+    <section className="lern-gruppe">
+      {titel && <h2 className="lern-gruppe-titel">{titel}</h2>}
+      <div className="raster">
+        {ziele.map((z) => (
+          <Kachel key={z.id} z={z} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function Kachel({ z }: { z: Lernziel }) {
+  const { speicher } = useDaten()
+  const art = !z.modul || z.quellen.length === 1 ? 'Buch' : `Modul · ${z.quellen.length} PDFs`
+  return (
+    <div className="karte lern-kachel">
+      <a className="lern-weiter" href={zielLink(z)}>
+        <span className="titel">{z.titel}</span>
+        {z.modul?.ziel && <span className="lern-ziel">{z.modul.ziel}</span>}
+        <span className="klein-leise">{stelleText(z)}</span>
+      </a>
+      <div className="lern-fuss">
+        <span className="chip">{art}</span>
+        <span style={{ flex: 1 }} />
+        {z.modul && (
+          <a className="knopf still klein" href={ortLink('sammeln', 'modul', z.modul.id)}>
+            Übersicht
+          </a>
+        )}
+      </div>
+      <FavoritStern an={z.favorit} onKlick={() => void schalteFavorit(speicher, z)} />
+    </div>
+  )
+}
+
+export function FavoritStern({ an, onKlick }: { an: boolean; onKlick: () => void }) {
+  return (
+    <button type="button" className={`favorit-stern${an ? ' an' : ''}`} onClick={onKlick} aria-pressed={an} title={an ? 'Aus den Favoriten nehmen' : 'Als Favorit oben anzeigen'}>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={an ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+        <path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" />
+      </svg>
+    </button>
+  )
+}
+
+/** PDFs, die noch in keinem Modul stecken */
+function losePdfs(ziele: Lernziel[]): Eintrag[] {
+  return ziele.filter((z) => !z.modul).flatMap((z) => z.quellen)
+}
+
+function NeuesModul({ onZu, onFertig }: { onZu: () => void; onFertig: (id: string) => void }) {
+  const { speicher, bestand } = useDaten()
+  const [titel, setTitel] = useState('')
+  const [ziel, setZiel] = useState('')
+  const [wahl, setWahl] = useState<string[]>([])
+  const lose = losePdfs(lernziele(bestand))
+  const anlegen = async () => {
+    if (!titel.trim()) return
+    onFertig(await neuesModul(speicher, { titel: titel.trim(), ziel, quellen: wahl }))
+  }
+  return (
+    <Dialog titel="Neues Modul" onZu={onZu}>
+      <label className="feld">
+        Name
+        <input className="eingabe" autoFocus placeholder="z. B. Elektrotechnik 2" value={titel} onChange={(e) => setTitel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void anlegen()} />
+      </label>
+      <label className="feld">
+        Ziel
+        <input className="eingabe" placeholder="Was will ich damit erreichen? (optional)" value={ziel} onChange={(e) => setZiel(e.target.value)} />
+      </label>
+      {lose.length > 0 && (
+        <div className="feld">
+          PDFs, die noch keinem Modul gehören
+          <div className="pdf-wahl">
+            {lose.map((q) => (
+              <label key={q.id}>
+                <input type="checkbox" checked={wahl.includes(q.id)} onChange={(e) => setWahl(e.target.checked ? [...wahl, q.id] : wahl.filter((x) => x !== q.id))} />
+                {q.titel}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="dialog-knoepfe">
+        <button type="button" className="knopf still" onClick={onZu}>
+          Abbrechen
+        </button>
+        <button type="button" className="knopf haupt" disabled={!titel.trim()} onClick={() => void anlegen()}>
+          Anlegen
+        </button>
+      </div>
+    </Dialog>
+  )
+}
+
+/** Übersicht eines Moduls: Name, Ziel, PDFs. Nichts wird gelöscht; ein entferntes PDF steht wieder lose auf der Startseite. */
+export function ModulSeite({ id }: { id: string }) {
+  const { speicher, bestand } = useDaten()
+  const eingabe = useRef<HTMLInputElement>(null)
+  const [zuordnen, setZuordnen] = useState(false)
+  const stand = lesestand(bestand)
+  const ziele = lernziele(bestand, stand)
+  const z = ziele.find((x) => x.id === id && x.modul)
+  if (!z?.modul)
+    return (
+      <div className="seite">
+        <div className="leer">
+          Dieses Modul gibt es (noch) nicht. <a href={ortLink('sammeln')}>Zur Startseite</a>
+        </div>
+      </div>
+    )
+  const m: Modul = z.modul
+  const lose = losePdfs(ziele)
+
+  return (
+    <div className="seite modul-seite">
+      <a className="knopf still klein" href={ortLink('sammeln')} style={{ marginLeft: -10 }}>
+        ‹ Start
+      </a>
+      <div className="seite-kopf">
+        <input
+          key={`t-${m.titel}`}
+          className="titel-eingabe"
+          defaultValue={m.titel}
+          size={Math.max(8, m.titel.length + 1)}
+          aria-label="Name"
+          onBlur={(e) => {
+            const t = e.target.value.trim()
+            if (t && t !== m.titel) void setzeModulFeld(speicher, m, 'titel', t)
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+        <FavoritStern an={m.favorit} onKlick={() => void schalteFavorit(speicher, z)} />
+        <span style={{ flex: 1 }} />
+        {z.quellen.length > 0 && (
+          <a className="knopf haupt" href={zielLink(z)}>
+            {z.zuletzt ? 'Weiterlesen' : 'Anfangen'}
+          </a>
+        )}
+      </div>
+      <label className="feld">
+        Ziel
+        <textarea
+          key={`z-${m.ziel}`}
+          className="eingabe"
+          rows={2}
+          defaultValue={m.ziel}
+          placeholder="Was will ich mit diesem Modul erreichen? (Prüfung, Fähigkeit, Frage)"
+          onBlur={(e) => {
+            const t = e.target.value.trim()
+            if (t !== m.ziel) void setzeModulFeld(speicher, m, 'ziel', t || undefined)
+          }}
+        />
+      </label>
+
+      <h2 className="lern-gruppe-titel" style={{ marginTop: 24 }}>
+        {z.quellen.length === 1 ? 'PDF' : 'PDFs'}
+      </h2>
+      <div className="modul-pdfs">
+        {z.quellen.map((q, i) => (
+          <PdfZeile
+            key={q.id}
+            q={q}
+            stelle={z.zuletzt?.anhang === q.id ? z.zuletzt : null}
+            seite={stand[q.id]?.seite}
+            hoch={i > 0 ? () => void setzeQuellen(speicher, m, tausche(m.quellen, i, i - 1)) : undefined}
+            entfernen={() => void setzeQuellen(speicher, m, m.quellen.filter((x) => x !== q.id))}
+          />
+        ))}
+        {!z.quellen.length && <div className="leer">Noch keine PDFs in diesem Modul.</div>}
+      </div>
+      <div className="reihe" style={{ marginTop: 12 }}>
+        <button type="button" className="knopf" onClick={() => eingabe.current?.click()}>
+          PDF hochladen
+        </button>
+        {lose.length > 0 && (
+          <button type="button" className="knopf" onClick={() => setZuordnen(true)}>
+            Vorhandenes PDF hinzufügen
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="knopf still" onClick={() => void setzeModulFeld(speicher, m, 'status', m.abgeschlossen ? undefined : 'abgeschlossen')}>
+          {m.abgeschlossen ? 'Wieder aufnehmen' : 'Als abgeschlossen markieren'}
+        </button>
+        <input
+          ref={eingabe}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+          onChange={async (e) => {
+            const neu: string[] = []
+            for (const f of Array.from(e.target.files ?? [])) neu.push(await neuerAnhang(speicher, f, [['art', 'skript']]))
+            if (neu.length) await setzeQuellen(speicher, m, [...m.quellen, ...neu])
+            e.target.value = ''
+          }}
+        />
+      </div>
+      {zuordnen && (
+        <Dialog titel="Vorhandenes PDF hinzufügen" onZu={() => setZuordnen(false)}>
+          <div className="pdf-wahl">
+            {lose.map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                className="knopf klein"
+                style={{ justifyContent: 'flex-start' }}
+                onClick={() => {
+                  void setzeQuellen(speicher, m, [...m.quellen, q.id])
+                  setZuordnen(false)
+                }}
+              >
+                {q.titel}
+              </button>
+            ))}
+          </div>
+        </Dialog>
+      )}
+    </div>
+  )
+}
+
+function tausche<T>(a: T[], i: number, j: number): T[] {
+  const b = [...a]
+  ;[b[i], b[j]] = [b[j], b[i]]
+  return b
+}
+
+function PdfZeile({ q, stelle, seite, hoch, entfernen }: { q: Eintrag; stelle: Lesestelle | null; seite?: number; hoch?: () => void; entfernen: () => void }) {
+  const { bestand } = useDaten()
+  const n = liesMarken(bestand.texte.get(pfade.marken('lernen', q.id)) ?? '').length
+  const bei = seite ?? 1
+  return (
+    <div className={`karte modul-pdf${stelle ? ' zuletzt' : ''}`}>
+      <a href={ortLink('sammeln', q.id, bei)} className="modul-pdf-titel">
+        <strong>{q.titel}</strong>
+        <span className="klein-leise">
+          {seite ? `S. ${seite}` : 'noch nicht geöffnet'}
+          {n ? ` · ${n} Stellen herausgearbeitet` : ''}
+          {stelle ? ` · zuletzt ${wann(stelle.am)}` : ''}
+        </span>
+      </a>
+      {hoch && (
+        <button type="button" className="knopf still klein symbol" onClick={hoch} aria-label="Nach oben" title="Nach oben">
+          ↑
+        </button>
+      )}
+      <button type="button" className="knopf still klein" onClick={entfernen} title="Aus dem Modul nehmen (das PDF und alles Herausgearbeitete bleibt)">
+        Herausnehmen
+      </button>
+    </div>
+  )
+}

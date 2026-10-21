@@ -21,6 +21,9 @@ export const pfade = {
   tinte: (app: App, anhangId: string, seite: number) => `${app}/tinte/${anhangId}/S${drei(seite)}.svg`,
   blatt: (anhangId: string, seite: number) => `lernen/blaetter/${anhangId}/S${drei(seite)}.svg`,
   karte: (id: string) => `lernen/karten/${id}.md`,
+  modul: (id: string) => `lernen/module/${id}.md`,
+  /** Lesestand eines Geräts: wo in welchem PDF zuletzt gelesen wurde */
+  stand: (geraet: string) => `lernen/stand/${geraet}.json`,
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 

@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
-import { liesMarken, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
-import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, neuerAnhang, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
-import { karteAusStelle, quellenPdfs, WISSEN } from './wissen'
+import { useEffect, useState } from 'react'
+import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
+import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
+import { karteAusStelle, merkeLesestelle, WISSEN } from './wissen'
+import { ModulSeite, Start } from './Start'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -13,55 +14,13 @@ function liesSeite(schluessel: string): boolean {
   }
 }
 
-/** Sammeln: Quellen wählen. Mit Quelle: Skript und leeres Blatt nebeneinander. */
-export function Sammeln({ quelleId, seite }: { quelleId?: string; seite?: number }) {
+/** Sammeln: Startseite mit Modulen und Büchern. Mit Quelle: Skript und leeres Blatt nebeneinander. */
+export function Sammeln({ ort }: { ort: string[] }) {
   const { bestand } = useDaten()
-  const quelle = quelleId ? bestand.dokumente.get(quelleId) : undefined
-  if (quelle) return <Uebungsplatz quelle={quelle} seite={seite ?? 1} />
-  return <QuellenListe />
-}
-
-function QuellenListe() {
-  const { speicher, bestand } = useDaten()
-  const eingabe = useRef<HTMLInputElement>(null)
-  const liste = quellenPdfs(bestand)
-  return (
-    <div className="seite">
-      <div className="seite-kopf">
-        <h1>Sammeln</h1>
-        <span style={{ flex: 1 }} />
-        <button type="button" className="knopf haupt" onClick={() => eingabe.current?.click()}>
-          Skript hinzufügen
-        </button>
-        <input
-          ref={eingabe}
-          type="file"
-          accept="application/pdf,.pdf"
-          multiple
-          hidden
-          onChange={async (e) => {
-            for (const f of Array.from(e.target.files ?? [])) await neuerAnhang(speicher, f, [['art', 'skript']])
-            e.target.value = ''
-          }}
-        />
-      </div>
-      <p className="klein-leise" style={{ marginTop: 0 }}>
-        Du liest und schreibst selbst heraus, was wichtig ist. Das Herausarbeiten ist das Lernen.
-      </p>
-      <div className="raster">
-        {liste.map((q) => {
-          const n = liesMarken(bestand.texte.get(pfade.marken('lernen', q.id)) ?? '').length
-          return (
-            <a key={q.id} className="karte projekt-karte" href={ortLink('sammeln', q.id, 1)}>
-              <span className="titel">{q.titel}</span>
-              <span className="klein-leise">{n ? `${n} Stellen herausgearbeitet` : 'noch unberührt'}</span>
-            </a>
-          )
-        })}
-      </div>
-      {!liste.length && <div className="leer">Noch keine Skripte. Füge ein PDF hinzu.</div>}
-    </div>
-  )
+  if (ort[1] === 'modul' && ort[2]) return <ModulSeite key={ort[2]} id={ort[2]} />
+  const quelle = ort[1] ? bestand.dokumente.get(ort[1]) : undefined
+  if (quelle) return <Uebungsplatz quelle={quelle} seite={ort[2] ? Number(ort[2]) || 1 : 1} />
+  return <Start />
 }
 
 function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
@@ -74,6 +33,12 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link'>('wahl')
   const [titel, setTitel] = useState('')
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
+  const modul = modulVon(bestand, quelle.id)
+
+  // Stelle merken, damit die Startseite genau hier weitermacht
+  useEffect(() => {
+    void merkeLesestelle(speicher, quelle.id, seite)
+  }, [speicher, quelle.id, seite])
 
   const tauschen = () => {
     setGetauscht(!getauscht)
@@ -175,8 +140,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   return (
     <div>
       <div className="plan-leiste">
-        <a className="knopf still klein" href={ortLink('sammeln')}>
-          ‹ Quellen
+        <a className="knopf still klein" href={modul && modul.quellen.length > 1 ? ortLink('sammeln', 'modul', modul.id) : ortLink('sammeln')}>
+          ‹ {modul && modul.quellen.length > 1 ? modul.titel : 'Start'}
         </a>
         <strong>{quelle.titel}</strong>
         <span style={{ flex: 1 }} />

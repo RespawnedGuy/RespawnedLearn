@@ -55,3 +55,36 @@
 .ausschnitt { display: inline-block; vertical-align: middle; border-radius: 8px; border: 1px solid var(--linie); overflow: hidden; background: #fff; outline: 2px solid rgba(106, 79, 196, 0.35); outline-offset: -4px; max-width: 100%; }
 .ausschnitt img { display: block; max-width: 100%; max-height: 240px; }
 .ausschnitt .platz { display: block; width: 140px; height: 70px; background: var(--mulde); }
+
+/* Startseite: Module und Bücher, Favoriten oben */
+.lern-suche { margin: 0 0 16px; }
+.lern-suche .eingabe { max-width: 320px; }
+.lern-gruppe { margin-top: 20px; }
+.lern-gruppe + .lern-gruppe { margin-top: 28px; }
+.lern-gruppe-titel { font-size: 13px; font-weight: 700; color: var(--leise); letter-spacing: 0.05em; text-transform: uppercase; margin: 0 0 10px; }
+.lern-kachel { position: relative; display: flex; flex-direction: column; }
+.lern-kachel:hover { box-shadow: var(--schatten-hoch); }
+.lern-weiter { flex: 1; padding: 18px 20px 6px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 6px; }
+.lern-weiter:hover { color: inherit; }
+.lern-weiter .titel { font-size: 17px; font-weight: 700; padding-right: 32px; }
+.lern-ziel { font-size: 14px; color: var(--tinte); }
+.lern-fuss { display: flex; align-items: center; gap: 8px; padding: 6px 12px 12px 20px; min-height: 32px; }
+.favorit-stern {
+  position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: none; background: transparent; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sehr-leise);
+}
+.favorit-stern:hover { background: var(--mulde-hell); color: var(--akzent); }
+.favorit-stern.an { color: var(--akzent); }
+.seite-kopf .favorit-stern { position: static; }
+.pdf-wahl { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; font-weight: 400; color: var(--tinte); font-size: 15px; }
+.pdf-wahl label { display: flex; gap: 8px; align-items: center; }
+
+/* Modul-Übersicht */
+.modul-seite { max-width: 820px; display: flex; flex-direction: column; gap: 10px; }
+.titel-eingabe { font-size: 26px; font-weight: 800; border: none; background: transparent; padding: 2px 0; min-width: 0; max-width: 100%; flex: 0 1 auto; color: inherit; font-family: inherit; }
+.titel-eingabe:focus { outline: none; border-bottom: 2px solid var(--akzent); }
+.modul-pdfs { display: flex; flex-direction: column; gap: 8px; }
+.modul-pdf { display: flex; align-items: center; gap: 6px; padding: 10px 12px 10px 18px; }
+.modul-pdf.zuletzt { outline: 2px solid var(--akzent-weich); }
+.modul-pdf-titel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: inherit; }
+.modul-seite .reihe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

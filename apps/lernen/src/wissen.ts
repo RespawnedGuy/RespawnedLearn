@@ -2,6 +2,10 @@
 import { createEmptyCard, fsrs, Rating, type Card, type Grade } from 'ts-fsrs'
 import {
   findeLinks,
+  lernPdfs,
+  merkeStelle,
+  type Lernziel,
+  type Modul,
   liesAbrufe,
   liesMarken,
   liesProtokoll,
@@ -26,8 +30,45 @@ import { geraet, type Speicher } from '@rvx/oberflaeche'
 export const WISSEN = ['erklaerung', 'gleichung', 'thema', 'frage', 'uebung', 'notiz']
 
 export function quellenPdfs(b: Bestand): Eintrag[] {
-  // Alles, was kein Plan eines Projekts ist: Skripte, Bücher, Datenblätter
-  return b.anhaenge().filter((a) => /\.pdf$/i.test(String(a.felder.datei ?? '')) && a.felder.art !== 'plan' && !a.felder.projekt)
+  return lernPdfs(b)
+}
+
+// ---------- Module (ein Buch ist ein Modul mit einem PDF) ----------
+
+export async function neuesModul(speicher: Speicher, p: { titel: string; ziel?: string; quellen: string[]; favorit?: boolean }): Promise<string> {
+  const id = ulid()
+  const jetzt = zeitstempel()
+  const kopf: [string, Wert][] = [
+    ['id', id],
+    ['typ', 'modul'],
+    ['erstellt', jetzt],
+    ['geaendert', jetzt],
+    ['titel', p.titel],
+    ['quellen', p.quellen.map((q) => `[[${q}]]`)]
+  ]
+  if (p.ziel?.trim()) kopf.push(['ziel', p.ziel.trim()])
+  if (p.favorit) kopf.push(['favorit', true])
+  await speicher.schreibe(pfade.modul(id), neuesDokument(kopf))
+  return id
+}
+
+export function setzeModulFeld(speicher: Speicher, m: Modul, feld: string, wert: Wert | undefined) {
+  return aendere(speicher, m.pfad, (t) => setzeFeld(t, feld, wert), () => '')
+}
+
+export function setzeQuellen(speicher: Speicher, m: Modul, quellen: string[]) {
+  return setzeModulFeld(speicher, m, 'quellen', quellen.map((q) => `[[${q}]]`))
+}
+
+/** Stern: steht im Modul selbst, damit er auf allen Geräten gilt. Ein loses PDF wird dabei zum Buch (Modul mit einem PDF). */
+export async function schalteFavorit(speicher: Speicher, z: Lernziel) {
+  if (z.modul) return setzeModulFeld(speicher, z.modul, 'favorit', z.favorit ? undefined : true)
+  await neuesModul(speicher, { titel: z.titel, quellen: z.quellen.map((q) => q.id), favorit: true })
+}
+
+/** Merkt sich auf diesem Gerät, wo gerade gelesen wird (Grundlage für „Zuletzt bearbeitet“) */
+export function merkeLesestelle(speicher: Speicher, anhang: string, seite: number) {
+  return speicher.aendere(pfade.stand(geraet()), (alt) => merkeStelle(alt, anhang, seite, new Date().toISOString()))
 }
 
 async function aendere(speicher: Speicher, pfad: string, f: (t: string) => string, neu: () => string) {
