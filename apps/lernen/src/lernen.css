@@ -34,6 +34,8 @@
 .schreibflaeche-huelle { display: flex; flex-direction: column; gap: 8px; }
 .schreib-werkzeug { display: flex; gap: 6px; justify-content: flex-end; }
 .schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fbfafe; background-image: linear-gradient(#eeeaf6 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
+.ki-vorschlag { display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; padding: 8px 10px; border: 1px dashed var(--akzent); border-radius: 10px; background: #f7f4fd; color: inherit; font: inherit; cursor: pointer; }
+.ki-vorschlag .inhalt { font-size: 14px; line-height: 1.4; }
 .fragen-hinweis { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-radius: 16px; text-decoration: none; color: inherit; }
 .lern-karte .frage .inhalt { font-size: inherit; line-height: inherit; }
 .inhalt ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }

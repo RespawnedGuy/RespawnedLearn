@@ -149,6 +149,23 @@ export async function karteAusStelle(
   return karteId
 }
 
+/**
+ * Schreibfehler in der Frage einer gerade angelegten Lernkarte korrigieren. Nur wenn die Frage noch genau so
+ * dasteht, wie sie angelegt wurde; hat Nils sie inzwischen geändert, gewinnt seine Fassung.
+ */
+export function korrigiereFrage(speicher: Speicher, karteId: string, alt: string, neu: string) {
+  return speicher.aendere(pfade.karte(karteId), (t) => {
+    const { kopf, rumpf } = zerlege(t)
+    const zeilen = rumpf.split('\n')
+    const i = zeilen.indexOf(`?? ${alt}`)
+    if (i < 0) return t
+    zeilen[i] = `?? ${neu}`
+    let out = zusammen({ kopf, rumpf: zeilen.join('\n') })
+    if (kopf && /^titel: /m.test(kopf)) out = setzeFeld(out, 'titel', neu)
+    return setzeFeld(out, 'geaendert', zeitstempel())
+  })
+}
+
 // ---------- Lernstand (FSRS aus dem Protokoll aller Geräte) ----------
 
 const planer = fsrs({ enable_fuzz: false })

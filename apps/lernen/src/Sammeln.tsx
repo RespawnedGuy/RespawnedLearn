@@ -1,7 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
 import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
-import { karteAusStelle, merkeLesestelle, WISSEN } from './wissen'
+import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
+import { frageVorschlagen, korrigiere } from './ki'
+import { Inhalt } from './Inhalt'
 import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 
@@ -36,6 +38,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const [auswahl, setAuswahl] = useState<{ bereich: Bereich; punkt: { x: number; y: number } } | null>(null)
   const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link'>('wahl')
   const [titel, setTitel] = useState('')
+  // Vorschlag der KI für die Frage einer Lernkarte (null = noch keiner, '' = keiner zu haben)
+  const [vorschlag, setVorschlag] = useState<string | null>(null)
   const [vollbild, setVollbild] = useState(false)
   const [hoehe, setHoehe] = useState(() => innerHeight)
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
@@ -92,9 +96,25 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
     }
   }
 
+  // Lernkarte: sobald die Frage gefragt ist, schlägt die KI eine vor (im Hintergrund, Tippen geht weiter)
+  const bereich = auswahl?.bereich
+  useEffect(() => {
+    setVorschlag(null)
+    if (modus !== 'frage' || !bereich) return
+    const ab = new AbortController()
+    void frageVorschlagen(speicher, quelle, seite, bereich, ab.signal).then((f) => !ab.signal.aborted && setVorschlag(f ?? ''))
+    return () => ab.abort()
+  }, [modus, bereich, speicher, quelle, seite])
+
   const fertig = async (art: 'wissen' | 'frage' | 'link', ziel?: Eintrag) => {
     if (!auswahl) return
-    await karteAusStelle(speicher, { quelle, seite, bereich: auswahl.bereich, art, titel: titel.trim() || (art === 'frage' ? 'Was steht hier?' : 'Stelle'), ziel, farbe: FARBE_MARKE[farbe] ?? null })
+    const eigen = titel.trim()
+    const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
+    const id = await karteAusStelle(speicher, { quelle, seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null })
+    // Selbst getippte Fragen: Schreibfehler nachträglich korrigieren, die Karte ist schon da
+    if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(eigen).then((neu) => {
+        if (neu) void korrigiereFrage(speicher, id, eigen, neu)
+      })
     setAuswahl(null)
     setTitel('')
     setModus('wahl')
@@ -154,6 +174,13 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
                         if (e.key === 'Escape') setAuswahl(null)
                       }}
                     />
+                    {modus === 'frage' && vorschlag === null && <div className="klein-leise">KI sucht eine passende Frage …</div>}
+                    {modus === 'frage' && vorschlag && vorschlag !== titel.trim() && (
+                      <button type="button" className="ki-vorschlag" onClick={() => setTitel(vorschlag)} title="Vorschlag übernehmen">
+                        <span className="klein-leise">Vorschlag (tippen zum Übernehmen)</span>
+                        <Inhalt text={vorschlag} />
+                      </button>
+                    )}
                     <div className="reihe">
                       <button type="button" className="knopf haupt klein" onClick={() => void fertig(modus)}>
                         Anlegen

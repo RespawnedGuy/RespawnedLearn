@@ -86,3 +86,28 @@ export function ausschnitt(speicher: Speicher, pfad: string, nr: number, b: Bere
   }
   return p
 }
+
+/** Text in einem markierten Bereich einer Seite (leer bei Scans und Bildern) */
+export async function stellenText(speicher: Speicher, pfad: string, nr: number, b: Bereich): Promise<string> {
+  const doc = await ladePdf(speicher, pfad)
+  if (!doc || nr < 1 || nr > doc.numPages) return ''
+  const seite = await doc.getPage(nr)
+  const v = seite.getViewport({ scale: 1 })
+  const inhalt = await seite.getTextContent()
+  const rand = 0.01
+  const teile: { text: string; x: number; y: number }[] = []
+  for (const i of inhalt.items) {
+    if (!('str' in i) || !i.str.trim()) continue
+    // Grundlinie des Textstücks, etwas angehoben, damit Zeilen am oberen Rand mitzählen
+    const [vx, vy] = v.convertToViewportPoint(i.transform[4], i.transform[5] + Math.abs(i.height || 0) / 2)
+    const x = vx / v.width
+    const y = vy / v.height
+    if (x >= b.x - rand && x <= b.x + b.b + rand && y >= b.y - rand && y <= b.y + b.h + rand) teile.push({ text: i.str, x, y })
+  }
+  teile.sort((p, q) => Math.abs(p.y - q.y) > 0.006 ? p.y - q.y : p.x - q.x)
+  return teile
+    .map((t) => t.text)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
