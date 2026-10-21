@@ -3,6 +3,7 @@ import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } f
 import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
 import { karteAusStelle, merkeLesestelle, WISSEN } from './wissen'
 import { ModulSeite, Start } from './Start'
+import { InhaltKnopf } from './Kapitel'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -52,6 +53,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
     const raus = () => !document.fullscreenElement && setVollbild(false)
     const tasten = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      // ein offener Dialog (z. B. Inhalt) schließt mit Esc selbst
+      if (document.querySelector('.dialog-huelle')) return
       if (e.key === 'Escape') setVollbild(false)
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') geheZu('sammeln', quelle.id, Math.max(1, seite - 1))
       if (e.key === 'ArrowRight' || e.key === 'PageDown') geheZu('sammeln', quelle.id, seiten ? Math.min(seiten, seite + 1) : seite + 1)
@@ -184,7 +187,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
         <a className="knopf still klein" href={modul && modul.quellen.length > 1 ? ortLink('sammeln', 'modul', modul.id) : ortLink('sammeln')}>
           ‹ {modul && modul.quellen.length > 1 ? modul.titel : 'Start'}
         </a>
-        <strong>{quelle.titel}</strong>
+        <strong className="plan-titel">{quelle.titel}</strong>
+        <InhaltKnopf quelle={quelle} seite={seite} />
         <span style={{ flex: 1 }} />
         <a className={`knopf klein symbol${seite <= 1 ? ' aus' : ''}`} href={ortLink('sammeln', quelle.id, Math.max(1, seite - 1))} aria-label="Seite zurück">
           ‹
@@ -209,6 +213,7 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
       </div>
       {vollbild && (
         <div className="vollbild-steuer" role="toolbar" aria-label="Vollbild">
+          <InhaltKnopf quelle={quelle} seite={seite} kompakt />
           <button type="button" disabled={seite <= 1} onClick={() => geheZu('sammeln', quelle.id, Math.max(1, seite - 1))} aria-label="Seite zurück">
             ‹
           </button>

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
-import { lernziele, lesestand, liesMarken, ordneLernziele, pfade, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
+import { inhaltVon, kapitelBei, lernziele, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
 import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rvx/oberflaeche'
+import { KapitelUebersicht, kapitelKurz } from './Kapitel'
 import { neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
@@ -19,11 +20,12 @@ export function wann(am: string, jetzt = new Date()): string {
   return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: d.getFullYear() === jetzt.getFullYear() ? undefined : 'numeric' })
 }
 
-function stelleText(z: Lernziel): string {
+function stelleText(z: Lernziel, b: Bestand): string {
   const s = z.zuletzt
   if (!s) return 'noch nicht begonnen'
   const pdf = z.quellen.length > 1 ? `${z.quellen.find((q) => q.id === s.anhang)?.titel ?? 'PDF'}, ` : ''
-  return `Weiter bei ${pdf}S. ${s.seite} · ${wann(s.am)}`
+  const k = kapitelBei(inhaltVon(b, s.anhang)?.kapitel ?? [], s.seite)
+  return `Weiter bei ${pdf}S. ${s.seite}${k ? ` (${kapitelKurz(k, 36)})` : ''} · ${wann(s.am)}`
 }
 
 /** Startseite der Lern-App: oben die Favoriten, darunter zuletzt bearbeitet. Ein Klick springt an die letzte Stelle. */
@@ -108,14 +110,14 @@ function Gruppe({ titel, ziele }: { titel?: string; ziele: Lernziel[] }) {
 }
 
 function Kachel({ z }: { z: Lernziel }) {
-  const { speicher } = useDaten()
+  const { speicher, bestand } = useDaten()
   const art = !z.modul || z.quellen.length === 1 ? 'Buch' : `Modul · ${z.quellen.length} PDFs`
   return (
     <div className="karte lern-kachel">
       <a className="lern-weiter" href={zielLink(z)}>
         <span className="titel">{z.titel}</span>
         {z.modul?.ziel && <span className="lern-ziel">{z.modul.ziel}</span>}
-        <span className="klein-leise">{stelleText(z)}</span>
+        <span className="klein-leise">{stelleText(z, bestand)}</span>
       </a>
       <div className="lern-fuss">
         <span className="chip">{art}</span>
@@ -346,6 +348,7 @@ function PdfZeile({ q, stelle, seite, hoch, entfernen }: { q: Eintrag; stelle: L
       <button type="button" className="knopf still klein" onClick={entfernen} title="Aus dem Modul nehmen (das PDF und alles Herausgearbeitete bleibt)">
         Herausnehmen
       </button>
+      <KapitelUebersicht quelle={q} seite={seite} />
     </div>
   )
 }

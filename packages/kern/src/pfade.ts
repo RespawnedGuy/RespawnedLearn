@@ -24,6 +24,8 @@ export const pfade = {
   modul: (id: string) => `lernen/module/${id}.md`,
   /** Lesestand eines Geräts: wo in welchem PDF zuletzt gelesen wurde */
   stand: (geraet: string) => `lernen/stand/${geraet}.json`,
+  /** Inhaltsverzeichnis eines PDFs (aus dem PDF gelesen oder selbst gesetzt) */
+  inhalt: (anhangId: string) => `lernen/inhalt/${anhangId}.json`,
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 
