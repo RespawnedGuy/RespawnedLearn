@@ -24,6 +24,8 @@ export interface PdfAnsichtProps {
   zusatz?: (seite: number) => ReactNode
   /** springt zu dieser Seite, sobald sie gezeichnet ist */
   springeZu?: number
+  /** Zoomen mit zwei Fingern (Faktor gegenüber dem bisherigen Zoom) */
+  onZoom?: (faktor: number) => void
 }
 
 export function PdfAnsicht(p: PdfAnsichtProps) {
@@ -70,7 +72,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   const nummern = p.nurSeite ? [p.nurSeite] : formate.map((_, i) => i + 1)
   return (
     <div ref={huelle} style={{ width: '100%', overflowX: (p.zoom ?? 1) > 1 ? 'auto' : undefined }}>
-      <div className="pdf-seiten" style={p.nurSeite ? { padding: 0 } : undefined}>
+      <div className="pdf-seiten" data-zoomflaeche style={p.nurSeite ? { padding: 0 } : undefined}>
         {breite > 0 &&
           nummern.map((nr) => (
             <Seite key={nr} {...p} doc={doc} nr={nr} format={formate[nr - 1] ?? 1.414} breite={seitenBreite} />
@@ -111,6 +113,7 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
         werkzeug={p.werkzeug}
         farbe={p.farbe}
         onRechteck={(b, pt) => p.onRechteck?.(p.nr, b, pt)}
+        onZoom={p.onZoom}
       />
       {marken.map((m) => (
         <button

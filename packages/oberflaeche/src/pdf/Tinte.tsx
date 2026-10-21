@@ -21,8 +21,26 @@ function scrollbar(el: Element | null): { scrollBy: (x: number, y: number) => vo
   return window
 }
 
+// Hat dieses Gerät einen Stift? Dann scrollt der Finger auf Plänen, sonst (Handy) zeichnet er.
+let stiftGesehen = false
+
+type Punkt = { x: number; y: number }
+const mitteVon = (p: Punkt[]): Punkt => ({ x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 })
+const abstandVon = (p: Punkt[]) => Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y)
+
+/** Scrollbare Vorfahren je Richtung, sonst die Seite selbst */
+function scroller(el: Element | null, achse: 'x' | 'y'): Element {
+  for (let p = el?.parentElement; p; p = p.parentElement) {
+    const o = getComputedStyle(p)[achse === 'x' ? 'overflowX' : 'overflowY']
+    const passt = achse === 'x' ? p.scrollWidth > p.clientWidth : p.scrollHeight > p.clientHeight
+    if ((o === 'auto' || o === 'scroll') && passt) return p
+  }
+  return document.scrollingElement ?? document.documentElement
+}
+
 /**
- * Zeichenebene über einer Seite (PDF oder leeres Blatt). Stift und Maus schreiben, der Finger scrollt.
+ * Zeichenebene über einer Seite (PDF, Foto oder leeres Blatt). Stift und Maus schreiben. Der Finger scrollt, wenn das
+ * Gerät einen Stift hat, sonst schreibt er auch. Zwei Finger verschieben und zoomen (onZoom).
  * Radieren mit der Stiftrückseite (Radierer-Taste) oder dem Radierer-Werkzeug. Markieren zieht ein Rechteck auf.
  */
 export function TintenEbene({
@@ -33,7 +51,8 @@ export function TintenEbene({
   onRechteck,
   fluechtig,
   finger,
-  breite: strichBreite
+  breite: strichBreite,
+  onZoom
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -48,6 +67,8 @@ export function TintenEbene({
   finger?: boolean
   /** Strichbreite in Seitenkoordinaten, sonst 3 (Wichtig 4) */
   breite?: number
+  /** Zwei Finger auseinander/zusammen: Faktor gegenüber dem bisherigen Zoom. Ohne diese Angabe wird nicht gezoomt. */
+  onZoom?: (faktor: number) => void
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -58,8 +79,10 @@ export function TintenEbene({
   const ref = useRef<SVGSVGElement>(null)
   const start = useRef<{ x: number; y: number } | null>(null)
   const geaendert = useRef(false)
-  const modus = useRef<'zeichnen' | 'radieren' | 'rechteck' | 'scrollen' | null>(null)
+  const modus = useRef<'zeichnen' | 'radieren' | 'rechteck' | 'scrollen' | 'geste' | 'warten' | null>(null)
   const letzter = useRef({ x: 0, y: 0 })
+  const beruehrt = useRef(new Map<number, Punkt>())
+  const geste = useRef<{ abstand: number; mitte: Punkt; letzte: Punkt; faktor: number; ziel: HTMLElement | null } | null>(null)
 
   // Änderungen von anderen Geräten übernehmen, solange hier nicht gerade gezeichnet wird
   useEffect(() => {
@@ -85,13 +108,70 @@ export function TintenEbene({
     })
   }
 
+  /** Zwei Finger: Was gerade entstand, verwerfen; ab jetzt verschieben und (mit onZoom) zoomen */
+  const starteGeste = () => {
+    const p = [...beruehrt.current.values()]
+    setAktiv(null)
+    setRechteck(null)
+    start.current = null
+    const ziel = onZoom ? ref.current?.closest<HTMLElement>('[data-zoomflaeche]') ?? null : null
+    const mitte = mitteVon(p)
+    if (ziel) {
+      const r = ziel.getBoundingClientRect()
+      ziel.style.transformOrigin = `${mitte.x - r.left}px ${mitte.y - r.top}px`
+    }
+    geste.current = { abstand: abstandVon(p), mitte, letzte: mitte, faktor: 1, ziel }
+    modus.current = 'geste'
+  }
+
+  const beendeGeste = () => {
+    const g = geste.current
+    geste.current = null
+    if (!g) return
+    if (g.ziel) g.ziel.style.transform = ''
+    if (!onZoom || Math.abs(g.faktor - 1) < 0.02) return
+    // Die Stelle unter den Fingern soll nach dem Zoomen dort bleiben. Welcher Vorfahr danach scrollt,
+    // steht erst nach dem Neuzeichnen fest, deshalb vorher alle Stände merken.
+    const el = ref.current
+    const vorher = new Map<Element, { x: number; y: number; l: number; t: number }>()
+    const seite = document.scrollingElement ?? document.documentElement
+    for (let p: Element | null = el?.parentElement ?? null; p; p = p.parentElement) {
+      const r = p === seite ? { left: 0, top: 0 } : p.getBoundingClientRect()
+      vorher.set(p, { x: p.scrollLeft, y: p.scrollTop, l: r.left, t: r.top })
+    }
+    const m = g.letzte
+    const f = g.faktor
+    onZoom(f)
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const nx = scroller(el, 'x')
+        const ny = scroller(el, 'y')
+        const ax = vorher.get(nx)
+        const ay = vorher.get(ny)
+        if (ax) nx.scrollLeft = (ax.x + m.x - ax.l) * f - (m.x - ax.l)
+        if (ay) ny.scrollTop = (ay.y + m.y - ay.t) * f - (m.y - ay.t)
+      })
+    )
+  }
+
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {
     if (werkzeug === 'lesen') return
-    if (e.pointerType === 'touch' && werkzeug !== 'markieren' && !finger) {
-      // Finger scrollt. touch-action bleibt aus, sonst würde auch der Stift scrollen statt schreiben.
-      modus.current = 'scrollen'
-      letzter.current = { x: e.clientX, y: e.clientY }
-      return
+    if (e.pointerType === 'pen') stiftGesehen = true
+    if (e.pointerType === 'touch') {
+      beruehrt.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      e.currentTarget.setPointerCapture(e.pointerId)
+      if (beruehrt.current.size === 2) {
+        e.preventDefault()
+        starteGeste()
+        return
+      }
+      if (beruehrt.current.size > 2) return
+      if (werkzeug !== 'markieren' && !finger && stiftGesehen) {
+        // Finger scrollt. touch-action bleibt aus, sonst würde auch der Stift scrollen statt schreiben.
+        modus.current = 'scrollen'
+        letzter.current = { x: e.clientX, y: e.clientY }
+        return
+      }
     }
     const radierer = (e.buttons & 32) !== 0 || werkzeug === 'radierer'
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -112,7 +192,24 @@ export function TintenEbene({
   }
 
   const bewegen = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'touch' && beruehrt.current.has(e.pointerId)) beruehrt.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (!modus.current) return
+    if (modus.current === 'warten') return
+    if (modus.current === 'geste') {
+      const g = geste.current
+      const p = [...beruehrt.current.values()]
+      if (!g || p.length < 2) return
+      const mitte = mitteVon(p)
+      // Verschieben mit beiden Fingern
+      scroller(ref.current, 'x').scrollLeft -= mitte.x - g.letzte.x
+      scroller(ref.current, 'y').scrollTop -= mitte.y - g.letzte.y
+      g.letzte = mitte
+      if (g.ziel && g.abstand > 0) {
+        g.faktor = abstandVon(p) / g.abstand
+        g.ziel.style.transform = `scale(${g.faktor})`
+      }
+      return
+    }
     if (modus.current === 'scrollen') {
       scrollbar(ref.current).scrollBy(letzter.current.x - e.clientX, letzter.current.y - e.clientY)
       letzter.current = { x: e.clientX, y: e.clientY }
@@ -137,6 +234,15 @@ export function TintenEbene({
   }
 
   const hoch = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'touch') {
+      beruehrt.current.delete(e.pointerId)
+      if (modus.current === 'geste' || modus.current === 'warten') {
+        if (modus.current === 'geste') beendeGeste()
+        // Der verbleibende Finger zeichnet nicht weiter, erst ein neuer Ansatz
+        modus.current = beruehrt.current.size ? 'warten' : null
+        return
+      }
+    }
     const m = modus.current
     modus.current = null
     if (m === 'zeichnen' && aktiv) {

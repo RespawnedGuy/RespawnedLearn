@@ -1,10 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { DatenAnbieter } from '@rvx/oberflaeche'
+import { bleibAktuell, DatenAnbieter } from '@rvx/oberflaeche'
 import '@rvx/oberflaeche/src/stil.css'
 import 'katex/dist/katex.min.css'
 import './lernen.css'
 import { App } from './App'
+
+bleibAktuell()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
