@@ -17,6 +17,8 @@ export interface PdfAnsichtProps {
   nurSeite?: number
   /** Breite relativ zum Platz (1 = ganze Breite) */
   zoom?: number
+  /** höchstens so hoch (px), damit die Seite ganz sichtbar ist (Vollbild) */
+  maxHoehe?: number
   onRechteck?: (seite: number, b: Bereich, punkt: { x: number; y: number }) => void
   onMarke?: (m: Marke) => void
   onSeiten?: (n: number) => void
@@ -68,7 +70,8 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   if (doc === undefined) return <div className="leer">PDF wird geladen …</div>
   if (doc === null) return <div className="leer">Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.</div>
 
-  const seitenBreite = Math.max(200, Math.round(breite * (p.zoom ?? 1)))
+  const eingepasst = p.maxHoehe && p.nurSeite ? p.maxHoehe / (formate[p.nurSeite - 1] ?? 1.414) : Infinity
+  const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
   const nummern = p.nurSeite ? [p.nurSeite] : formate.map((_, i) => i + 1)
   return (
     <div ref={huelle} style={{ width: '100%', overflowX: (p.zoom ?? 1) > 1 ? 'auto' : undefined }}>

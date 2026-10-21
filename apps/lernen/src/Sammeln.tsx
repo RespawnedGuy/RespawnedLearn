@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
 import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
 import { karteAusStelle, merkeLesestelle, WISSEN } from './wissen'
 import { ModulSeite, Start } from './Start'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
+
+/** Platz über und unter der Seite im Vollbild: Rand oben, Werkzeugleiste unten */
+const VOLLBILD_RAND = 100
 
 function liesSeite(schluessel: string): boolean {
   try {
@@ -32,6 +35,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const [auswahl, setAuswahl] = useState<{ bereich: Bereich; punkt: { x: number; y: number } } | null>(null)
   const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link'>('wahl')
   const [titel, setTitel] = useState('')
+  const [vollbild, setVollbild] = useState(false)
+  const [hoehe, setHoehe] = useState(() => innerHeight)
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
   const modul = modulVon(bestand, quelle.id)
 
@@ -39,6 +44,41 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   useEffect(() => {
     void merkeLesestelle(speicher, quelle.id, seite)
   }, [speicher, quelle.id, seite])
+
+  // Vollbild: Kopf und Leiste weg, die Seite passt ganz auf den Schirm
+  useEffect(() => {
+    if (!vollbild) return
+    const groesse = () => setHoehe(innerHeight)
+    const raus = () => !document.fullscreenElement && setVollbild(false)
+    const tasten = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'Escape') setVollbild(false)
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') geheZu('sammeln', quelle.id, Math.max(1, seite - 1))
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') geheZu('sammeln', quelle.id, seiten ? Math.min(seiten, seite + 1) : seite + 1)
+    }
+    document.body.classList.add('vollbild-an')
+    addEventListener('resize', groesse)
+    addEventListener('keydown', tasten)
+    document.addEventListener('fullscreenchange', raus)
+    groesse()
+    return () => {
+      document.body.classList.remove('vollbild-an')
+      removeEventListener('resize', groesse)
+      removeEventListener('keydown', tasten)
+      document.removeEventListener('fullscreenchange', raus)
+    }
+  }, [vollbild, quelle.id, seite, seiten])
+
+  const vollbildUmschalten = () => {
+    if (vollbild) {
+      setVollbild(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+      return
+    }
+    setVollbild(true)
+    // Wo der Browser echtes Vollbild kann, verschwinden auch seine Leisten; sonst reicht das Ausblenden des Kopfs
+    void document.documentElement.requestFullscreen?.().catch(() => {})
+  }
 
   const tauschen = () => {
     setGetauscht(!getauscht)
@@ -67,6 +107,7 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
         werkzeug={werkzeug}
         farbe={farbe}
         nurSeite={seite}
+        maxHoehe={vollbild ? hoehe - VOLLBILD_RAND : undefined}
         onSeiten={setSeiten}
         onMarke={(m) => {
           const z = /\[\[([^\]|]+)/.exec(m.text)?.[1]
@@ -158,11 +199,31 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
         <button type="button" className="knopf klein" onClick={tauschen}>
           Blatt {getauscht ? 'rechts' : 'links'} ⇄
         </button>
+        <button type="button" className="knopf klein" onClick={vollbildUmschalten} title="Kopf ausblenden, ganze Seite zeigen">
+          ⤢ Vollbild
+        </button>
       </div>
-      <div className={`uebungsplatz${getauscht ? ' getauscht' : ''}`}>
+      <div className={`uebungsplatz${getauscht ? ' getauscht' : ''}`} style={vollbild ? ({ '--vollhoehe': `${hoehe - VOLLBILD_RAND}px` } as CSSProperties) : undefined}>
         {skript}
         {blatt}
       </div>
+      {vollbild && (
+        <div className="vollbild-steuer" role="toolbar" aria-label="Vollbild">
+          <button type="button" disabled={seite <= 1} onClick={() => geheZu('sammeln', quelle.id, Math.max(1, seite - 1))} aria-label="Seite zurück">
+            ‹
+          </button>
+          <span>
+            S. {seite}
+            {seiten ? ` / ${seiten}` : ''}
+          </span>
+          <button type="button" disabled={!!seiten && seite >= seiten} onClick={() => geheZu('sammeln', quelle.id, seiten ? Math.min(seiten, seite + 1) : seite + 1)} aria-label="Seite vor">
+            ›
+          </button>
+          <button type="button" onClick={vollbildUmschalten} title="Vollbild beenden (Esc)" aria-label="Vollbild beenden">
+            ✕
+          </button>
+        </div>
+      )}
       <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} />
     </div>
   )
