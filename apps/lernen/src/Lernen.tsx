@@ -4,6 +4,7 @@ import { TintenEbene, ortLink, useDaten } from '@rvx/oberflaeche'
 import { Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
 import { Eintraege } from './Eintraege'
+import { FragenHinweis, KapitelFragen } from './Fragen'
 import { bewerte, faellige, lernkarten, type Lernkarte } from './wissen'
 
 const SICHER = [
@@ -25,6 +26,7 @@ function AlleKarten({ hinweis }: { hinweis?: string }) {
   const karten = lernkarten(bestand).map((k) => k.e)
   return (
     <div className="lernen-seite">
+      <FragenHinweis />
       {hinweis && (
         <div className="leer" style={{ padding: '16px 0 0' }}>
           {hinweis}
@@ -62,6 +64,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
   const [leer, setLeer] = useState(0)
   const k = runde[i]
 
+  if (ansicht === 'fragen') return <KapitelFragen />
   if (ansicht === 'alle') return <AlleKarten />
   if (!runde.length) return <AlleKarten hinweis="Heute ist nichts fällig. Hier sind alle deine Karten." />
   if (!k) return <AlleKarten hinweis={`Runde geschafft: ${runde.length} Karten. Morgen geht es weiter.`} />
@@ -83,6 +86,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
 
   return (
     <div className="lernen-seite">
+      <FragenHinweis />
       <div className="fortschritt" aria-label={`Karte ${i + 1} von ${runde.length}`}>
         {runde.map((_, n) => (
           <span key={n} className={n < i ? 'fertig' : n === i ? 'jetzt' : ''} />

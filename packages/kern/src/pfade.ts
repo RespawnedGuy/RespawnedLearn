@@ -26,6 +26,10 @@ export const pfade = {
   stand: (geraet: string) => `lernen/stand/${geraet}.json`,
   /** Inhaltsverzeichnis eines PDFs (aus dem PDF gelesen oder selbst gesetzt) */
   inhalt: (anhangId: string) => `lernen/inhalt/${anhangId}.json`,
+  /** KI-Fragen zu einem Kapitel (schreibt die Pipeline) */
+  fragen: (anhangId: string, seite: number) => `lernen/fragen/${anhangId}/S${drei(seite)}.json`,
+  /** Welche Kapitelfragen ein Gerät erledigt hat */
+  fragenStand: (geraet: string) => `lernen/fragen-stand/${geraet}.json`,
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 

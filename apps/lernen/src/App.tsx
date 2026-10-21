@@ -2,7 +2,7 @@ import { Kopf, geheZu, ortLink, useDaten, useOrt, type MenueGruppe } from '@rvx/
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
-import { lernziele, ordneLernziele } from '@rvx/kern'
+import { lesestand, lernziele, offeneFragen, ordneLernziele } from '@rvx/kern'
 import { faellige } from './wissen'
 import { zielLink } from './Start'
 
@@ -22,11 +22,15 @@ export function App() {
   const modul = bereich === 'sammeln' && ort[1] === 'modul' ? ziele.find((z) => z.id === ort[2]) : undefined
   const reihe = ordneLernziele(ziele)
   const faellig = faellige(bestand).length
+  const fragen = offeneFragen(bestand, lesestand(bestand)).length
 
   const gruppen: MenueGruppe[] = [
     {
       titel: 'Bereiche',
-      eintraege: BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id, zahl: id === 'lernen' ? faellig : undefined }))
+      eintraege: [
+        ...BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id && ort[1] !== 'fragen', zahl: id === 'lernen' ? faellig : undefined })),
+        ...(fragen ? [{ titel: 'Fragen zum Kapitel', ziel: ortLink('lernen', 'fragen'), aktiv: bereich === 'lernen' && ort[1] === 'fragen', zahl: fragen }] : [])
+      ]
     },
     {
       titel: 'Module und Bücher',

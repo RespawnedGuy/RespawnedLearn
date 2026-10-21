@@ -25,11 +25,23 @@ export function Ausschnitt({ anhangId, seite, markeId, breite = 520, titel }: { 
   )
 }
 
+/** Text mit Formeln im Satz ($…$, zum Beispiel aus den KI-Fragen) */
+function mitFormeln(text: string, schluessel: number): ReactNode[] {
+  const teile = text.split(/\$([^$\n]+)\$/)
+  return teile.map((t, i) =>
+    i % 2 ? (
+      <span key={`${schluessel}-${i}`} dangerouslySetInnerHTML={{ __html: katex.renderToString(t, { throwOnError: false }) }} />
+    ) : (
+      t
+    )
+  )
+}
+
 function zeileInline(text: string, bestand: Bestand): ReactNode[] {
   const out: ReactNode[] = []
   let pos = 0
   for (const l of findeLinks(text)) {
-    if (l.von > pos) out.push(text.slice(pos, l.von))
+    if (l.von > pos) out.push(...mitFormeln(text.slice(pos, l.von), pos))
     const p = ankerParameter(l.anker)
     if (l.einbettung && p.marke) out.push(<Ausschnitt key={l.von} anhangId={l.ziel} seite={Number(p.seite) || 1} markeId={p.marke} titel={l.anzeige ?? undefined} />)
     else {
@@ -42,19 +54,35 @@ function zeileInline(text: string, bestand: Bestand): ReactNode[] {
     }
     pos = l.bis
   }
-  if (pos < text.length) out.push(text.slice(pos))
+  if (pos < text.length) out.push(...mitFormeln(text.slice(pos), pos))
   return out
 }
 
-/** Schlichte Darstellung eines Karteninhalts: Absätze, Formeln ($$…$$), Abrufblöcke, Links, Ausschnitte */
+/** Schlichte Darstellung eines Karteninhalts: Absätze, Listen, Formeln ($$…$$ und $…$), Abrufblöcke, Links, Ausschnitte */
 export function Inhalt({ text, abrufeZeigen = true }: { text: string; abrufeZeigen?: boolean }) {
   const { bestand } = useDaten()
   const bloecke: ReactNode[] = []
   const zeilen = text.replace(/\r/g, '').split('\n')
   let absatz: string[] = []
-  const fertig = () => {
+  let liste: string[] = []
+  const absatzFertig = () => {
     if (absatz.length) bloecke.push(<p key={bloecke.length}>{zeileInline(absatz.join(' '), bestand)}</p>)
     absatz = []
+  }
+  const listeFertig = () => {
+    if (liste.length)
+      bloecke.push(
+        <ul key={bloecke.length}>
+          {liste.map((x, n) => (
+            <li key={n}>{zeileInline(x, bestand)}</li>
+          ))}
+        </ul>
+      )
+    liste = []
+  }
+  const fertig = () => {
+    absatzFertig()
+    listeFertig()
   }
   for (let i = 0; i < zeilen.length; i++) {
     const z = zeilen[i]
@@ -81,8 +109,14 @@ export function Inhalt({ text, abrufeZeigen = true }: { text: string; abrufeZeig
     } else if (/^#{1,6} /.test(z)) {
       fertig()
       bloecke.push(<h3 key={bloecke.length}>{zeileInline(z.replace(/^#+ /, ''), bestand)}</h3>)
+    } else if (/^\s*[-*] /.test(z)) {
+      absatzFertig()
+      liste.push(z.replace(/^\s*[-*] /, ''))
     } else if (z.trim() === '') fertig()
-    else absatz.push(z)
+    else {
+      listeFertig()
+      absatz.push(z)
+    }
   }
   fertig()
   return <div className="inhalt">{bloecke}</div>
