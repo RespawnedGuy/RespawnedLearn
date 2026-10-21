@@ -2,7 +2,7 @@ import { Kopf, geheZu, ortLink, useDaten, useOrt, type MenueGruppe } from '@rvx/
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
-import { lesestand, lernziele, offeneFragen, ordneLernziele } from '@rvx/kern'
+import { lesestand, lernziele, modulVon, offeneFragen, ordneLernziele } from '@rvx/kern'
 import { faellige } from './wissen'
 import { zielLink } from './Start'
 
@@ -40,10 +40,21 @@ export function App() {
     }
   ]
 
+  // Eine Ebene höher, falls es keinen Verlauf gibt; die Startseite unter Sammeln ist ganz oben
+  const buchModul = quelle ? modulVon(bestand, quelle.id) : undefined
+  const oben =
+    quelle ? (buchModul && buchModul.quellen.length > 1 ? ortLink('sammeln', 'modul', buchModul.id) : ortLink('sammeln'))
+    : modul ? ortLink('sammeln')
+    : bereich === 'lernen' && ort[1] ? ortLink('lernen')
+    : bereich === 'nutzen' && ort[1] ? ortLink('nutzen')
+    : bereich === 'sammeln' && !ort[1] ? null
+    : ortLink('sammeln')
+
   return (
     <>
       <Kopf
         app="lernen"
+        oben={oben}
         ort={quelle ? quelle.titel : modul ? modul.titel : BEREICHE.find(([id]) => id === bereich)?.[1] ?? 'Lernen'}
         gruppen={gruppen}
         mitte={

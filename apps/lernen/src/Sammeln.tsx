@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
-import { PdfAnsicht, TintenEbene, Werkzeugleiste, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
+import { PdfAnsicht, TintenEbene, Werkzeugleiste, ZurueckPfeil, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -211,9 +211,6 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   return (
     <div>
       <div className="plan-leiste">
-        <a className="knopf still klein" href={modul && modul.quellen.length > 1 ? ortLink('sammeln', 'modul', modul.id) : ortLink('sammeln')}>
-          ‹ {modul && modul.quellen.length > 1 ? modul.titel : 'Start'}
-        </a>
         <strong className="plan-titel">{quelle.titel}</strong>
         <InhaltKnopf quelle={quelle} seite={seite} />
         <span style={{ flex: 1 }} />
@@ -238,6 +235,16 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
         {skript}
         {blatt}
       </div>
+      {vollbild && (
+        <ZurueckPfeil
+          schwebend
+          oben={modul && modul.quellen.length > 1 ? ortLink('sammeln', 'modul', modul.id) : ortLink('sammeln')}
+          vorher={() => {
+            setVollbild(false)
+            if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+          }}
+        />
+      )}
       {vollbild && (
         <div className="vollbild-steuer" role="toolbar" aria-label="Vollbild">
           <InhaltKnopf quelle={quelle} seite={seite} kompakt />

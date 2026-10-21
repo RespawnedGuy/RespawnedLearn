@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode, type RefObject }
 import logo from './logo.png'
 import { useDaten } from './daten/DatenKontext'
 import { laedtHoch } from './daten/speicher'
+import { kannZurueck, zurueck } from './ort'
 
 export interface MenueEintrag {
   titel: string
@@ -48,11 +49,13 @@ export function Kopf({
   rechts?: ReactNode
   /** jede Gruppe wird ein eigener Reiter, der beim Klick sein Menü aufklappt */
   reiter?: boolean
+  /** übergeordnete Ansicht für „Zurück“, wenn es keinen Verlauf gibt (null = ganz oben) */
+  oben?: string | null
 }) {
-  return reiter ? <ReiterKopf app={rest.app} gruppen={rest.gruppen} rechts={rest.rechts} /> : <MenueKopf {...rest} />
+  return reiter ? <ReiterKopf app={rest.app} gruppen={rest.gruppen} rechts={rest.rechts} oben={rest.oben} /> : <MenueKopf {...rest} />
 }
 
-function MenueKopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: string; gruppen: MenueGruppe[]; mitte?: ReactNode; rechts?: ReactNode }) {
+function MenueKopf({ app, ort, gruppen, mitte, rechts, oben }: { app: string; ort: string; gruppen: MenueGruppe[]; mitte?: ReactNode; rechts?: ReactNode; oben?: string | null }) {
   const schluessel = `rvx-${app}-menue-fixiert`
   const [fixiert, setFixiert] = useState(() => lies(schluessel))
   const [offen, setOffen] = useState(false)
@@ -97,6 +100,7 @@ function MenueKopf({ app, ort, gruppen, mitte, rechts }: { app: string; ort: str
     <header className="kopf" ref={ref}>
       <div className="kopf-zeile">
         <div className="kopf-links">
+          <ZurueckPfeil oben={oben} />
           <img className="kopf-logo" src={logo} alt="RespawnedNotes" />
           <AppSchalter app={app} />
           <button type="button" className="kopf-ort" aria-expanded={sichtbar} onClick={() => (fixiert ? nadel() : setOffen(!offen))}>
@@ -159,7 +163,7 @@ function Pfeil({ auf }: { auf: boolean }) {
  * Ein Klick klappt nur das Menü dieses Reiters auf, ein zweiter Klick oder ein Klick daneben klappt es zu.
  * Fixiert bleibt das Menü des Reiters, in dem man gerade ist, als schmale Leiste offen.
  */
-function ReiterKopf({ app, gruppen, rechts }: { app: string; gruppen: MenueGruppe[]; rechts?: ReactNode }) {
+function ReiterKopf({ app, gruppen, rechts, oben }: { app: string; gruppen: MenueGruppe[]; rechts?: ReactNode; oben?: string | null }) {
   const schluessel = `rvx-${app}-menue-fixiert`
   const [fixiert, setFixiert] = useState(() => lies(schluessel))
   const [offen, setOffen] = useState<string | null>(null)
@@ -207,6 +211,7 @@ function ReiterKopf({ app, gruppen, rechts }: { app: string; gruppen: MenueGrupp
     <header className="kopf" ref={ref}>
       <div className="kopf-zeile">
         <div className="kopf-links">
+          <ZurueckPfeil oben={oben} />
           <img className="kopf-logo" src={logo} alt="RespawnedNotes" />
           <AppSchalter app={app} />
           <nav className="kopf-reiter" aria-label="Hauptmenü">
@@ -256,6 +261,33 @@ function ReiterKopf({ app, gruppen, rechts }: { app: string; gruppen: MenueGrupp
         </div>
       )}
     </header>
+  )
+}
+
+/**
+ * Zurück-Pfeil, in beiden Apps und allen Ansichten ganz links oben (Linkshänder: Daumen und Hand verdecken nichts).
+ * Ganz oben bleibt sein Platz frei, damit nichts daneben springt.
+ */
+export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null; schwebend?: boolean; vorher?: () => void }) {
+  const geht = kannZurueck(oben)
+  return (
+    <button
+      type="button"
+      className={`zurueck-pfeil${schwebend ? ' schwebend' : ''}`}
+      onClick={() => {
+        vorher?.()
+        zurueck(oben)
+      }}
+      disabled={!geht}
+      aria-hidden={!geht || undefined}
+      tabIndex={geht ? undefined : -1}
+      aria-label="Zurück"
+      title="Zurück"
+    >
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 5l-7 7 7 7" />
+      </svg>
+    </button>
   )
 }
 

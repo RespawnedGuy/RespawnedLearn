@@ -214,9 +214,6 @@ export function ModulSeite({ id }: { id: string }) {
 
   return (
     <div className="seite modul-seite">
-      <a className="knopf still klein" href={ortLink('sammeln')} style={{ marginLeft: -10 }}>
-        ‹ Start
-      </a>
       <div className="seite-kopf">
         <input
           key={`t-${m.titel}`}
