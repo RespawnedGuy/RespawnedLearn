@@ -29,6 +29,8 @@ export function Lernen() {
   const [sicher, setSicher] = useState<string | null>(null)
   const [offen, setOffen] = useState(false)
   const [farbe] = useState<Farbe>('alltag')
+  const [radieren, setRadieren] = useState(false)
+  const [leer, setLeer] = useState(0)
   const k = runde[i]
 
   if (!runde.length)
@@ -51,6 +53,7 @@ export function Lernen() {
     setI(i + 1)
     setSicher(null)
     setOffen(false)
+    setRadieren(false)
   }
 
   return (
@@ -80,8 +83,22 @@ export function Lernen() {
         )}
         {/* Schreibfläche zum Abrufen: wird nicht gespeichert, es zählt das Abrufen selbst */}
         {!offen && (
-          <div className="schreibflaeche pdf-seite zeichnen">
-            <TintenEbene key={i} pfad="" format={0.32} werkzeug="stift" farbe={farbe} fluechtig />
+          <div className="schreibflaeche-huelle">
+            <div className="schreibflaeche pdf-seite zeichnen">
+              <TintenEbene key={`${i}-${leer}`} pfad="" format={0.32} werkzeug={radieren ? 'radierer' : 'stift'} farbe={farbe} fluechtig />
+            </div>
+            {/* Radieren auch ohne Stiftrückseite */}
+            <div className="schreib-werkzeug" role="toolbar" aria-label="Schreibfläche">
+              <button type="button" className={`knopf klein${!radieren ? ' haupt' : ''}`} onClick={() => setRadieren(false)}>
+                Stift
+              </button>
+              <button type="button" className={`knopf klein${radieren ? ' haupt' : ''}`} onClick={() => setRadieren(true)}>
+                Radierer
+              </button>
+              <button type="button" className="knopf klein still" onClick={() => setLeer(leer + 1)}>
+                Leeren
+              </button>
+            </div>
           </div>
         )}
         {offen && (

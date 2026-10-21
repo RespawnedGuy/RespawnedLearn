@@ -31,6 +31,8 @@
 .lern-karte { padding: 32px 36px; display: flex; flex-direction: column; gap: 18px; border-radius: 20px; }
 .lern-karte .art { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: var(--akzent-text); }
 .lern-karte .frage { font-size: 22px; font-weight: 600; line-height: 1.45; }
+.schreibflaeche-huelle { display: flex; flex-direction: column; gap: 8px; }
+.schreib-werkzeug { display: flex; gap: 6px; justify-content: flex-end; }
 .schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fbfafe; background-image: linear-gradient(#eeeaf6 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
 .antwort { border-top: 1px solid var(--linie); padding-top: 14px; font-size: 17px; }
 

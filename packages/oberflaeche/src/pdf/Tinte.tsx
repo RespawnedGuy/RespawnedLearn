@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStroke } from 'perfect-freehand'
 import { FARBEN, SEITE_BREITE, getroffen, liesTinte, tinteSvg, type Bereich, type Farbe, type Strich } from '@rvx/kern'
 import { useDaten } from '../daten/DatenKontext'
+import { beachteHandballen, hatStift, istHandballen } from './handballen'
 
 export type Werkzeug = 'stift' | 'markieren' | 'radierer' | 'lesen'
 
@@ -21,8 +22,14 @@ function scrollbar(el: Element | null): { scrollBy: (x: number, y: number) => vo
   return window
 }
 
-// Hat dieses Gerät einen Stift? Dann scrollt der Finger auf Plänen, sonst (Handy) zeichnet er.
-let stiftGesehen = false
+/** Zeiger an die Fläche binden; geht nicht, wenn er schon wieder weg ist */
+function fange(e: React.PointerEvent<SVGSVGElement>) {
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId)
+  } catch {
+    /* dann eben ohne */
+  }
+}
 
 type Punkt = { x: number; y: number }
 const mitteVon = (p: Punkt[]): Punkt => ({ x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 })
@@ -42,6 +49,7 @@ function scroller(el: Element | null, achse: 'x' | 'y'): Element {
  * Zeichenebene über einer Seite (PDF, Foto oder leeres Blatt). Stift und Maus schreiben. Der Finger scrollt, wenn das
  * Gerät einen Stift hat, sonst schreibt er auch. Zwei Finger verschieben und zoomen (onZoom).
  * Radieren mit der Stiftrückseite (Radierer-Taste) oder dem Radierer-Werkzeug. Markieren zieht ein Rechteck auf.
+ * Schreibt der Stift, wird die aufliegende Hand übergangen (handballen.ts).
  */
 export function TintenEbene({
   pfad,
@@ -83,6 +91,10 @@ export function TintenEbene({
   const letzter = useRef({ x: 0, y: 0 })
   const beruehrt = useRef(new Map<number, Punkt>())
   const geste = useRef<{ abstand: number; mitte: Punkt; letzte: Punkt; faktor: number; ziel: HTMLElement | null } | null>(null)
+  /** Zeiger, der gerade schreibt, radiert oder aufzieht; alle anderen bewegen nichts */
+  const zeiger = useRef<number | null>(null)
+
+  useEffect(beachteHandballen, [])
 
   // Änderungen von anderen Geräten übernehmen, solange hier nicht gerade gezeichnet wird
   useEffect(() => {
@@ -156,25 +168,37 @@ export function TintenEbene({
 
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {
     if (werkzeug === 'lesen') return
-    if (e.pointerType === 'pen') stiftGesehen = true
+    if (e.pointerType === 'touch' && istHandballen(e.pointerId)) {
+      e.preventDefault()
+      return
+    }
+    if (e.pointerType === 'pen' && (modus.current === 'scrollen' || modus.current === 'warten' || modus.current === 'geste')) {
+      // Die Hand lag schon auf, bevor der Stift kam: Sie scrollt nicht weiter, der Stift übernimmt
+      beruehrt.current.clear()
+      geste.current = null
+      modus.current = null
+    }
     if (e.pointerType === 'touch') {
       beruehrt.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      e.currentTarget.setPointerCapture(e.pointerId)
+      fange(e)
       if (beruehrt.current.size === 2) {
         e.preventDefault()
         starteGeste()
         return
       }
       if (beruehrt.current.size > 2) return
-      if (werkzeug !== 'markieren' && !finger && stiftGesehen) {
+      if (werkzeug !== 'markieren' && !finger && hatStift()) {
         // Finger scrollt. touch-action bleibt aus, sonst würde auch der Stift scrollen statt schreiben.
         modus.current = 'scrollen'
+        zeiger.current = e.pointerId
         letzter.current = { x: e.clientX, y: e.clientY }
         return
       }
     }
+    if (modus.current === 'zeichnen' || modus.current === 'radieren' || modus.current === 'rechteck') return
     const radierer = (e.buttons & 32) !== 0 || werkzeug === 'radierer'
-    e.currentTarget.setPointerCapture(e.pointerId)
+    zeiger.current = e.pointerId
+    fange(e)
     e.preventDefault()
     const p = punkt(e)
     if (radierer) {
@@ -210,6 +234,7 @@ export function TintenEbene({
       }
       return
     }
+    if (e.pointerId !== zeiger.current) return
     if (modus.current === 'scrollen') {
       scrollbar(ref.current).scrollBy(letzter.current.x - e.clientX, letzter.current.y - e.clientY)
       letzter.current = { x: e.clientX, y: e.clientY }
@@ -243,6 +268,8 @@ export function TintenEbene({
         return
       }
     }
+    if (e.pointerId !== zeiger.current) return
+    zeiger.current = null
     const m = modus.current
     modus.current = null
     if (m === 'zeichnen' && aktiv) {
