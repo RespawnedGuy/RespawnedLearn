@@ -38,8 +38,9 @@ export function useOffeneFragen(): OffeneFrage[] {
 export function FragenHinweis() {
   const { bestand } = useDaten()
   const offen = useOffeneFragen()
-  useKi()
-  if (!offen.length) return null
+  const ki = useKi()
+  // fehlt auf dem Server etwas, sagt die App es hier, statt still keine Fragen zu zeigen
+  if (!offen.length) return ki && !ki.bereit ? <p className="klein-leise">Fragen zum Kapitel: {ki.grund}</p> : null
   const buch = bestand.dokumente.get(offen[0].anhang)?.titel ?? 'deinem Buch'
   return (
     <a className="karte fragen-hinweis" href={ortLink('lernen', 'fragen')}>
