@@ -32,19 +32,52 @@ export function ladePdf(speicher: Speicher, pfad: string): Promise<PdfDokument |
   return p
 }
 
-/** Zeichnet eine Seite in ein Canvas mit der gewünschten CSS-Breite (scharf auf hochauflösenden Displays) */
-export async function zeichneSeite(doc: PdfDokument, nr: number, canvas: HTMLCanvasElement, breite: number): Promise<{ breite: number; hoehe: number }> {
-  const seite = await doc.getPage(nr)
-  const v1 = seite.getViewport({ scale: 1 })
-  const massstab = breite / v1.width
-  const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
-  const v = seite.getViewport({ scale: massstab * dpr })
-  canvas.width = Math.floor(v.width)
-  canvas.height = Math.floor(v.height)
-  canvas.style.width = `${breite}px`
-  canvas.style.height = `${v.height / dpr}px`
-  await seite.render({ canvas, viewport: v }).promise
-  return { breite, hoehe: v.height / dpr }
+// Große Pläne bei starkem Zoom ergäben Leinwände mit zig Millionen Pixeln: am Handy sehr langsam oder gar nicht
+// gezeichnet. Darüber hinaus wird nur noch gestreckt (minimal unschärfer, aber sofort da).
+const MAX_PIXEL = 16_000_000
+const MAX_SEITE = 8192
+
+/**
+ * Zeichnet eine Seite für die gewünschte CSS-Breite (scharf auf hochauflösenden Displays). Gezeichnet wird erst in
+ * eine eigene Leinwand und dann in einem Rutsch übernommen, damit das alte Bild bis dahin (gestreckt) stehen bleibt
+ * statt weiß zu werden. abbrechen() beendet eine Zeichnung, die niemand mehr braucht (schneller Zoom, weggescrollt).
+ */
+export function zeichneSeite(doc: PdfDokument, nr: number, canvas: HTMLCanvasElement, breite: number): { fertig: Promise<boolean>; abbrechen: () => void } {
+  let weg = false
+  let aufgabe: { cancel: () => void } | null = null
+  const fertig = (async () => {
+    const seite = await doc.getPage(nr)
+    if (weg) return false
+    const v1 = seite.getViewport({ scale: 1 })
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    let massstab = (breite / v1.width) * dpr
+    massstab = Math.min(massstab, Math.sqrt(MAX_PIXEL / (v1.width * v1.height)), MAX_SEITE / Math.max(v1.width, v1.height))
+    const v = seite.getViewport({ scale: massstab })
+    const neu = document.createElement('canvas')
+    neu.width = Math.floor(v.width)
+    neu.height = Math.floor(v.height)
+    const r = seite.render({ canvas: neu, viewport: v })
+    aufgabe = r
+    try {
+      await r.promise
+    } catch {
+      neu.width = 0
+      return false
+    }
+    if (weg) return (neu.width = 0), false
+    canvas.width = neu.width
+    canvas.height = neu.height
+    canvas.getContext('2d')!.drawImage(neu, 0, 0)
+    neu.width = 0
+    return true
+  })()
+  return {
+    fertig,
+    abbrechen: () => {
+      weg = true
+      aufgabe?.cancel()
+    }
+  }
 }
 
 export async function seitenFormat(doc: PdfDokument, nr: number): Promise<number> {
@@ -53,13 +86,16 @@ export async function seitenFormat(doc: PdfDokument, nr: number): Promise<number
 }
 
 const ausschnitte = new Map<string, Promise<string | null>>()
+// Vorschauen eine nach der anderen: Die Planübersicht wollte sonst alle PDFs gleichzeitig laden und zeichnen,
+// und der geöffnete Plan musste warten, bis das Handy damit durch war
+let reihe: Promise<unknown> = Promise.resolve()
 
 /** Ausschnitt einer Seite als Bild (für die Vorschau im Journal und auf Lernkarten) */
 export function ausschnitt(speicher: Speicher, pfad: string, nr: number, b: Bereich, breite = 360): Promise<string | null> {
   const k = `${pfad}|${nr}|${b.x}|${b.y}|${b.b}|${b.h}|${breite}`
   let p = ausschnitte.get(k)
   if (!p) {
-    p = (async () => {
+    p = reihe.then(async () => {
       const doc = await ladePdf(speicher, pfad)
       if (!doc || nr < 1 || nr > doc.numPages) return null
       const seite = await doc.getPage(nr)
@@ -80,7 +116,8 @@ export function ausschnitt(speicher: Speicher, pfad: string, nr: number, b: Bere
       c.getContext('2d')!.drawImage(ganz, b.x * v.width, b.y * v.height, c.width, c.height, 0, 0, c.width, c.height)
       ganz.width = 0
       return c.toDataURL('image/jpeg', 0.85)
-    })()
+    })
+    reihe = p.catch(() => null)
     p.catch(() => ausschnitte.delete(k))
     ausschnitte.set(k, p)
   }

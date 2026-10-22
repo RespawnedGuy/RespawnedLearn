@@ -94,14 +94,32 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
   const [sichtbar, setSichtbar] = useState(false)
 
   useEffect(() => {
-    const io = new IntersectionObserver((e) => e[0].isIntersecting && setSichtbar(true), { rootMargin: '600px' })
+    // In beide Richtungen: Weggescrollte Seiten werden nach einem Zoom erst neu gezeichnet, wenn sie wieder auftauchen
+    const io = new IntersectionObserver((e) => setSichtbar(e[e.length - 1].isIntersecting), { rootMargin: '600px' })
     if (el.current) io.observe(el.current)
     return () => io.disconnect()
   }, [])
 
+  // Gezeichnet wird für die Breite, auf die schon einmal gezeichnet wurde, nicht noch einmal (z. B. beim Zurückscrollen)
+  const gezeichnet = useRef<{ doc: PdfDokument; breite: number } | null>(null)
   useEffect(() => {
-    if (!sichtbar || !canvas.current) return
-    void zeichneSeite(p.doc, p.nr, canvas.current, p.breite)
+    const c = canvas.current
+    if (!sichtbar || !c) return
+    const g = gezeichnet.current
+    if (g && g.doc === p.doc && g.breite === p.breite) return
+    // Beim Zoomen mit + / − kurz abwarten, ob noch ein Schritt kommt; bis dahin wird das alte Bild gestreckt
+    let z: ReturnType<typeof zeichneSeite> | null = null
+    const t = setTimeout(
+      () => {
+        z = zeichneSeite(p.doc, p.nr, c, p.breite)
+        void z.fertig.then((ok) => ok && (gezeichnet.current = { doc: p.doc, breite: p.breite }))
+      },
+      g ? 250 : 0
+    )
+    return () => {
+      clearTimeout(t)
+      z?.abbrechen()
+    }
   }, [sichtbar, p.doc, p.nr, p.breite])
 
   useEffect(() => {
