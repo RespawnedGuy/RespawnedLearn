@@ -3,6 +3,7 @@ import { getStroke } from 'perfect-freehand'
 import { FARBEN, SEITE_BREITE, getroffen, liesTinte, tinteSvg, type Bereich, type Farbe, type Strich } from '@rvx/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { beachteHandballen, hatStift, istHandballen } from './handballen'
+import { abstandVon, mitteVon, scroller, zoomeUm, type Punkt } from './zoomGeste'
 
 export type Werkzeug = 'stift' | 'markieren' | 'radierer' | 'lesen'
 
@@ -29,20 +30,6 @@ function fange(e: React.PointerEvent<SVGSVGElement>) {
   } catch {
     /* dann eben ohne */
   }
-}
-
-type Punkt = { x: number; y: number }
-const mitteVon = (p: Punkt[]): Punkt => ({ x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 })
-const abstandVon = (p: Punkt[]) => Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y)
-
-/** Scrollbare Vorfahren je Richtung, sonst die Seite selbst */
-function scroller(el: Element | null, achse: 'x' | 'y'): Element {
-  for (let p = el?.parentElement; p; p = p.parentElement) {
-    const o = getComputedStyle(p)[achse === 'x' ? 'overflowX' : 'overflowY']
-    const passt = achse === 'x' ? p.scrollWidth > p.clientWidth : p.scrollHeight > p.clientHeight
-    if ((o === 'auto' || o === 'scroll') && passt) return p
-  }
-  return document.scrollingElement ?? document.documentElement
 }
 
 /**
@@ -148,28 +135,7 @@ export function TintenEbene({
     if (!g) return
     if (g.ziel) g.ziel.style.transform = ''
     if (!onZoom || Math.abs(g.faktor - 1) < 0.02) return
-    // Die Stelle unter den Fingern soll nach dem Zoomen dort bleiben. Welcher Vorfahr danach scrollt,
-    // steht erst nach dem Neuzeichnen fest, deshalb vorher alle Stände merken.
-    const el = ref.current
-    const vorher = new Map<Element, { x: number; y: number; l: number; t: number }>()
-    const seite = document.scrollingElement ?? document.documentElement
-    for (let p: Element | null = el?.parentElement ?? null; p; p = p.parentElement) {
-      const r = p === seite ? { left: 0, top: 0 } : p.getBoundingClientRect()
-      vorher.set(p, { x: p.scrollLeft, y: p.scrollTop, l: r.left, t: r.top })
-    }
-    const m = g.letzte
-    const f = g.faktor
-    onZoom(f)
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const nx = scroller(el, 'x')
-        const ny = scroller(el, 'y')
-        const ax = vorher.get(nx)
-        const ay = vorher.get(ny)
-        if (ax) nx.scrollLeft = (ax.x + m.x - ax.l) * f - (m.x - ax.l)
-        if (ay) ny.scrollTop = (ay.y + m.y - ay.t) * f - (m.y - ay.t)
-      })
-    )
+    zoomeUm(ref.current, g.faktor, g.letzte, onZoom)
   }
 
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {

@@ -172,7 +172,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .werkzeug {
   position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40;
   background: var(--tinte); border-radius: 16px; padding: 6px; display: flex; gap: 4px; align-items: center; box-shadow: var(--schatten-hoch);
-  max-width: calc(100vw - 24px); overflow-x: auto;
+  max-width: calc(100vw - 24px); overflow-x: auto; touch-action: pan-x;
 }
 .werkzeug button { height: 44px; padding: 0 12px; border: none; border-radius: 11px; background: transparent; color: #fff; font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
 .werkzeug button.aktiv { background: #fff; color: var(--tinte); font-weight: 700; }
@@ -249,6 +249,8 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 /* ---------- PDF und Tinte ---------- */
 .pdf-seiten { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 0 100px; }
 .pdf-seite { scroll-margin-top: 76px; position: relative; background: #fff; box-shadow: var(--schatten); border-radius: 4px; touch-action: pan-x pan-y pinch-zoom; }
+/* Zoomt die Ansicht selbst (zoomGeste.ts), darf der Browser nicht die ganze Seite samt Werkzeugleiste vergrößern */
+.pdf-zoombar, .pdf-zoombar .pdf-seite { touch-action: pan-x pan-y; }
 .pdf-seite canvas.bild { display: block; width: 100%; height: 100%; border-radius: 4px; }
 .pdf-seite .ebene { position: absolute; inset: 0; }
 .pdf-seite.zeichnen .ebene { touch-action: none; cursor: crosshair; }

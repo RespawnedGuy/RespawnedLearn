@@ -3,6 +3,7 @@ import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rvx/kern
 import { useDaten } from '../daten/DatenKontext'
 import { ladePdf, seitenFormat, zeichneSeite, type PdfDokument } from './pdf'
 import { TintenEbene, type Werkzeug } from './Tinte'
+import { useZweiFingerZoom } from './zoomGeste'
 
 export interface PdfAnsichtProps {
   app: App
@@ -67,6 +68,8 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
     return () => ro.disconnect()
   }, [doc])
 
+  useZweiFingerZoom(huelle, p.onZoom, doc)
+
   if (doc === undefined) return <div className="leer">PDF wird geladen …</div>
   if (doc === null) return <div className="leer">Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.</div>
 
@@ -74,7 +77,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
   const nummern = p.nurSeite ? [p.nurSeite] : formate.map((_, i) => i + 1)
   return (
-    <div ref={huelle} style={{ width: '100%', overflowX: (p.zoom ?? 1) > 1 ? 'auto' : undefined }}>
+    <div ref={huelle} className={p.onZoom ? 'pdf-zoombar' : undefined} style={{ width: '100%', overflowX: (p.zoom ?? 1) > 1 ? 'auto' : undefined }}>
       <div className="pdf-seiten" data-zoomflaeche style={p.nurSeite ? { padding: 0 } : undefined}>
         {breite > 0 &&
           nummern.map((nr) => (
