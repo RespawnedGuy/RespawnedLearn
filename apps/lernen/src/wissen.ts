@@ -61,6 +61,11 @@ export function aendereEintrag(speicher: Speicher, e: Eintrag, neu: { titel?: st
   )
 }
 
+/** Thema oder Modul einer Notiz setzen (null nimmt es heraus) */
+export function setzeThema(speicher: Speicher, e: Eintrag, thema: string | null) {
+  return aendere(speicher, e.pfad, (t) => setzeFeld(t, 'thema', thema ? `[[${thema}]]` : undefined), () => '')
+}
+
 export function quellenPdfs(b: Bestand): Eintrag[] {
   return lernPdfs(b)
 }
@@ -240,7 +245,7 @@ export function verknuepft(b: Bestand, e: Eintrag) {
     .map((l) => ({ e: b.dokumente.get(l.ziel)!, wie: 'verweist auf' }))
   for (const f of ['thema', 'quelle']) {
     const z = /^\[\[([^\]|#]+)/.exec(String(e.felder[f] ?? ''))?.[1]
-    if (z && b.dokumente.has(z) && WISSEN.includes(b.dokumente.get(z)!.typ)) raus.push({ e: b.dokumente.get(z)!, wie: f === 'thema' ? 'gehört zu' : 'aus' })
+    if (z && b.dokumente.has(z) && [...WISSEN, 'modul'].includes(b.dokumente.get(z)!.typ)) raus.push({ e: b.dokumente.get(z)!, wie: f === 'thema' ? 'gehört zu' : 'aus' })
   }
   const rein = b.rueckverweise(e.id).filter((x) => WISSEN.includes(x.typ)).map((x) => ({ e: x, wie: x.typ === 'frage' ? 'Lernkarte' : 'nutzt das' }))
   for (const x of b.nachTyp(...WISSEN)) if (x.id !== e.id && String(x.felder.thema ?? '').includes(e.id) && !rein.some((r) => r.e.id === x.id)) rein.push({ e: x, wie: x.typ === 'frage' ? 'Lernkarte' : 'gehört dazu' })

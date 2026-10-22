@@ -1,6 +1,8 @@
 // Lernkarten und Wiederholungsprotokoll der Lern-App.
 // Abrufblöcke im Text: `?? Frage` und `:: Antwort` (Vertrag 4). Das Protokoll ist pro Gerät und Monat
 // eine JSONL-Datei, an die nur angehängt wird (Vertrag 8), damit offline nie ein Konflikt entsteht.
+import type { Bestand, Eintrag, JournalEintrag } from './bestand'
+import { linkZiel, neuesDokument, type Wert } from './frontmatter'
 
 export interface Abruf {
   frage: string
@@ -56,4 +58,43 @@ export function liesProtokoll(text: string): Wiederholung[] {
 
 export function protokollZeile(w: Wiederholung): string {
   return JSON.stringify(w) + '\n'
+}
+
+// ---------- Wissensnotizen aus dem Journal (einmalig aus dem Import, Vertrag 5.3) ----------
+
+/** Titel einer Notiz: die Überschrift des Eintrags, sonst seine erste Textzeile ohne Markdown */
+export function notizTitel(e: JournalEintrag): string {
+  if (e.teil.zusatz.trim()) return e.teil.zusatz.trim()
+  const zeile = e.rumpf.split('\n').find((z) => z.trim()) ?? ''
+  const t = zeile
+    .replace(/!?\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
+    .replace(/!?\[\[[^\]]*\]\]/g, '')
+    .replace(/^\s*(#+|[-*>]|\d+\.)\s*/, '')
+    .replace(/[*_`]/g, '')
+    .trim()
+  return t.length > 80 ? `${t.slice(0, 79).trimEnd()}…` : t || `Notiz vom ${e.datum}`
+}
+
+/** Wohin eine Notiz gehören kann: Themen und Module */
+export function notizZiele(b: Bestand): Eintrag[] {
+  return b.nachTyp('thema', 'modul').sort((x, y) => x.titel.localeCompare(y.titel, 'de'))
+}
+
+/** Notiz ohne Thema, Modul oder Quelle: wartet in der Lern-App darauf, eingeordnet zu werden */
+export function notizOhneZiel(e: Eintrag): boolean {
+  return e.typ === 'notiz' && !linkZiel(e.felder.thema) && !linkZiel(e.felder.quelle)
+}
+
+/** Ein Journaleintrag als `notiz` der Lern-App. Text unverändert, erstellt = Tag des Eintrags. */
+export function wissensNotiz(e: JournalEintrag, p: { id: string; jetzt: string; thema?: string | null }): string {
+  const kopf: [string, Wert][] = [
+    ['id', p.id],
+    ['typ', 'notiz'],
+    ['erstellt', `${e.datum}T00:00:00${p.jetzt.slice(19)}`],
+    ['geaendert', p.jetzt],
+    ['titel', notizTitel(e)]
+  ]
+  if (p.thema) kopf.push(['thema', `[[${p.thema}]]`])
+  kopf.push(['aus', `Journal ${e.datum}`])
+  return neuesDokument(kopf, e.rumpf.replace(/^\n+/, '').replace(/\s*$/, '\n'))
 }

@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { kurzDatum, type Eintrag } from '@rvx/kern'
+import { kurzDatum, linkZiel, notizZiele, type Eintrag } from '@rvx/kern'
 import { geheZu, ortLink, useDaten } from '@rvx/oberflaeche'
 import { Ausschnitt, Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
 import { Eintraege } from './Eintraege'
-import { TYPNAME, lernstaende, spuren, suche, verknuepft } from './wissen'
+import { TYPNAME, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
 
 const FARBNAME: Record<string, string> = { wichtig: 'Wichtig', ergaenzung: 'Ergänzung' }
 
@@ -51,6 +51,28 @@ export function Nutzen({ id }: { id?: string }) {
   )
 }
 
+/** Lernen ist gerichtet: Eine Notiz gehört zu einem Thema oder Modul */
+function ThemaWahl({ e }: { e: Eintrag }) {
+  const { bestand, speicher } = useDaten()
+  const ziele = notizZiele(bestand).filter((z) => z.id !== e.id)
+  return (
+    <select
+      className="chip chip-wahl"
+      aria-label="Thema"
+      value={linkZiel(e.felder.thema) ?? ''}
+      onChange={(ev) => void setzeThema(speicher, e, ev.target.value || null)}
+    >
+      <option value="">Ohne Thema</option>
+      {ziele.map((z) => (
+        <option key={z.id} value={z.id}>
+          {z.typ === 'modul' ? 'Modul: ' : ''}
+          {z.titel}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function vorTagen(iso: string): string {
   const t = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)
   return t <= 0 ? 'heute' : t === 1 ? 'gestern' : `vor ${t} Tagen`
@@ -75,8 +97,9 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
         </article>
       ) : (
         <article className="karte nutzen-karte">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="chip">{TYPNAME[e.typ] ?? e.typ}</span>
+            {e.typ === 'notiz' && <ThemaWahl e={e} />}
             <span style={{ flex: 1 }} />
             <a className="knopf still klein" href={ortLink('nutzen')}>
               Alle Einträge
@@ -116,7 +139,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
           {!vk.length && <span className="klein-leise">Noch keine Verknüpfungen.</span>}
           {vk.map((v) => (
             <div key={v.e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <a href={ortLink('nutzen', v.e.id)}>{v.e.titel}</a>
+              <a href={v.e.typ === 'modul' ? ortLink('sammeln', 'modul', v.e.id) : ortLink('nutzen', v.e.id)}>{v.e.titel}</a>
               <span className="klein-leise">{v.wie}</span>
             </div>
           ))}

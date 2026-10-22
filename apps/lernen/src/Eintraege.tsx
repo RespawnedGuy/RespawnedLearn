@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { kurzDatum, tag, type Eintrag } from '@rvx/kern'
+import { kurzDatum, notizOhneZiel, tag, type Eintrag } from '@rvx/kern'
 import { ortLink, useDaten } from '@rvx/oberflaeche'
 import { TYPNAME, WISSEN, alleEintraege, lernstaende, type Lernstand } from './wissen'
+
+const OHNE = 'ohne-thema'
 
 /** Lernstand in Worten: neu, fällig oder bis wann eine Karte sitzt */
 export function standText(st: Lernstand | undefined): { text: string; art: '' | 'akzent' | 'rot' } {
@@ -18,11 +20,13 @@ export function Eintraege({ nurLernkarten = false, eintraege }: { nurLernkarten?
   const alle = eintraege ?? alleEintraege(bestand)
   const st = lernstaende(bestand)
   const arten = WISSEN.filter((t) => alle.some((e) => e.typ === t))
-  const liste = typ ? alle.filter((e) => e.typ === typ) : alle
+  // Notizen ohne Thema (z. B. aus dem Journal verschoben) warten darauf, eingeordnet zu werden
+  const ohneThema = alle.filter(notizOhneZiel).length
+  const liste = typ === OHNE ? alle.filter(notizOhneZiel) : typ ? alle.filter((e) => e.typ === typ) : alle
   if (!alle.length) return <div className="leer">Noch keine Einträge. Markiere im Skript eine Stelle und mache daraus Wissen oder eine Lernkarte.</div>
   return (
     <div className="eintraege">
-      {!nurLernkarten && arten.length > 1 && (
+      {!nurLernkarten && (arten.length > 1 || ohneThema > 0) && (
         <div className="eintraege-filter">
           <button type="button" className={`knopf klein${typ === null ? ' haupt' : ''}`} onClick={() => setTyp(null)}>
             Alle · {alle.length}
@@ -32,6 +36,11 @@ export function Eintraege({ nurLernkarten = false, eintraege }: { nurLernkarten?
               {TYPNAME[t] ?? t} · {alle.filter((e) => e.typ === t).length}
             </button>
           ))}
+          {ohneThema > 0 && (
+            <button type="button" className={`knopf klein${typ === OHNE ? ' haupt' : ''}`} onClick={() => setTyp(OHNE)}>
+              Ohne Thema · {ohneThema}
+            </button>
+          )}
         </div>
       )}
       <div className="eintraege-liste karte">
