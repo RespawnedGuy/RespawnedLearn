@@ -1,7 +1,7 @@
 // Ein Index über alle Textdateien, jederzeit neu aufbaubar (Vertrag 1.1). Rein funktional, damit die Tests
 // ohne Browser laufen. Die Apps bauen ihn nach jeder Änderung neu; bei einigen tausend Dateien reicht das.
 import { felder, linkZiel, zerlege, type Wert } from './frontmatter'
-import { gliedere, blockText, type Gliederung, type Aufgabe, type Blockade, type ProjektBlock, type Abschnitt, type Teil } from './journal'
+import { gliedere, blockText, berichtStellen, type BerichtStelle, type Gliederung, type Aufgabe, type Blockade, type ProjektBlock, type Abschnitt, type Teil } from './journal'
 import { liesMarken, type Marke } from './marken'
 import { findeLinks } from './links'
 import { blockiertDurch, istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
@@ -67,6 +67,24 @@ export interface Bericht {
   von: string
   bis: string
   status: string
+}
+
+/** Ein Tag eines Berichts aus dem Journal: die Stelle und der Text unter der `##` */
+export interface BerichtTag extends BerichtStelle {
+  datum: string
+  pfad: string
+  rumpf: string
+}
+
+/** Bericht aus dem Journal: alle `##` mit gleichem Titel unter einem Projekt, ältester Tag zuerst */
+export interface JournalBericht {
+  schluessel: string
+  /** Titel der jüngsten Stelle */
+  titel: string
+  kuerzel: string
+  von: string
+  bis: string
+  tage: BerichtTag[]
 }
 
 export interface Offen {
@@ -243,6 +261,24 @@ export class Bestand {
       }
     }
     return out
+  }
+
+  /** Berichte aus dem Journal (`##` unter `# #kuerzel`), zuletzt fortgeschriebene zuerst */
+  journalBerichte(kuerzel: string): JournalBericht[] {
+    const nach = new Map<string, JournalBericht>()
+    // journale sind neueste zuerst, die Tage eines Berichts sollen ältester zuerst stehen
+    for (const j of [...this.journale].reverse()) {
+      const zeilen = j.text.split('\n')
+      for (const s of berichtStellen(j.text, j.gliederung)) {
+        if (s.kuerzel !== kuerzel) continue
+        let b = nach.get(s.schluessel)
+        if (!b) nach.set(s.schluessel, (b = { schluessel: s.schluessel, titel: s.titel, kuerzel, von: j.datum, bis: j.datum, tage: [] }))
+        b.titel = s.titel
+        b.bis = j.datum
+        b.tage.push({ ...s, datum: j.datum, pfad: j.pfad, rumpf: zeilen.slice(s.von + 1, s.bis).join('\n') })
+      }
+    }
+    return [...nach.values()].sort((a, b) => b.bis.localeCompare(a.bis) || a.titel.localeCompare(b.titel, 'de'))
   }
 
   /** Berichte, optional nur die eines Projekts; neueste zuerst */

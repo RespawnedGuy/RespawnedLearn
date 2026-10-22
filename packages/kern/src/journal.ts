@@ -402,3 +402,77 @@ export function setzeProjektTag(text: string, t: { von: number; kopf: string }, 
   zeilen[t.von] = `# ${kuerzel ? `#${kuerzel}${rest ? ' ' : ''}` : ''}${rest || (kuerzel ? '' : 'Allgemein')}`
   return zeilen.join('\n')
 }
+
+/**
+ * Ein Abschnitt `##` unter `# #projekt` ist ein Bericht. Gleiche Titel im selben Projekt setzen ihn über
+ * mehrere Tage fort; das Projekt zeigt sie zusammenhängend (Vertrag 0.21). Der Schlüssel macht Titel
+ * vergleichbar, ohne Status, `#wichtig`, Anker, Groß-/Kleinschreibung und doppelte Leerzeichen.
+ */
+export function berichtSchluessel(titel: string): string {
+  return zerlegeUeberschrift(titel).titel.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+export interface BerichtStelle {
+  kuerzel: string
+  schluessel: string
+  titel: string
+  /** die H2-Zeile im Rohtext */
+  kopf: string
+  /** die wievielte Stelle mit diesem Projekt und Schlüssel in der Datei (0-basiert) */
+  nr: number
+  /** Zeile der H2 */
+  von: number
+  /** erste Zeile nach dem Abschnitt ohne Leerzeilen am Ende (exklusiv) */
+  bis: number
+}
+
+/** Alle Berichtsabschnitte (`##` unter einem Projekt) einer Journaldatei */
+export function berichtStellen(text: string, g: Gliederung = gliedere(text)): BerichtStelle[] {
+  const zeilen = text.split('\n')
+  const zaehler = new Map<string, number>()
+  const out: BerichtStelle[] = []
+  for (const a of g.abschnitte) {
+    if (a.ebene !== 2 || !a.projekt || !a.titel) continue
+    const schluessel = berichtSchluessel(a.titel)
+    const k = `${a.projekt}\n${schluessel}`
+    const nr = zaehler.get(k) ?? 0
+    zaehler.set(k, nr + 1)
+    let bis = Math.min(a.bis, zeilen.length)
+    while (bis > a.von + 1 && zeilen[bis - 1].trim() === '') bis--
+    out.push({ kuerzel: a.projekt, schluessel, titel: a.titel, kopf: zeilen[a.von], nr, von: a.von, bis })
+  }
+  return out
+}
+
+/**
+ * Ersetzt den Text unter einer Berichtsüberschrift. Die `##`-Zeile selbst bleibt, damit der Bericht
+ * zusammenhält. Ist die Stelle nicht mehr eindeutig zu finden, bleibt der Text unverändert.
+ */
+export function ersetzeBerichtStelle(text: string, s: { kuerzel: string; schluessel: string; nr: number; kopf: string }, rumpf: string): string {
+  const alle = berichtStellen(text).filter((x) => x.kuerzel === s.kuerzel && x.schluessel === s.schluessel)
+  let t = alle.find((x) => x.nr === s.nr && x.kopf === s.kopf)
+  if (!t) {
+    const gleich = alle.filter((x) => x.kopf === s.kopf)
+    if (gleich.length !== 1) return text
+    t = gleich[0]
+  }
+  const zeilen = text.split('\n')
+  const neu = rumpf.replace(/\n+$/, '')
+  zeilen.splice(t.von + 1, t.bis - t.von - 1, ...(neu ? neu.split('\n') : []))
+  return zeilen.join('\n').replace(/\n*$/, '\n')
+}
+
+/**
+ * Bericht heute fortschreiben: Steht der Abschnitt schon im Journal, bleibt der Text gleich, sonst kommt
+ * `## Titel` unter das Projekt (fehlt die H1, entsteht sie). Liefert den Text und die Zeile zum Weiterschreiben.
+ */
+export function berichtFortschreiben(text: string, kuerzel: string, titel: string): { text: string; zeile: number } {
+  const schluessel = berichtSchluessel(titel)
+  const finde = (t: string) => berichtStellen(t).filter((x) => x.kuerzel === kuerzel && x.schluessel === schluessel).pop()
+  const da = finde(text)
+  if (da) return { text, zeile: da.bis }
+  const hatBlock = gliedere(text).bloecke.some((b) => b.kuerzel === kuerzel)
+  const neu = haengeAn(text, kuerzel, [...(hatBlock ? [''] : []), `## ${titel}`, ''])
+  const s = finde(neu)
+  return { text: neu, zeile: s ? s.von + 1 : 0 }
+}
