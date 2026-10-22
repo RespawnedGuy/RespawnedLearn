@@ -230,6 +230,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-status-blockade { background: #fde7e5; color: #a3261d; margin: 0 8px 0 0; }
 .cm-feld { font-weight: 700; color: #a3261d; }
 .cm-callout { background: var(--mulde-hell); border-left: 3px solid var(--linie); padding-left: 12px !important; }
+.cm-klapp { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--linie); border-radius: 999px; background: var(--flaeche, #fff); color: var(--leise); font: inherit; font-size: 0.8em; cursor: pointer; vertical-align: 1px; }
 .cm-aufgabe-bilder { display: inline-flex; gap: 3px; vertical-align: middle; margin: 0 2px 0 5px; }
 .cm-aufgabe-bild { display: inline-flex; align-items: center; justify-content: center; width: 2.4em; height: 2.4em; border-radius: 6px; overflow: hidden; background: var(--mulde); border: 1px solid var(--linie); cursor: pointer; font-size: 12px; font-weight: 700; color: var(--leise); }
 .cm-aufgabe-bild img { width: 100%; height: 100%; object-fit: cover; }

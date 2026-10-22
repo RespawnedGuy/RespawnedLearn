@@ -6,6 +6,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { autocompletion, completionKeymap, type CompletionSource } from '@codemirror/autocomplete'
 import { projektTag } from '@rvx/kern'
 import { darstellung, neuZeichnen, type DarstellungHilfen } from './darstellung'
+import { einklappen } from './einklappen'
 import { beobachteTastatur } from '../tastatur'
 
 export interface EditorKontext {
@@ -82,6 +83,7 @@ export const Editor = forwardRef<EditorGriff, EditorProps>(function Editor(p, gr
       keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
       autocompletion({ override: p.quellen ?? [], icons: false, activateOnTyping: true, closeOnBlur: true }),
       darstellung(() => props.current.hilfen),
+      einklappen,
       EditorView.contentAttributes.of({ spellcheck: 'true', lang: 'de', autocapitalize: 'sentences' }),
       EditorView.updateListener.of((u) => {
         const vonAussen = u.transactions.some((t) => t.annotation(Transaction.remote))
