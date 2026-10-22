@@ -221,6 +221,8 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
   background: linear-gradient(#fff, #fff) center / 58% 16% no-repeat, #d7261e;
 }
+.cm-blockierer { font-size: 0.88em; color: var(--leise); margin-left: 6px; }
+.cm-blockierer .cm-aufgabe { font-weight: 500; }
 .cm-aufgabe.zustand-erledigt { color: var(--gut); text-decoration-line: line-through; }
 .cm-aufgabe.zustand-erledigt::before { background: var(--gut); }
 .cm-aufgabe.zustand-verworfen { color: var(--sehr-leise); text-decoration-line: line-through; font-weight: 400; }

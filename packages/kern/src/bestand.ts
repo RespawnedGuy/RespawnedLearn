@@ -194,6 +194,15 @@ export class Bestand {
     return e ? zustandAus(e.felder, (x) => this.aufgabe(x)?.felder.status ?? (this.aufgabe(x) ? 'offen' : undefined), heute) : null
   }
 
+  /** Die erste noch offene Aufgabe, an der diese hängt (`blockiert_durch`); im Satz steht nur sie dabei */
+  blockierer(id: string): Eintrag | undefined {
+    const e = this.aufgabe(id)
+    if (!e) return undefined
+    return blockiertDurch(e.felder)
+      .map((x) => this.aufgabe(x))
+      .find((a): a is Eintrag => !!a && !istAbgeschlossen(a.felder.status))
+  }
+
   /** Woran eine Aufgabe hängt: die offenen Aufgaben aus `blockiert_durch`, sonst ein alter Freitext */
   private grund(e: Eintrag): string | undefined {
     const offen = blockiertDurch(e.felder)

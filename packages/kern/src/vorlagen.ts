@@ -5,7 +5,7 @@ import { plusTage, tag } from './datum'
 export interface Einfuegen {
   id: string
   titel: string
-  /** text: wird eingesetzt; aktion: die App macht etwas (Plan öffnen, Foto aufnehmen, Status setzen) */
+  /** text: wird eingesetzt; aktion: die App macht etwas (Plan öffnen, Foto aufnehmen, Sprachaufnahme) */
   art: 'text' | 'aktion'
   text?: string
   hinweis?: string
@@ -13,20 +13,11 @@ export interface Einfuegen {
 
 export const FEST: Einfuegen[] = [
   { id: 'aufgabe', titel: 'Aufgabe', art: 'text', text: '- [ ] ', hinweis: 'Eigene Aufgabe, im Satz verlinkt' },
-  {
-    id: 'blockade',
-    titel: 'Blockade',
-    art: 'text',
-    text: '> [!blockade] {{cursor}}\n> Wenn: \n> Dann: \n> Prüfen: {{heute+7}}',
-    hinweis: 'Woran es hängt, mit Wenn-dann und Prüftermin'
-  },
   { id: 'plan', titel: 'Stelle im Plan', art: 'aktion', hinweis: 'Markierung auf einem Plan des Projekts' },
   { id: 'aufnahme', titel: 'Sprachaufnahme', art: 'aktion', hinweis: 'Wird abgeschrieben und landet im Journal' },
   { id: 'kamera', titel: 'Kamera', art: 'aktion', hinweis: 'Foto aufnehmen' },
   { id: 'foto', titel: 'Foto', art: 'aktion', hinweis: 'Bild aus der Galerie oder Screenshot' },
-  { id: 'projekt', titel: 'Projekt', art: 'aktion', hinweis: 'Ab hier gehört alles zu einem Projekt' },
-  { id: 'blockiert', titel: 'Status: blockiert', art: 'aktion', hinweis: 'An der Überschrift' },
-  { id: 'erledigt', titel: 'Status: erledigt', art: 'aktion', hinweis: 'An der Überschrift' }
+  { id: 'projekt', titel: 'Projekt', art: 'aktion', hinweis: 'Ab hier gehört alles zu einem Projekt' }
 ]
 
 /**

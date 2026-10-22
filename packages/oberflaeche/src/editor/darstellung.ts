@@ -16,6 +16,8 @@ export interface DarstellungHilfen {
   oeffne(l: Link): void
   /** Zustand einer eigenen Aufgabe (offen, wartet, blockiert, faellig, erledigt, verworfen), null bei allem anderen */
   zustand?(id: string): string | null
+  /** Bei einer blockierten Aufgabe die erste offene, an der sie hängt; sie steht im Satz gleich dahinter */
+  blockierer?(id: string): { id: string; titel: string; zustand: string } | null
   /** Fotos in der Notiz einer Aufgabe; sie stehen im Journal klein direkt hinter dem Aufgabenlink */
   aufgabeBilder?(id: string): string[]
   /** Aufnahme eines Anhangs (Sprachnotiz), null bei allem, was kein Audio ist */
@@ -70,7 +72,8 @@ class Verweis extends WidgetType {
     readonly oeffne: (l: Link) => void,
     readonly zustand: string | null = null,
     readonly bilder: { id: string; stand: string }[] = [],
-    readonly laden: (id: string) => Promise<string | null> = async () => null
+    readonly laden: (id: string) => Promise<string | null> = async () => null,
+    readonly blockierer: { id: string; titel: string; zustand: string } | null = null
   ) {
     super()
   }
@@ -80,6 +83,7 @@ class Verweis extends WidgetType {
       o.link.ziel === this.link.ziel &&
       o.link.anker === this.link.anker &&
       o.zustand === this.zustand &&
+      `${o.blockierer?.id}|${o.blockierer?.titel}|${o.blockierer?.zustand}` === `${this.blockierer?.id}|${this.blockierer?.titel}|${this.blockierer?.zustand}` &&
       o.bilder.map((b) => `${b.id}|${b.stand}`).join() === this.bilder.map((b) => `${b.id}|${b.stand}`).join()
     )
   }
@@ -93,10 +97,28 @@ class Verweis extends WidgetType {
       e.preventDefault()
       this.oeffne(this.link)
     })
-    if (!this.bilder.length) return s
-    // Fotos der Aufgabe klein direkt hinter dem Link, so stehen sie fast im Fließtext. Antippen öffnet das Foto.
+    if (!this.bilder.length && !this.blockierer) return s
     const huelle = document.createElement('span')
     huelle.append(s)
+    if (this.blockierer) {
+      // Blockiert: Woran es hängt, steht klein dahinter, als eigener Link (immer nur eine offene Aufgabe)
+      const b = this.blockierer
+      const durch = document.createElement('span')
+      durch.className = 'cm-blockierer'
+      durch.textContent = 'durch '
+      const l = document.createElement('span')
+      l.className = `cm-link cm-aufgabe zustand-${b.zustand}`
+      l.title = ZUSTAND_TEXT[b.zustand] ?? b.zustand
+      l.textContent = b.titel
+      l.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        this.oeffne({ einbettung: false, ziel: b.id, anker: null, stand: null, anzeige: null, von: 0, bis: 0 })
+      })
+      durch.append(l)
+      huelle.append(durch)
+    }
+    if (!this.bilder.length) return huelle
+    // Fotos der Aufgabe klein direkt hinter dem Link, so stehen sie fast im Fließtext. Antippen öffnet das Foto.
     const reihe = document.createElement('span')
     reihe.className = 'cm-aufgabe-bilder'
     for (const b of this.bilder.slice(0, 3)) {
@@ -348,7 +370,8 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       } else {
         const zustand = h.zustand?.(l.ziel) ?? null
         const bilder = zustand ? (h.aufgabeBilder?.(l.ziel) ?? []).map((id) => ({ id, stand: h.bildStand?.(id) ?? '' })) : []
-        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, zustand, bilder, h.bild)
+        const blockierer = zustand === 'blockiert' ? (h.blockierer?.(l.ziel) ?? null) : null
+        w = new Verweis(l.anzeige ?? h.titel(l.ziel) ?? 'nicht gefunden', l, h.oeffne, zustand, bilder, h.bild, blockierer)
       }
       deko.push(Decoration.replace({ widget: w }).range(von, bis))
     }
