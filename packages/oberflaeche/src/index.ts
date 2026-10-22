@@ -1,6 +1,6 @@
 export { DatenAnbieter, useDaten } from './daten/DatenKontext'
 export { Speicher, geraet, konfliktPfad, type SyncZustand } from './daten/speicher'
-export { Kopf, SyncAnzeige, ZurueckPfeil, type MenueGruppe, type MenueEintrag } from './Kopf'
+export { Kopf, SyncAnzeige, ZurueckPfeil, type MenueGruppe, type MenueEintrag, type KopfZiel } from './Kopf'
 export { useOrt, geheZu, ortLink, zurueck, kannZurueck } from './ort'
 export { Editor, type EditorGriff, type EditorKontext } from './editor/Editor'
 export type { DarstellungHilfen } from './editor/darstellung'
@@ -13,3 +13,4 @@ export { neuerAnhang, bildUrl, bildMitTinte, bildTinte, tintenStand, tonUrl } fr
 export { beobachteTastatur, mitFinger } from './tastatur'
 export { bleibAktuell } from './aktualisierung'
 export { leseInhalt, sichereInhalt } from './pdf/inhalt'
+export { melde, uhrzeit, Meldungen } from './Meldung'

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import logo from './logo.png'
 import { useDaten } from './daten/DatenKontext'
 import { laedtHoch } from './daten/speicher'
@@ -11,19 +11,20 @@ export interface MenueEintrag {
   zahl?: number | string
   /** fett, z. B. „Alle Projekte“ */
   betont?: boolean
-  /** Zwischenüberschrift vor diesem Eintrag, z. B. „Letzte Tage“ */
-  abschnitt?: string
 }
 
 export interface MenueGruppe {
   titel: string
   eintraege: MenueEintrag[]
-  /** Reiter-Modus: der Reiter, in dem man gerade ist */
+}
+
+/** Ein festes Ziel im Kopf (am Handy in der Daumenleiste) */
+export interface KopfZiel {
+  titel: string
+  ziel: string
   aktiv?: boolean
-  /** Reiter-Modus: steht statt des Titels auf dem aktiven Reiter, z. B. der Projektname */
-  ort?: string
-  /** Reiter-Modus: kürzere Beschriftung am Handy, z. B. „…“ für „Mehr“ */
-  kurz?: string
+  /** Zähler, nur gezeigt wenn größer 0 */
+  zahl?: number
 }
 
 function lies(schluessel: string): boolean {
@@ -39,20 +40,20 @@ function lies(schluessel: string): boolean {
  * Eingeklappt zeigt es nur den Ort; aufgeklappt alle Ziele; fixiert bleibt es als schmale Leiste offen.
  */
 export function Kopf({
-  reiter = false,
+  ziele,
   ...rest
 }: {
   app: string
   ort: string
-  gruppen: MenueGruppe[]
+  gruppen?: MenueGruppe[]
   mitte?: ReactNode
   rechts?: ReactNode
-  /** jede Gruppe wird ein eigener Reiter, der beim Klick sein Menü aufklappt */
-  reiter?: boolean
+  /** feste Ziele statt Menü: je eines ein Reiter, ein Klick springt hin */
+  ziele?: KopfZiel[]
   /** übergeordnete Ansicht für „Zurück“, wenn es keinen Verlauf gibt (null = ganz oben) */
   oben?: string | null
 }) {
-  return reiter ? <ReiterKopf app={rest.app} gruppen={rest.gruppen} rechts={rest.rechts} oben={rest.oben} /> : <MenueKopf {...rest} />
+  return ziele ? <ZielKopf app={rest.app} ziele={ziele} rechts={rest.rechts} oben={rest.oben} /> : <MenueKopf {...rest} gruppen={rest.gruppen ?? []} />
 }
 
 function MenueKopf({ app, ort, gruppen, mitte, rechts, oben }: { app: string; ort: string; gruppen: MenueGruppe[]; mitte?: ReactNode; rechts?: ReactNode; oben?: string | null }) {
@@ -150,63 +151,13 @@ function useKopfHoehe(ref: RefObject<HTMLElement | null>) {
   }, [ref])
 }
 
-function Pfeil({ auf }: { auf: boolean }) {
-  return (
-    <svg className="kopf-reiter-pfeil" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ flex: 'none', transform: auf ? 'rotate(180deg)' : undefined }}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  )
-}
-
 /**
- * Kopf mit Reitern (Arbeits-App): Journal, Projekte, Mehr stehen nebeneinander.
- * Ein Klick klappt nur das Menü dieses Reiters auf, ein zweiter Klick oder ein Klick daneben klappt es zu.
- * Fixiert bleibt das Menü des Reiters, in dem man gerade ist, als schmale Leiste offen.
+ * Kopf mit festen Zielen (Arbeits-App): Jeder Reiter springt mit einem Klick an sein Ziel, nichts klappt auf.
+ * Am Handy sitzen die Ziele stattdessen unten in der Daumenleiste; oben bleiben nur Zurück, App, Lupe und Zahnrad.
  */
-function ReiterKopf({ app, gruppen, rechts, oben }: { app: string; gruppen: MenueGruppe[]; rechts?: ReactNode; oben?: string | null }) {
-  const schluessel = `rvx-${app}-menue-fixiert`
-  const [fixiert, setFixiert] = useState(() => lies(schluessel))
-  const [offen, setOffen] = useState<string | null>(null)
+function ZielKopf({ app, ziele, rechts, oben }: { app: string; ziele: KopfZiel[]; rechts?: ReactNode; oben?: string | null }) {
   const ref = useRef<HTMLElement>(null)
   useKopfHoehe(ref)
-
-  useEffect(() => {
-    if (!offen) return
-    const zu = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOffen(null)
-    }
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOffen(null)
-    addEventListener('pointerdown', zu)
-    addEventListener('keydown', esc)
-    return () => {
-      removeEventListener('pointerdown', zu)
-      removeEventListener('keydown', esc)
-    }
-  }, [offen])
-
-  // Nach einem Klick auf ein Ziel klappt das Menü wieder zu
-  useEffect(() => {
-    const f = () => setOffen(null)
-    addEventListener('hashchange', f)
-    return () => removeEventListener('hashchange', f)
-  }, [])
-
-  const nadel = () => {
-    const neu = !fixiert
-    setFixiert(neu)
-    setOffen(null)
-    try {
-      localStorage.setItem(schluessel, neu ? '1' : '0')
-    } catch {
-      /* ohne Speicher eben nur für diese Sitzung */
-    }
-  }
-
-  const aktiv = gruppen.find((g) => g.aktiv)?.titel ?? null
-  const gezeigt = offen ?? (fixiert ? aktiv : null)
-  const gruppe = gruppen.find((g) => g.titel === gezeigt)
-  const leiste = fixiert && !offen
-
   return (
     <header className="kopf" ref={ref}>
       <div className="kopf-zeile">
@@ -214,26 +165,13 @@ function ReiterKopf({ app, gruppen, rechts, oben }: { app: string; gruppen: Menu
           <ZurueckPfeil oben={oben} />
           <img className="kopf-logo" src={logo} alt="RespawnedNotes" />
           <AppSchalter app={app} />
-          <nav className="kopf-reiter" aria-label="Hauptmenü">
-            {gruppen.map((g) => {
-              const auf = gezeigt === g.titel
-              return (
-                <button
-                  key={g.titel}
-                  type="button"
-                  className={`kopf-reiter-knopf${g.aktiv ? ' aktiv' : ''}${auf ? ' auf' : ''}`}
-                  aria-expanded={auf}
-                  onClick={() => setOffen(offen === g.titel ? null : g.titel)}
-                  title={g.aktiv && g.ort ? g.ort : g.titel}
-                >
-                  <span className="kopf-reiter-text nur-breit">{g.aktiv && g.ort ? g.ort : g.titel}</span>
-                  <span className="kopf-reiter-text nur-schmal" aria-label={g.titel}>
-                    {g.kurz ?? g.titel}
-                  </span>
-                  <Pfeil auf={auf} />
-                </button>
-              )
-            })}
+          <nav className="kopf-reiter nur-breit" aria-label="Hauptmenü">
+            {ziele.map((z) => (
+              <a key={z.ziel} className={`kopf-reiter-knopf${z.aktiv ? ' aktiv' : ''}`} href={z.ziel} aria-current={z.aktiv ? 'page' : undefined}>
+                <span className="kopf-reiter-text">{z.titel}</span>
+                {!!z.zahl && <span className="kopf-zahl">{z.zahl}</span>}
+              </a>
+            ))}
           </nav>
         </div>
         <div className="kopf-rechts">
@@ -242,24 +180,6 @@ function ReiterKopf({ app, gruppen, rechts, oben }: { app: string; gruppen: Menu
           <Version />
         </div>
       </div>
-      {gruppe && (
-        <div className={`kopf-menue reiter${leiste ? ' fixiert' : ''}`}>
-          <div className="kopf-gruppe">
-            {gruppe.eintraege.map((e) => (
-              <Fragment key={e.ziel + e.titel}>
-                {e.abschnitt && !leiste && <div className="kopf-gruppe-titel">{e.abschnitt}</div>}
-                <a className={`kopf-eintrag${e.aktiv ? ' aktiv' : ''}${e.betont ? ' betont' : ''}`} href={e.ziel}>
-                  <span>{e.titel}</span>
-                  {e.zahl !== undefined && e.zahl !== 0 && <span className="zahl">{e.zahl}</span>}
-                </a>
-              </Fragment>
-            ))}
-          </div>
-          <button type="button" className="knopf still klein kopf-nadel" onClick={nadel} title={fixiert ? 'Menü lösen' : 'Menü des aktuellen Reiters immer zeigen'}>
-            {fixiert ? 'Lösen' : 'Fixieren'}
-          </button>
-        </div>
-      )}
     </header>
   )
 }
