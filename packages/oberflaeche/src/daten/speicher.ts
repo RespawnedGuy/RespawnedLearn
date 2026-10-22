@@ -190,6 +190,36 @@ export class Speicher {
     }
   }
 
+  /**
+   * Adresse eines Seitenbilds, das der Server aus dem PDF rechnet (schnell auch für riesige Pläne).
+   * Nur wenn das PDF schon auf dem Server liegt und das Gerät online ist; der Hash in der Adresse
+   * sorgt dafür, dass ein ersetztes PDF neue Bilder bekommt.
+   */
+  seitenbild(pfad: string, seite: number, breite: number): string | null {
+    const hash = this.fern.get(pfad)
+    if (!hash || !navigator.onLine || this.zustand === 'fehler') return null
+    return `${this.api}/seitenbild?pfad=${encodeURIComponent(pfad)}&seite=${seite}&breite=${breite}&v=${hash.slice(0, 12)}`
+  }
+
+  private infos = new Map<string, Promise<{ seiten: number; formate: number[] } | null>>()
+
+  /** Seitenzahl und Formate eines PDFs vom Server, ohne das PDF selbst zu laden; null, wenn das nicht geht */
+  pdfInfo(pfad: string): Promise<{ seiten: number; formate: number[] } | null> {
+    const hash = this.fern.get(pfad)
+    if (!hash || !navigator.onLine || this.zustand === 'fehler') return Promise.resolve(null)
+    const k = `${pfad}|${hash}`
+    let p = this.infos.get(k)
+    if (!p) {
+      p = fetch(`${this.api}/pdfinfo?pfad=${encodeURIComponent(pfad)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((i) => (i && i.seiten > 0 ? i : null))
+        .catch(() => null)
+      void p.then((i) => !i && this.infos.delete(k))
+      this.infos.set(k, p)
+    }
+    return p
+  }
+
   private get api() {
     return this.o.api ?? '/api'
   }

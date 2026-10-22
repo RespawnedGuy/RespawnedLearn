@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rvx/kern'
 import { useDaten } from '../daten/DatenKontext'
-import { ladePdf, seitenFormat, zeichneSeite, type PdfDokument } from './pdf'
+import { bildStufe, ladeBild, ladePdf, seitenFormat, zeichneSeite, type PdfDokument } from './pdf'
 import { TintenEbene, type Werkzeug } from './Tinte'
 import { useZweiFingerZoom } from './zoomGeste'
 
@@ -29,21 +29,39 @@ export interface PdfAnsichtProps {
   springeZu?: number
   /** Zoomen mit zwei Fingern (Faktor gegenüber dem bisherigen Zoom) */
   onZoom?: (faktor: number) => void
+  /** Seiten als Bilder vom Server statt mit pdf.js im Gerät (große Pläne); offline wie bisher mit pdf.js */
+  serverBilder?: boolean
 }
+
+/** Woher die Seiten kommen: Bilder vom Server oder das PDF selbst (pdf.js) */
+type Quelle = { art: 'bild' } | { art: 'pdf'; doc: PdfDokument }
 
 export function PdfAnsicht(p: PdfAnsichtProps) {
   const { speicher } = useDaten()
-  const [doc, setDoc] = useState<PdfDokument | null | undefined>(undefined)
+  const [quelle, setQuelle] = useState<Quelle | null | undefined>(undefined)
+  const [ohneBilder, setOhneBilder] = useState(false)
   const [formate, setFormate] = useState<number[]>([])
   const [breite, setBreite] = useState(0)
   const huelle = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let weg = false
-    setDoc(undefined)
-    ladePdf(speicher, p.pfad).then(async (d) => {
+    let spaeter: ReturnType<typeof setTimeout> | undefined
+    setQuelle(undefined)
+    void (async () => {
+      const info = p.serverBilder && !ohneBilder ? await speicher.pdfInfo(p.pfad) : null
       if (weg) return
-      setDoc(d)
+      if (info) {
+        setFormate(info.formate)
+        setQuelle({ art: 'bild' })
+        p.onSeiten?.(info.seiten)
+        // Das PDF selbst später im Hintergrund holen, damit der Plan auch offline geht
+        spaeter = setTimeout(() => void speicher.binaer(p.pfad), 5000)
+        return
+      }
+      const d = await ladePdf(speicher, p.pfad).catch(() => null)
+      if (weg) return
+      setQuelle(d ? { art: 'pdf', doc: d } : null)
       if (!d) return
       p.onSeiten?.(d.numPages)
       // Format der ersten Seite für alle annehmen, dann genau nachladen (Pläne haben oft gemischte Formate)
@@ -52,12 +70,13 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
       setFormate(Array.from({ length: d.numPages }, () => erstes))
       const alle = await Promise.all(Array.from({ length: d.numPages }, (_, i) => seitenFormat(d, i + 1)))
       if (!weg) setFormate(alle)
-    }, () => !weg && setDoc(null))
+    })()
     return () => {
       weg = true
+      clearTimeout(spaeter)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speicher, p.pfad])
+  }, [speicher, p.pfad, p.serverBilder, ohneBilder])
 
   useEffect(() => {
     const el = huelle.current
@@ -66,12 +85,12 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
     ro.observe(el)
     setBreite(el.clientWidth)
     return () => ro.disconnect()
-  }, [doc])
+  }, [quelle])
 
-  useZweiFingerZoom(huelle, p.onZoom, doc)
+  useZweiFingerZoom(huelle, p.onZoom, quelle)
 
-  if (doc === undefined) return <div className="leer">PDF wird geladen …</div>
-  if (doc === null) return <div className="leer">Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.</div>
+  if (quelle === undefined) return <div className="leer">PDF wird geladen …</div>
+  if (quelle === null) return <div className="leer">Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.</div>
 
   const eingepasst = p.maxHoehe && p.nurSeite ? p.maxHoehe / (formate[p.nurSeite - 1] ?? 1.414) : Infinity
   const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
@@ -81,15 +100,17 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
       <div className="pdf-seiten" data-zoomflaeche style={p.nurSeite ? { padding: 0 } : undefined}>
         {breite > 0 &&
           nummern.map((nr) => (
-            <Seite key={nr} {...p} doc={doc} nr={nr} format={formate[nr - 1] ?? 1.414} breite={seitenBreite} />
+            <Seite key={nr} {...p} quelle={quelle} aufPdf={() => setOhneBilder(true)} nr={nr} format={formate[nr - 1] ?? 1.414} breite={seitenBreite} />
           ))}
       </div>
     </div>
   )
 }
 
-function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: number; breite: number }) {
+function Seite(p: PdfAnsichtProps & { quelle: Quelle; aufPdf: () => void; nr: number; format: number; breite: number }) {
+  const { speicher } = useDaten()
   const canvas = useRef<HTMLCanvasElement>(null)
+  const doc = p.quelle.art === 'pdf' ? p.quelle.doc : null
   const el = useRef<HTMLDivElement>(null)
   const [sichtbar, setSichtbar] = useState(false)
 
@@ -104,15 +125,15 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
   const gezeichnet = useRef<{ doc: PdfDokument; breite: number } | null>(null)
   useEffect(() => {
     const c = canvas.current
-    if (!sichtbar || !c) return
+    if (!sichtbar || !c || !doc) return
     const g = gezeichnet.current
-    if (g && g.doc === p.doc && g.breite === p.breite) return
+    if (g && g.doc === doc && g.breite === p.breite) return
     // Beim Zoomen mit + / − kurz abwarten, ob noch ein Schritt kommt; bis dahin wird das alte Bild gestreckt
     let z: ReturnType<typeof zeichneSeite> | null = null
     const t = setTimeout(
       () => {
-        z = zeichneSeite(p.doc, p.nr, c, p.breite)
-        void z.fertig.then((ok) => ok && (gezeichnet.current = { doc: p.doc, breite: p.breite }))
+        z = zeichneSeite(doc, p.nr, c, p.breite)
+        void z.fertig.then((ok) => ok && (gezeichnet.current = { doc, breite: p.breite }))
       },
       g ? 250 : 0
     )
@@ -120,7 +141,31 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
       clearTimeout(t)
       z?.abbrechen()
     }
-  }, [sichtbar, p.doc, p.nr, p.breite])
+  }, [sichtbar, doc, p.nr, p.breite])
+
+  // Bilder vom Server: das passende erst laden, dann tauschen; bis dahin bleibt das alte (gestreckt) stehen
+  const [bild, setBild] = useState<string | null>(null)
+  useEffect(() => {
+    if (!sichtbar || doc) return
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const src = speicher.seitenbild(p.pfad, p.nr, bildStufe(p.breite * dpr))
+    if (!src || src === bild) return
+    let weg = false
+    const t = setTimeout(
+      () =>
+        void ladeBild(src).then(
+          () => !weg && setBild(src),
+          // Server kann die Seite nicht liefern: dann doch selbst zeichnen
+          () => !weg && !bild && p.aufPdf()
+        ),
+      bild ? 250 : 0
+    )
+    return () => {
+      weg = true
+      clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sichtbar, doc, p.pfad, p.nr, p.breite, bild])
 
   useEffect(() => {
     if (p.springeZu === p.nr) el.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -130,7 +175,7 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
   const alleNummern = new Map(p.marken.map((m, i) => [m.id, i + 1]))
   return (
     <div ref={el} className={`pdf-seite${p.werkzeug !== 'lesen' ? ' zeichnen' : ''}`} style={{ width: p.breite, height: p.breite * p.format }}>
-      <canvas ref={canvas} className="bild" />
+      {doc ? <canvas ref={canvas} className="bild" /> : bild ? <img src={bild} className="bild" alt="" draggable={false} /> : null}
       <TintenEbene
         pfad={pfade.tinte(p.app, p.anhangId, p.nr)}
         format={p.format}
