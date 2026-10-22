@@ -5,3 +5,4 @@ dist/
 # Testdaten für die lokale Entwicklung, nie einchecken
 /daten/
 /vaultwarden-leer/
+/plaene-eingang/
