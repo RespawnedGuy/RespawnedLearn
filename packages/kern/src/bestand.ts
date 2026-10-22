@@ -19,8 +19,16 @@ export interface Projekt {
   id: string
   kuerzel: string
   titel: string
+  /** Rohwert aus der Datei; für die Apps zählt nur `archiviert` */
   status: string
-  bereich: string
+  /** `archiviert` (oder alt `abgeschlossen`): aus Listen und Vorschlägen ausgeblendet */
+  archiviert: boolean
+  /** Tag `privat` (alt: `bereich: privat`) */
+  privat: boolean
+  /** Adresse des Objekts als Text */
+  adresse?: string
+  /** Tag der Anlage (JJJJ-MM-TT), falls bekannt */
+  erstellt?: string
   pfad: string
   /** Vaultwarden-Eintrag mit den Zugangsdaten (nur die ID) */
   zugang?: string
@@ -119,12 +127,16 @@ export class Bestand {
       this.dokumente.set(id, e)
       this.nachPfad.set(pfad, e)
       if (e.typ === 'projekt' && typeof f.kuerzel === 'string') {
+        const status = String(f.status ?? 'aktiv')
         this.projekte.push({
           id,
           kuerzel: f.kuerzel,
           titel: e.titel,
-          status: String(f.status ?? 'aktiv'),
-          bereich: String(f.bereich ?? 'beruf'),
+          status,
+          archiviert: status === 'archiviert' || status === 'abgeschlossen',
+          privat: f.bereich === 'privat' || (Array.isArray(f.tags) && f.tags.includes('privat')),
+          adresse: typeof f.adresse === 'string' && f.adresse.trim() ? f.adresse.trim() : undefined,
+          erstellt: typeof f.erstellt === 'string' ? f.erstellt.slice(0, 10) : undefined,
           pfad,
           zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined,
           favorit: f.favorit === true
