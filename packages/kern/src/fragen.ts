@@ -4,17 +4,31 @@
 import type { Bestand } from './bestand'
 import type { Lesestand } from './module'
 
-export type FragenArt = 'verstaendnis' | 'sokratisch'
+export type FragenArt = 'verstaendnis' | 'sokratisch' | 'rechnen'
+const ARTEN: FragenArt[] = ['verstaendnis', 'sokratisch', 'rechnen']
+
+/** Ein Schritt eines Lösungswegs: erst das Teilziel, dann die Rechnung */
+export interface Schritt {
+  ziel: string
+  rechnung: string
+  ergebnis: string
+}
 
 export interface KapitelFrage {
   /** eindeutig innerhalb des Kapitels, z. B. `12-1` oder `kapitel-1` */
   id: string
   art: FragenArt
   frage: string
-  /** erwartete Antwort; bei sokratischen Fragen Denkanstöße */
+  /** erwartete Antwort; bei sokratischen Fragen Denkanstöße, bei Rechenaufgaben nur das Endergebnis */
   antwort: string
   /** PDF-Seite, auf der der Stoff steht */
   seite: number
+  /** nur Rechenaufgaben: gestufte Hinweise ohne Zahlen */
+  tipps?: string[]
+  /** nur Rechenaufgaben: ein möglicher Lösungsweg */
+  schritte?: Schritt[]
+  /** nur Rechenaufgaben: andere sinnvolle Wege in Worten */
+  wege?: string
 }
 
 export interface KapitelFragen {
@@ -43,9 +57,17 @@ export function liesKapitelFragen(pfad: string, text: string): KapitelFragen | n
   try {
     const j = JSON.parse(text) as Partial<KapitelFragen>
     if (typeof j.anhang !== 'string' || typeof j.von !== 'number') return null
-    const fragen = (Array.isArray(j.fragen) ? j.fragen : []).filter(
-      (q): q is KapitelFrage => !!q && typeof q.id === 'string' && typeof q.frage === 'string' && (q.art === 'verstaendnis' || q.art === 'sokratisch')
-    )
+    const fragen = (Array.isArray(j.fragen) ? j.fragen : [])
+      .filter((q): q is KapitelFrage => !!q && typeof q.id === 'string' && typeof q.frage === 'string' && ARTEN.includes(q.art))
+      .map((q) =>
+        q.art !== 'rechnen'
+          ? q
+          : {
+              ...q,
+              tipps: (Array.isArray(q.tipps) ? q.tipps : []).filter((t) => typeof t === 'string' && t.trim()),
+              schritte: (Array.isArray(q.schritte) ? q.schritte : []).filter((x) => !!x && typeof x.ziel === 'string').map((x) => ({ ziel: x.ziel, rechnung: String(x.rechnung ?? ''), ergebnis: String(x.ergebnis ?? '') }))
+            }
+      )
     return { pfad, anhang: j.anhang, kapitel: String(j.kapitel ?? ''), von: j.von, bis: typeof j.bis === 'number' ? j.bis : j.von, status: j.status ?? 'laeuft', fehler: j.fehler, fragen }
   } catch {
     return null
@@ -104,4 +126,51 @@ export function offeneFragen(b: Bestand, stand: Lesestand, erledigt: FragenStand
   }
   out.sort((x, y) => y.am.localeCompare(x.am) || x.anhang.localeCompare(y.anhang) || x.seite - y.seite || x.id.localeCompare(y.id))
   return out.map(({ am: _am, ...q }) => q)
+}
+
+/**
+ * Hilfe in Stufen für eine Rechenaufgabe: erst die Tipps, dann pro Schritt das Teilziel und danach seine Rechnung.
+ * So deckt man nur so viel vom Weg auf, wie man gerade braucht.
+ */
+export type Hilfe = { art: 'tipp'; nr: number; text: string } | { art: 'ziel' | 'rechnung'; nr: number; schritt: Schritt }
+
+export function hilfeStufen(q: Pick<KapitelFrage, 'tipps' | 'schritte'>): Hilfe[] {
+  const out: Hilfe[] = (q.tipps ?? []).map((text, i) => ({ art: 'tipp', nr: i + 1, text }))
+  ;(q.schritte ?? []).forEach((schritt, i) => out.push({ art: 'ziel', nr: i + 1, schritt }, { art: 'rechnung', nr: i + 1, schritt }))
+  return out
+}
+
+/** Lösungsweg als Text, z. B. für die Antwort einer Lernkarte */
+export function loesungsweg(q: Pick<KapitelFrage, 'antwort' | 'schritte' | 'wege'>): string {
+  const schritte = (q.schritte ?? []).map((x) => `- ${x.ziel}: ${x.rechnung}${x.ergebnis ? ` → ${x.ergebnis}` : ''}`)
+  return [`Ergebnis: ${q.antwort}`, ...(schritte.length ? ['', 'Ein Lösungsweg:', ...schritte] : []), ...(q.wege ? ['', `Andere Wege: ${q.wege}`] : [])].join('\n')
+}
+
+// ---------- Vorfragen vor dem Lernen (Vertrag 5.8) ----------
+
+export interface Vorfrage {
+  id: string
+  anhang: string
+  seite: number
+  frage: string
+  antwort: string
+}
+
+export interface Vorfragen {
+  datum: string
+  erstellt: string
+  buecher: { anhang: string; titel: string; ab: number; bis: number; kapitel: string }[]
+  fragen: Vorfrage[]
+}
+
+export function liesVorfragen(text: string | undefined): Vorfragen | null {
+  if (!text) return null
+  try {
+    const j = JSON.parse(text) as Partial<Vorfragen>
+    if (typeof j.datum !== 'string' || !Array.isArray(j.fragen)) return null
+    const fragen = j.fragen.filter((q): q is Vorfrage => !!q && typeof q.frage === 'string' && typeof q.anhang === 'string')
+    return { datum: j.datum, erstellt: String(j.erstellt ?? ''), buecher: Array.isArray(j.buecher) ? j.buecher : [], fragen }
+  } catch {
+    return null
+  }
 }

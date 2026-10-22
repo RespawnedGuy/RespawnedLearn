@@ -32,6 +32,8 @@ export const pfade = {
   fragen: (anhangId: string, seite: number) => `lernen/fragen/${anhangId}/S${drei(seite)}.json`,
   /** Welche Kapitelfragen ein Gerät erledigt hat */
   fragenStand: (geraet: string) => `lernen/fragen-stand/${geraet}.json`,
+  /** Vorfragen eines Tages zu den nächsten Seiten (schreibt der Server auf Knopfdruck) */
+  vorfragen: (datum: string) => `lernen/vorfragen/${datum}.json`,
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 

@@ -40,6 +40,16 @@
 .lern-karte .frage .inhalt { font-size: inherit; line-height: inherit; }
 .inhalt ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .antwort { border-top: 1px solid var(--linie); padding-top: 14px; font-size: 17px; }
+.abruf-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--linie); border-radius: 12px; background: #fbfafe; font: inherit; font-size: 17px; line-height: 1.45; resize: vertical; }
+.rueckmeldung-huelle { display: flex; flex-direction: column; gap: 10px; }
+.rueckmeldung-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rueckmeldung { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; border-left: 4px solid var(--linie); background: #f7f6fa; font-size: 16px; }
+.rueckmeldung.richtig { border-left-color: #2F9E5B; }
+.rueckmeldung.teilweise { border-left-color: #D99A1E; }
+.rueckmeldung.falsch { border-left-color: #E0443A; }
+.rueckmeldung-titel { display: block; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; color: var(--akzent-text); text-transform: uppercase; }
+.hilfe { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #f7f4fd; font-size: 16px; }
+.hilfe-schritt { display: flex; flex-direction: column; gap: 2px; }
 
 /* Nutzen */
 .nutzen-seite { display: flex; flex-direction: column; align-items: center; padding: 36px 24px; gap: 24px; }

@@ -28,3 +28,45 @@ export async function korrigiere(text: string): Promise<string | null> {
   const neu = r?.text?.trim()
   return neu && neu !== text.trim() ? neu : null
 }
+
+export interface Rueckmeldung {
+  urteil: 'richtig' | 'teilweise' | 'falsch' | 'leer'
+  gelesen: string
+  richtig: string[]
+  fehlt: string[]
+  fehler: string[]
+  tipp: string
+}
+
+/** KI-Rückmeldung auf die eigene Antwort (Handschrift als Bild und/oder getippt); null ohne KI oder Netz */
+export function rueckmeldung(daten: { art: string; frage: string; muster: string; antwort: string; bild: string | null }, signal?: AbortSignal): Promise<Rueckmeldung | null> {
+  return frageServer<Rueckmeldung>('rueckmeldung', daten, signal)
+}
+
+/** Handschrift der Schreibfläche als PNG (weißer Grund); null, wenn nichts geschrieben ist */
+export async function schriftBild(huelle: HTMLElement | null): Promise<string | null> {
+  const svg = huelle?.querySelector('svg')
+  if (!svg || !svg.querySelector('path')) return null
+  const [, , b, h] = (svg.getAttribute('viewBox') ?? '0 0 1000 320').split(' ').map(Number)
+  const kopie = svg.cloneNode(true) as SVGSVGElement
+  kopie.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  kopie.setAttribute('width', String(b))
+  kopie.setAttribute('height', String(h))
+  kopie.removeAttribute('style')
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(kopie)], { type: 'image/svg+xml' }))
+  try {
+    const bild = new Image()
+    bild.src = url
+    await bild.decode()
+    const c = document.createElement('canvas')
+    c.width = b
+    c.height = h
+    const g = c.getContext('2d')!
+    g.fillStyle = '#fff'
+    g.fillRect(0, 0, b, h)
+    g.drawImage(bild, 0, 0, b, h)
+    return c.toDataURL('image/png')
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}

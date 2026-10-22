@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import type { Farbe, Note } from '@rvx/kern'
-import { TintenEbene, ortLink, useDaten } from '@rvx/oberflaeche'
+import type { Note } from '@rvx/kern'
+import { ortLink, useDaten } from '@rvx/oberflaeche'
+import { Abrufflaeche, KiRueckmeldung, useAbruf, type Abruf } from './Abruf'
 import { Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
 import { Eintraege } from './Eintraege'
 import { FragenHinweis, KapitelFragen } from './Fragen'
+import { Vorfragen, VorfragenHinweis } from './Vorfragen'
 import { bewerte, faellige, lernkarten, type Lernkarte } from './wissen'
 
 const SICHER = [
@@ -26,6 +28,7 @@ function AlleKarten({ hinweis }: { hinweis?: string }) {
   const karten = lernkarten(bestand).map((k) => k.e)
   return (
     <div className="lernen-seite">
+      <VorfragenHinweis />
       <FragenHinweis />
       {hinweis && (
         <div className="leer" style={{ padding: '16px 0 0' }}>
@@ -59,12 +62,10 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
   const [sicher, setSicher] = useState<string | null>(null)
   const [offen, setOffen] = useState(false)
   const [bearbeiten, setBearbeiten] = useState(false)
-  const [farbe] = useState<Farbe>('alltag')
-  const [radieren, setRadieren] = useState(false)
-  const [leer, setLeer] = useState(0)
   const k = runde[i]
 
   if (ansicht === 'fragen') return <KapitelFragen />
+  if (ansicht === 'vorfragen') return <Vorfragen />
   if (ansicht === 'alle') return <AlleKarten />
   if (!runde.length) return <AlleKarten hinweis="Heute ist nichts fällig. Hier sind alle deine Karten." />
   if (!k) return <AlleKarten hinweis={`Runde geschafft: ${runde.length} Karten. Morgen geht es weiter.`} />
@@ -80,12 +81,12 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
     setI(i + 1)
     setSicher(null)
     setOffen(false)
-    setRadieren(false)
     setBearbeiten(false)
   }
 
   return (
     <div className="lernen-seite">
+      <VorfragenHinweis />
       <FragenHinweis />
       <div className="fortschritt" aria-label={`Karte ${i + 1} von ${runde.length}`}>
         {runde.map((_, n) => (
@@ -115,26 +116,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
             ))}
           </div>
         )}
-        {/* Schreibfläche zum Abrufen: wird nicht gespeichert, es zählt das Abrufen selbst */}
-        {!offen && (
-          <div className="schreibflaeche-huelle">
-            <div className="schreibflaeche pdf-seite zeichnen">
-              <TintenEbene key={`${i}-${leer}`} pfad="" format={0.32} werkzeug={radieren ? 'radierer' : 'stift'} farbe={farbe} fluechtig />
-            </div>
-            {/* Radieren auch ohne Stiftrückseite */}
-            <div className="schreib-werkzeug" role="toolbar" aria-label="Schreibfläche">
-              <button type="button" className={`knopf klein${!radieren ? ' haupt' : ''}`} onClick={() => setRadieren(false)}>
-                Stift
-              </button>
-              <button type="button" className={`knopf klein${radieren ? ' haupt' : ''}`} onClick={() => setRadieren(true)}>
-                Radierer
-              </button>
-              <button type="button" className="knopf klein still" onClick={() => setLeer(leer + 1)}>
-                Leeren
-              </button>
-            </div>
-          </div>
-        )}
+        <KartenAbruf key={i} frage={frage} antwort={antwort} offen={offen} />
         {offen && !bearbeiten && (
           <div className="antwort">
             <Inhalt text={antwort} />
@@ -159,7 +141,18 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
           )}
         </div>
       </article>
-      <p className="klein-leise">Weitere Aufgabenarten (Rechnen, Lückentext, Multiple Choice, Erklären) erzeugt später die Pipeline aus deinen Karten.</p>
     </div>
+  )
+}
+
+/** Schreibfläche einer Lernkarte; die KI-Rückmeldung nur, wenn die Antwort Text hat (nicht nur ein Ausschnitt als Bild) */
+function KartenAbruf({ frage, antwort, offen }: { frage: string; antwort: string; offen: boolean }) {
+  const abruf: Abruf = useAbruf()
+  const mitText = antwort.replace(/!?\[\[[^\]]*\]\]/g, '').trim().length >= 15
+  return (
+    <>
+      {!offen && <Abrufflaeche abruf={abruf} />}
+      {mitText && <KiRueckmeldung abruf={abruf} art="karte" frage={frage} muster={antwort} fest={offen} />}
+    </>
   )
 }

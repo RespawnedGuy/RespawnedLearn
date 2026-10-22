@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { fragenStand, lesestand, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type Farbe, type OffeneFrage, type Wert } from '@rvx/kern'
-import { TintenEbene, geraet, ortLink, useDaten, type Speicher } from '@rvx/oberflaeche'
+import { fragenStand, hilfeStufen, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rvx/kern'
+import { geraet, ortLink, useDaten, type Speicher } from '@rvx/oberflaeche'
+import { Abrufflaeche, KiRueckmeldung, useAbruf } from './Abruf'
 import { Inhalt } from './Inhalt'
 
 interface KiStand {
@@ -60,7 +61,8 @@ export function FragenHinweis() {
 
 const ART: Record<OffeneFrage['art'], { name: string; zeigen: string }> = {
   verstaendnis: { name: 'VERSTÄNDNISFRAGE', zeigen: 'Antwort prüfen' },
-  sokratisch: { name: 'SOKRATISCHE FRAGE', zeigen: 'Denkanstöße zeigen' }
+  sokratisch: { name: 'SOKRATISCHE FRAGE', zeigen: 'Denkanstöße zeigen' },
+  rechnen: { name: 'RECHENAUFGABE', zeigen: 'Ergebnis prüfen' }
 }
 
 function merke(speicher: Speicher, q: OffeneFrage, wie: 'erledigt' | 'karte', karte?: string) {
@@ -80,7 +82,7 @@ async function alsKarte(speicher: Speicher, q: OffeneFrage, buch: string): Promi
     ['titel', titel],
     ['quelle', `[[${q.anhang}]]`]
   ]
-  const antwort = q.antwort.trim().replace(/\n\s*\n/g, '\n')
+  const antwort = (q.art === 'rechnen' ? loesungsweg(q) : q.antwort).trim().replace(/\n\s*\n/g, '\n')
   const rumpf = `?? ${q.frage.replace(/\n/g, ' ')}\n:: ${antwort}\n\nAus [[${q.anhang}#seite=${q.seite}|${buch.replace(/[\]|]/g, '')}, S. ${q.seite}]]\n`
   await speicher.schreibe(pfade.karte(id), neuesDokument(kopf, rumpf))
   return id
@@ -97,16 +99,15 @@ export function KapitelFragen() {
   const [reihe] = useState(() => offeneFragen(bestand, lesestand(bestand)))
   const [i, setI] = useState(0)
   const [offen, setOffen] = useState(false)
-  const [radieren, setRadieren] = useState(false)
-  const [leer, setLeer] = useState(0)
-  const [farbe] = useState<Farbe>('alltag')
+  /** Rechenaufgaben: wie viele Hilfestufen aufgedeckt sind */
+  const [stufe, setStufe] = useState(0)
   const q = reihe[i]
   const erledigt = fragenStand(bestand)
 
   const weiter = () => {
     setI(i + 1)
     setOffen(false)
-    setRadieren(false)
+    setStufe(0)
   }
 
   if (!q) {
@@ -132,6 +133,8 @@ export function KapitelFragen() {
 
   const buch = bestand.dokumente.get(q.anhang)?.titel ?? 'Buch'
   const schonErledigt = !!erledigt[q.schluessel]
+  // eine Rechenaufgabe ist durch, wenn das Ergebnis geprüft oder der ganze Weg aufgedeckt ist
+  const durch = offen || (q.art === 'rechnen' && stufe > 0 && stufe >= hilfeStufen(q).length)
 
   return (
     <div className="lernen-seite">
@@ -150,30 +153,7 @@ export function KapitelFragen() {
         <div className="frage">
           <Inhalt text={q.frage} />
         </div>
-        {!offen && (
-          <div className="schreibflaeche-huelle">
-            <span className="klein-leise">{q.art === 'sokratisch' ? 'Denk laut auf dem Blatt: Was spricht dafür, was dagegen?' : 'Erst aus dem Gedächtnis antworten, in eigenen Worten.'}</span>
-            <div className="schreibflaeche pdf-seite zeichnen">
-              <TintenEbene key={`${i}-${leer}`} pfad="" format={0.32} werkzeug={radieren ? 'radierer' : 'stift'} farbe={farbe} fluechtig />
-            </div>
-            <div className="schreib-werkzeug" role="toolbar" aria-label="Schreibfläche">
-              <button type="button" className={`knopf klein${!radieren ? ' haupt' : ''}`} onClick={() => setRadieren(false)}>
-                Stift
-              </button>
-              <button type="button" className={`knopf klein${radieren ? ' haupt' : ''}`} onClick={() => setRadieren(true)}>
-                Radierer
-              </button>
-              <button type="button" className="knopf klein still" onClick={() => setLeer(leer + 1)}>
-                Leeren
-              </button>
-            </div>
-          </div>
-        )}
-        {offen && (
-          <div className="antwort">
-            <Inhalt text={q.antwort} />
-          </div>
-        )}
+        <FrageInhalt key={i} q={q} offen={offen} stufe={stufe} setStufe={setStufe} />
         <div className="klein-leise">
           {q.kapitel} ·{' '}
           <a href={ortLink('sammeln', q.anhang, q.seite)}>
@@ -184,7 +164,7 @@ export function KapitelFragen() {
           <button type="button" className="knopf still" style={{ height: 48, marginRight: 'auto' }} onClick={weiter}>
             Später
           </button>
-          {!offen ? (
+          {!durch ? (
             <button type="button" className="knopf haupt" style={{ height: 48 }} onClick={() => setOffen(true)}>
               {ART[q.art].zeigen}
             </button>
@@ -220,5 +200,79 @@ export function KapitelFragen() {
       </article>
       <p className="klein-leise">Die Fragen erzeugt eine KI aus dem Text des Kapitels. Stimmt etwas nicht, prüfe die Stelle im Buch.</p>
     </div>
+  )
+}
+
+/** Rechnung samt Zwischenergebnis; steht das Ergebnis schon am Ende der Rechnung, nicht doppelt */
+const knapp = (t: string) => t.replace(/[\s$]/g, '')
+const mitErgebnis = (rechnung: string, ergebnis: string) => (!ergebnis || knapp(rechnung).endsWith(knapp(ergebnis)) ? rechnung : `${rechnung} → ${ergebnis}`)
+
+const HILFE_KNOPF = { tipp: 'Tipp', ziel: 'Nächstes Teilziel', rechnung: 'Rechnung zeigen' } as const
+
+/**
+ * Schreibfläche, Rückmeldung und Lösung einer Frage. Rechenaufgaben: Die Fläche bleibt stehen, Hilfe gibt es in
+ * Stufen (Tipps, dann je Schritt erst das Teilziel, dann die Rechnung), das Ergebnis lässt sich für sich prüfen.
+ * Der gezeigte Weg ist einer von mehreren; den eigenen prüft die KI-Rückmeldung.
+ */
+function FrageInhalt({ q, offen, stufe, setStufe }: { q: OffeneFrage; offen: boolean; stufe: number; setStufe: (n: number) => void }) {
+  const abruf = useAbruf()
+  const rechnen = q.art === 'rechnen'
+  const stufen = rechnen ? hilfeStufen(q) : []
+  const gezeigt = stufen.slice(0, stufe)
+  const naechste = stufen[stufe]
+  const schritte = gezeigt.filter((h) => h.art !== 'tipp')
+  return (
+    <>
+      {(!offen || rechnen) && (
+        <Abrufflaeche
+          abruf={abruf}
+          format={rechnen ? 0.6 : 0.32}
+          hinweis={rechnen ? 'Rechne auf dem Blatt. Hilfe gibt es in Stufen, nur so viel wie du brauchst.' : q.art === 'sokratisch' ? 'Denk laut auf dem Blatt: Was spricht dafür, was dagegen?' : 'Erst aus dem Gedächtnis antworten, in eigenen Worten.'}
+        />
+      )}
+      <KiRueckmeldung
+        abruf={abruf}
+        art={q.art}
+        frage={q.frage}
+        muster={rechnen ? loesungsweg(q) : q.antwort}
+        knopf={rechnen ? 'Meinen Weg prüfen' : 'Rückmeldung'}
+        fest={offen && !rechnen}
+        extra={
+          naechste && (
+            <button type="button" className="knopf klein" onClick={() => setStufe(stufe + 1)}>
+              {HILFE_KNOPF[naechste.art]}
+              {naechste.art === 'tipp' && stufen.filter((h) => h.art === 'tipp').length > 1 ? ` ${naechste.nr}` : ''}
+            </button>
+          )
+        }
+      />
+      {gezeigt.length > 0 && (
+        <div className="hilfe">
+          {gezeigt.map((h) =>
+            h.art === 'tipp' ? (
+              <div key={`t${h.nr}`} className="hilfe-tipp">
+                <span className="rueckmeldung-titel">Tipp</span>
+                <Inhalt text={h.text} />
+              </div>
+            ) : null
+          )}
+          {schritte.some((h) => h.art === 'ziel') && <span className="rueckmeldung-titel">Ein möglicher Weg</span>}
+          {schritte
+            .filter((h) => h.art === 'ziel')
+            .map((h) => (
+              <div key={`s${h.nr}`} className="hilfe-schritt">
+                <Inhalt text={`${h.nr}. ${h.schritt.ziel}`} />
+                {schritte.some((x) => x.art === 'rechnung' && x.nr === h.nr) && <Inhalt text={mitErgebnis(h.schritt.rechnung, h.schritt.ergebnis)} />}
+              </div>
+            ))}
+        </div>
+      )}
+      {offen && (
+        <div className="antwort">
+          {rechnen ? <Inhalt text={`Ergebnis: ${q.antwort}`} /> : <Inhalt text={q.antwort} />}
+        </div>
+      )}
+      {rechnen && q.wege && (offen || (stufe > 0 && stufe >= stufen.length)) && <p className="klein-leise">Andere Wege: {q.wege}</p>}
+    </>
   )
 }

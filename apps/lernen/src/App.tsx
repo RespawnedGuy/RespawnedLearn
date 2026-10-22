@@ -28,7 +28,8 @@ export function App() {
     {
       titel: 'Bereiche',
       eintraege: [
-        ...BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id && ort[1] !== 'fragen', zahl: id === 'lernen' ? faellig : undefined })),
+        ...BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id && ort[1] !== 'fragen' && ort[1] !== 'vorfragen', zahl: id === 'lernen' ? faellig : undefined })),
+        { titel: 'Vorfragen', ziel: ortLink('lernen', 'vorfragen'), aktiv: bereich === 'lernen' && ort[1] === 'vorfragen' },
         ...(fragen ? [{ titel: 'Fragen zum Kapitel', ziel: ortLink('lernen', 'fragen'), aktiv: bereich === 'lernen' && ort[1] === 'fragen', zahl: fragen }] : [])
       ]
     },
