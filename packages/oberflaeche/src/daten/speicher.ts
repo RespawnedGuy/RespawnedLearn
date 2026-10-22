@@ -18,7 +18,11 @@ interface BinaerEintrag {
   blob: Blob
   basis: string | null
   lokal: boolean
+  /** Wann die Datei auf diesem Gerät zuletzt gebraucht wurde (ms); fehlt bei älteren Einträgen */
+  zuletzt?: number
 }
+
+const TAG_MS = 24 * 3600_000
 
 export type SyncZustand = 'bereit' | 'laeuft' | 'offline' | 'fehler'
 
@@ -178,16 +182,63 @@ export class Speicher {
   async binaer(pfad: string): Promise<Blob | null> {
     const e = (await anfrage(this.db.transaction('binaer').objectStore('binaer').get(pfad))) as BinaerEintrag | undefined
     const fernHash = this.fern.get(pfad)
-    if (e && (e.lokal || !fernHash || e.basis === fernHash || !navigator.onLine)) return e.blob
+    if (e && (e.lokal || !fernHash || e.basis === fernHash || !navigator.onLine)) {
+      // Für das Aufräumen merken, dass die Datei gebraucht wird (höchstens einmal am Tag schreiben)
+      if (!e.zuletzt || Date.now() - e.zuletzt > TAG_MS) await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ ...e, zuletzt: Date.now() }))
+      return e.blob
+    }
     try {
       const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`)
       if (!r.ok) return e?.blob ?? null
       const blob = await r.blob()
-      await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ pfad, blob, basis: r.headers.get('x-hash'), lokal: false } satisfies BinaerEintrag))
+      await anfrage(
+        this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ pfad, blob, basis: r.headers.get('x-hash'), lokal: false, zuletzt: Date.now() } satisfies BinaerEintrag)
+      )
       return blob
     } catch {
       return e?.blob ?? null
     }
+  }
+
+  /** Original auf dem Server und hier löschen (nur für Anhänge ohne eingehende Links, Vertrag 7) */
+  async entferneOriginal(pfad: string): Promise<boolean> {
+    const basis = this.fern.get(pfad)
+    if (basis) {
+      const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`, { method: 'DELETE', headers: { 'x-basis': basis } }).catch(() => null)
+      if (!r?.ok) return false
+      this.fern.delete(pfad)
+    }
+    await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').delete(pfad))
+    return true
+  }
+
+  /** Liegt die Datei schon auf diesem Gerät, und zwar im Stand des Servers? */
+  async hatBinaer(pfad: string): Promise<boolean> {
+    const e = (await anfrage(this.db.transaction('binaer').objectStore('binaer').get(pfad))) as BinaerEintrag | undefined
+    const fernHash = this.fern.get(pfad)
+    return !!e && (e.lokal || !fernHash || e.basis === fernHash)
+  }
+
+  /**
+   * Räumt Originale vom Gerät, die länger als `tage` nicht gebraucht wurden. Sie liegen weiter auf dem Server
+   * und kommen beim nächsten Öffnen von dort. Nie gelöscht wird, was noch nicht hochgeladen ist oder in
+   * `behalten` steht (Pläne der Projekte mit Stern). Gibt die frei gewordenen Bytes zurück.
+   */
+  async aufraeumen(behalten: Set<string>, tage = 90): Promise<number> {
+    const grenze = Date.now() - tage * TAG_MS
+    const alle = (await anfrage(this.db.transaction('binaer').objectStore('binaer').getAll() as IDBRequest<BinaerEintrag[]>)) ?? []
+    let frei = 0
+    for (const e of alle) {
+      if (e.lokal || behalten.has(e.pfad)) continue
+      const store = this.db.transaction('binaer', 'readwrite').objectStore('binaer')
+      // Ältere Einträge ohne Zeit zählen ab heute, damit nichts sofort verschwindet
+      if (!e.zuletzt) await anfrage(store.put({ ...e, zuletzt: Date.now() }))
+      else if (e.zuletzt < grenze) {
+        await anfrage(store.delete(e.pfad))
+        frei += e.blob.size
+      }
+    }
+    return frei
   }
 
   /**

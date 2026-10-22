@@ -31,6 +31,10 @@ export interface PdfAnsichtProps {
   onZoom?: (faktor: number) => void
   /** Seiten als Bilder vom Server statt mit pdf.js im Gerät (große Pläne); offline wie bisher mit pdf.js */
   serverBilder?: boolean
+  /** Das PDF im Hintergrund aufs Gerät holen, damit es offline geht (Standard); false = nur online ansehen */
+  vorhalten?: boolean
+  /** Text, wenn das PDF offline nicht auf dem Gerät liegt */
+  ohnePdf?: string
 }
 
 /** Woher die Seiten kommen: Bilder vom Server oder das PDF selbst (pdf.js) */
@@ -56,7 +60,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
         setQuelle({ art: 'bild' })
         p.onSeiten?.(info.seiten)
         // Das PDF selbst später im Hintergrund holen, damit der Plan auch offline geht
-        spaeter = setTimeout(() => void speicher.binaer(p.pfad), 5000)
+        if (p.vorhalten !== false) spaeter = setTimeout(() => void speicher.binaer(p.pfad), 5000)
         return
       }
       const d = await ladePdf(speicher, p.pfad).catch(() => null)
@@ -76,7 +80,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
       clearTimeout(spaeter)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speicher, p.pfad, p.serverBilder, ohneBilder])
+  }, [speicher, p.pfad, p.serverBilder, p.vorhalten, ohneBilder])
 
   useEffect(() => {
     const el = huelle.current
@@ -90,7 +94,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   useZweiFingerZoom(huelle, p.onZoom, quelle)
 
   if (quelle === undefined) return <div className="leer">PDF wird geladen …</div>
-  if (quelle === null) return <div className="leer">Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.</div>
+  if (quelle === null) return <div className="leer">{p.ohnePdf ?? 'Das PDF ist auf diesem Gerät noch nicht verfügbar. Sobald der Server erreichbar ist, wird es geladen.'}</div>
 
   const eingepasst = p.maxHoehe && p.nurSeite ? p.maxHoehe / (formate[p.nurSeite - 1] ?? 1.414) : Infinity
   const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
