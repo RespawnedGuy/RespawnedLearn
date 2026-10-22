@@ -18,6 +18,8 @@ export interface DarstellungHilfen {
   zustand?(id: string): string | null
   /** Fotos in der Notiz einer Aufgabe; sie stehen im Journal klein direkt hinter dem Aufgabenlink */
   aufgabeBilder?(id: string): string[]
+  /** Aufnahme eines Anhangs (Sprachnotiz), null bei allem, was kein Audio ist */
+  ton?(id: string): (() => Promise<string | null>) | null
 }
 
 /** Neu zeichnen, ohne dass sich der Text geändert hat (z. B. eine Aufgabe wurde im Popup erledigt) */
@@ -191,6 +193,46 @@ class Bild extends WidgetType {
   }
 }
 
+/** Sprachnotiz: kleiner Abspieler. Geladen wird erst beim Antippen, damit das Journal nicht alles herunterlädt. */
+class Ton extends WidgetType {
+  constructor(readonly id: string, readonly titel: string, readonly laden: () => Promise<string | null>) {
+    super()
+  }
+  eq(o: Ton) {
+    return o.id === this.id && o.titel === this.titel
+  }
+  toDOM() {
+    const s = document.createElement('span')
+    s.className = 'cm-ton'
+    const knopf = document.createElement('button')
+    knopf.type = 'button'
+    knopf.textContent = `▶ ${this.titel}`
+    knopf.setAttribute('aria-label', `${this.titel} abspielen`)
+    knopf.addEventListener('mousedown', (e) => e.preventDefault())
+    knopf.addEventListener('click', () => {
+      knopf.disabled = true
+      knopf.textContent = `… ${this.titel}`
+      void this.laden().then((url) => {
+        if (!url) {
+          knopf.disabled = false
+          knopf.textContent = `▶ ${this.titel} (noch nicht da)`
+          return
+        }
+        const a = document.createElement('audio')
+        a.controls = true
+        a.src = url
+        knopf.replaceWith(a)
+        void a.play().catch(() => undefined)
+      })
+    })
+    s.append(knopf)
+    return s
+  }
+  ignoreEvent() {
+    return true
+  }
+}
+
 class Wissen extends WidgetType {
   constructor(readonly titel: string, readonly text: string, readonly klick: () => void) {
     super()
@@ -299,6 +341,8 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       } else if (l.einbettung && h.wissen(l.ziel)) {
         const wi = h.wissen(l.ziel)!
         w = new Wissen(wi.titel, wi.text, () => h.oeffne(l))
+      } else if (l.einbettung && h.ton?.(l.ziel)) {
+        w = new Ton(l.ziel, l.anzeige ?? h.titel(l.ziel) ?? 'Aufnahme', h.ton(l.ziel)!)
       } else if (l.einbettung) {
         w = new Bild(`${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
       } else {

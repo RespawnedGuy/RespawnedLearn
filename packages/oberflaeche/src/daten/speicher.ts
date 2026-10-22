@@ -72,6 +72,8 @@ export class Speicher {
   zustand: SyncZustand = 'bereit'
   letzterFehler = ''
   version = 0
+  /** Zeit des letzten vollständigen Abgleichs (0 = seit dem Start noch keiner): erst dann ist der Stand des Servers bekannt */
+  abgeglichen = 0
 
   constructor(private o: SpeicherOptionen) {}
 
@@ -292,6 +294,7 @@ export class Speicher {
 
       this.zustand = 'bereit'
       this.letzterFehler = ''
+      this.abgeglichen = Date.now()
     } catch (err) {
       this.zustand = navigator.onLine ? 'fehler' : 'offline'
       this.letzterFehler = String((err as Error)?.message ?? err)

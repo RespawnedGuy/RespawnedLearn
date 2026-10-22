@@ -55,6 +55,23 @@ export function bildUrl(speicher: Speicher, bestand: Bestand, id: string): Promi
   return p
 }
 
+const toene = new Map<string, Promise<string | null>>()
+
+/** Objekt-URL für eine Aufnahme (Sprachnotiz), erst beim Abspielen geladen und danach offline da */
+export function tonUrl(speicher: Speicher, bestand: Bestand, id: string): Promise<string | null> {
+  const pfad = bestand.dokumente.get(id)?.felder.datei
+  if (typeof pfad !== 'string') return Promise.resolve(null)
+  let p = toene.get(pfad)
+  if (!p) {
+    p = speicher.binaer(pfad).then((b) => {
+      if (!b) toene.delete(pfad)
+      return b ? URL.createObjectURL(b) : null
+    })
+    toene.set(pfad, p)
+  }
+  return p
+}
+
 /** Zeichnung auf einem Foto: eigene Ebene wie auf Plänen, das Foto ist eine Seite (Vertrag 5.4) */
 export const bildTinte = (app: App, id: string) => pfade.tinte(app, id, 1)
 

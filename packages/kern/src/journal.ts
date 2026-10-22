@@ -383,3 +383,22 @@ export function ersetzeRumpfAbschnitt(rumpf: string, a: { von: number; bis: numb
   zeilen.splice(a.von, a.bis - a.von, ...neu)
   return zeilen.join('\n')
 }
+
+/**
+ * Ordnet einen Eintrag einem anderen Projekt zu (oder keinem): Nur der Projekttag in seiner H1 ändert sich,
+ * Zusatz, `#wichtig` und Status bleiben. Ein Eintrag ohne Kopf bekommt eine H1.
+ */
+export function setzeProjektTag(text: string, t: { von: number; kopf: string }, kuerzel: string | null): string {
+  const zeilen = text.split('\n')
+  if (!t.kopf) {
+    if (!kuerzel) return text
+    zeilen.splice(t.von, 0, `# #${kuerzel}`)
+    return zeilen.join('\n')
+  }
+  if (zeilen[t.von] !== t.kopf) return text
+  let rest = t.kopf.replace(/^#[ \t]+/, '')
+  const tag = /^#([\p{L}\d_][\p{L}\d_/-]*)(?=\s|$)/u.exec(rest)
+  if (tag && tag[1].toLowerCase() !== 'wichtig') rest = rest.slice(tag[0].length).trim()
+  zeilen[t.von] = `# ${kuerzel ? `#${kuerzel}${rest ? ' ' : ''}` : ''}${rest || (kuerzel ? '' : 'Allgemein')}`
+  return zeilen.join('\n')
+}
