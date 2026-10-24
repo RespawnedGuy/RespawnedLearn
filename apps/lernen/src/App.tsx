@@ -34,6 +34,7 @@ export function App() {
     quelle ? (buchModul && buchModul.quellen.length > 1 ? ortLink('sammeln', 'modul', buchModul.id) : ortLink('sammeln'))
     : mitschrift ? (mitschriftModul ? ortLink('sammeln', 'modul', mitschriftModul) : ortLink('nutzen', mitschrift.id))
     : modul ? ortLink('sammeln')
+    : bereich === 'lernen' && ort[1] === 'modul' && ort[2] ? ortLink('sammeln', 'modul', ort[2])
     : bereich === 'lernen' && ort[1] ? ortLink('lernen')
     : bereich === 'nutzen' && ort[1] ? ortLink('nutzen')
     : bereich === 'sammeln' && !ort[1] ? null
@@ -42,7 +43,7 @@ export function App() {
   return (
     <>
       <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
-      {bereich === 'lernen' ? <Lernen key={ort[1] ?? ''} ansicht={ort[1]} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+      {bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
       <Meldungen />
     </>

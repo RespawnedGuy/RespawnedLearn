@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import { gliederung, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
+import { gliederung, linkZiel, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
 import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rvx/oberflaeche'
 import { KapitelUebersicht, kapitelKurz } from './Kapitel'
+import { faelligZahl, kartenFuer, kartenImModul } from './modulkarten'
 import { neueMitschrift, neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
@@ -237,6 +238,7 @@ export function ModulSeite({ id }: { id: string }) {
         />
         <FavoritStern an={m.favorit} onKlick={() => void schalteFavorit(speicher, z)} />
         <span style={{ flex: 1 }} />
+        <ModulLernen modulId={m.id} haupt={!z.quellen.length} />
         {z.quellen.length > 0 && (
           <a className="knopf haupt" href={zielLink(z)}>
             {z.zuletzt ? 'Weiterlesen' : 'Anfangen'}
@@ -327,6 +329,18 @@ export function ModulSeite({ id }: { id: string }) {
   )
 }
 
+/** Lernen nur in diesem Modul (geordnet); die Zahl sagt, wie viel heute dran ist */
+function ModulLernen({ modulId, haupt }: { modulId: string; haupt: boolean }) {
+  const { bestand } = useDaten()
+  if (!kartenImModul(bestand, modulId).length) return null
+  const n = faelligZahl(bestand, { modul: modulId })
+  return (
+    <a className={`knopf${haupt ? ' haupt' : ''}`} href={ortLink('lernen', 'modul', modulId)}>
+      Lernen{n ? ` · ${n}` : ''}
+    </a>
+  )
+}
+
 /** Mitschriften des Moduls mit ihrer Gliederung; ein Tipp auf eine Überschrift öffnet die Mitschrift dort */
 function Mitschriften({ modulId }: { modulId: string }) {
   const { speicher, bestand } = useDaten()
@@ -353,6 +367,7 @@ function Mitschriften({ modulId }: { modulId: string }) {
 
 function MitschriftZeile({ e }: { e: Eintrag }) {
   const { bestand } = useDaten()
+  const modulId = linkZiel(e.felder.thema)
   const [auf, setAuf] = useState(false)
   const teile = gliederung(e.rumpf)
   const oben = obersteEbene(teile, e.rumpf.split('\n').length)
@@ -372,11 +387,19 @@ function MitschriftZeile({ e }: { e: Eintrag }) {
       </a>
       {zeige.length > 0 && (
         <div className="modul-mitschrift-gliederung">
-          {zeige.map((u) => (
-            <a key={u.zeile} href={ortLink('sammeln', 'mitschrift', e.id, `z${u.zeile}`)} style={{ paddingLeft: (u.ebene - oben) * 16 }}>
-              {u.titel}
-            </a>
-          ))}
+          {zeige.map((u) => {
+            const n = modulId ? kartenFuer(bestand, { modul: modulId, teil: [e.id, u.zeile] }).length : 0
+            return (
+              <div key={u.zeile} className="gliederung-zeile" style={{ paddingLeft: (u.ebene - oben) * 16 }}>
+                <a href={ortLink('sammeln', 'mitschrift', e.id, `z${u.zeile}`)}>{u.titel}</a>
+                {n > 0 && (
+                  <a className="chip gliederung-lernen" href={ortLink('lernen', 'modul', modulId!, e.id, u.zeile)} title={`Nur „${u.titel}“ lernen`}>
+                    {n} {n === 1 ? 'Karte' : 'Karten'}
+                  </a>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
       {teile.some((u) => u.ebene > oben) ? (

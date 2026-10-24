@@ -3,8 +3,9 @@ import { abschnittAn, kurzDatum, linkZiel, notizZiele, stelleVon, zeileVonAnker,
 import { geheZu, ortLink, useDaten } from '@rvx/oberflaeche'
 import { Ausschnitt, Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
-import { Eintraege } from './Eintraege'
-import { TYPNAME, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
+import { Eintraege, standText } from './Eintraege'
+import { TYPNAME, alleEintraege, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
+import { kartenImModul, modulVonEintrag } from './modulkarten'
 
 const FARBNAME: Record<string, string> = { wichtig: 'Wichtig', ergaenzung: 'Ergänzung' }
 
@@ -16,8 +17,17 @@ export function Nutzen({ id }: { id?: string }) {
   const { bestand } = useDaten()
   const gewaehlt = id ? bestand.dokumente.get(id) : undefined
   const [q, setQ] = useState(gewaehlt?.titel ?? '')
-  const treffer = suche(bestand, q)
+  const [modul, setModul] = useState<string | null>(() => liesModul())
+  const module = bestand.nachTyp('modul').sort((x, y) => x.titel.localeCompare(y.titel, 'de'))
+  const aktiv = modul && module.some((m) => m.id === modul) ? modul : null
+  // Mit Modul: nur dessen Wissen (Mitschriften, Karten, Erklärungen aus seinen PDFs)
+  const treffer = suche(bestand, q).filter((e) => !aktiv || modulVonEintrag(bestand, e) === aktiv)
   const zeige = gewaehlt ?? treffer[0]
+  const waehle = (m: string | null) => {
+    setModul(m)
+    merkeModul(m)
+    if (id) geheZu('nutzen')
+  }
   return (
     <div className="nutzen-seite">
       <div className="nutzen-suche">
@@ -36,16 +46,89 @@ export function Nutzen({ id }: { id?: string }) {
             if (id) geheZu('nutzen')
           }}
         />
+        {module.length > 0 && (
+          <select className="chip chip-wahl nutzen-modul" aria-label="Modul" value={aktiv ?? ''} onChange={(ev) => waehle(ev.target.value || null)}>
+            <option value="">Alle Module</option>
+            {module.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.titel}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {zeige ? (
         <Karte key={zeige.id} e={zeige} weitere={treffer.filter((t) => t.id !== zeige.id).slice(0, 12)} />
       ) : (
-        q && <div className="leer">Nichts gefunden.</div>
+        q && <div className="leer">Nichts gefunden{aktiv ? ' in diesem Modul' : ''}.</div>
       )}
-      {!q && !zeige && (
-        <div className="nutzen-alle">
-          <Eintraege />
-        </div>
+      {!q && !zeige && <div className="nutzen-alle">{aktiv ? <ModulWissen modulId={aktiv} /> : <Eintraege />}</div>}
+    </div>
+  )
+}
+
+const MODUL_SCHLUESSEL = 'rvx-nutzen-modul'
+function liesModul(): string | null {
+  try {
+    return localStorage.getItem(MODUL_SCHLUESSEL)
+  } catch {
+    return null
+  }
+}
+function merkeModul(m: string | null) {
+  try {
+    if (m) localStorage.setItem(MODUL_SCHLUESSEL, m)
+    else localStorage.removeItem(MODUL_SCHLUESSEL)
+  } catch {
+    /* privates Fenster: dann eben nicht gemerkt */
+  }
+}
+
+/** Wissen eines Moduls, gegliedert wie seine Mitschrift; danach, was sonst dazugehört */
+function ModulWissen({ modulId }: { modulId: string }) {
+  const { bestand } = useDaten()
+  const st = lernstaende(bestand)
+  const karten = kartenImModul(bestand, modulId)
+  const sonst = alleEintraege(bestand).filter((e) => e.typ !== 'frage' && modulVonEintrag(bestand, e) === modulId)
+  const gruppen: { titel: string; karten: typeof karten }[] = []
+  for (const k of karten) {
+    const titel = k.ort.abschnitt[0] ?? (k.ort.mitschrift ? 'Ohne Überschrift' : 'Aus den PDFs und weitere')
+    const g = gruppen[gruppen.length - 1]
+    if (g?.titel === titel) g.karten.push(k)
+    else gruppen.push({ titel, karten: [k] })
+  }
+  if (!karten.length && !sonst.length) return <div className="leer">In diesem Modul gibt es noch nichts. Lernkarten entstehen in der Mitschrift über „Lernkarte“.</div>
+  return (
+    <div className="eintraege">
+      {gruppen.map((g, i) => (
+        <section key={i}>
+          <h2 className="lern-gruppe-titel">{g.titel}</h2>
+          <div className="eintraege-liste karte">
+            {g.karten.map((k) => {
+              const s = standText(st.get(k.e.id))
+              return (
+                <a key={k.e.id} className="eintrag-zeile" href={ortLink('nutzen', k.e.id)}>
+                  <span className="eintrag-titel">{k.e.titel || k.frage}</span>
+                  {k.ort.abschnitt.length > 1 && <span className="klein-leise">{k.ort.abschnitt.slice(1).join(' › ')}</span>}
+                  <span className={`chip${s.art ? ` ${s.art}` : ''}`}>{s.text}</span>
+                </a>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+      {sonst.length > 0 && (
+        <section>
+          <h2 className="lern-gruppe-titel">Mitschriften und Notizen</h2>
+          <div className="eintraege-liste karte">
+            {sonst.map((e) => (
+              <a key={e.id} className="eintrag-zeile" href={e.typ === 'notiz' && linkZiel(e.felder.thema) === modulId ? ortLink('sammeln', 'mitschrift', e.id) : ortLink('nutzen', e.id)}>
+                <span className="eintrag-titel">{e.titel || 'Ohne Titel'}</span>
+                <span className="chip">{e.typ === 'notiz' && linkZiel(e.felder.thema) === modulId ? 'Mitschrift' : (TYPNAME[e.typ] ?? e.typ)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

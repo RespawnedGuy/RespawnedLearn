@@ -8,7 +8,8 @@ import { Eintraege } from './Eintraege'
 import { FragenHinweis, KapitelFragen } from './Fragen'
 import { Vorfragen, VorfragenHinweis } from './Vorfragen'
 import { mitschriftSpur } from './Nutzen'
-import { bewerte, faellige, lernkarten, type Lernkarte } from './wissen'
+import { bewerte, lernkarten, type Lernkarte } from './wissen'
+import { allgemeineRunde, einordnen, modulRunde, type Auswahl } from './modulkarten'
 
 const SICHER = [
   ['unsicher', 'unsicher'],
@@ -55,10 +56,14 @@ function AlleKarten({ hinweis }: { hinweis?: string }) {
  * dann aufdecken und ehrlich bewerten. Die Planung übernimmt FSRS aus dem Protokoll aller Geräte.
  * Unter `#/lernen/alle` stehen alle Karten zum Ansehen und Bearbeiten.
  */
-export function Lernen({ ansicht }: { ansicht?: string }) {
+export function Lernen({ ort }: { ort: string[] }) {
+  const ansicht = ort[1]
   const { speicher, bestand } = useDaten()
+  // `#/lernen/modul/<id>[/<mitschrift>/<zeile>]`: nur dieses Modul (oder ein Teil seiner Mitschrift), geordnet
+  const auswahl: Auswahl | null = ansicht === 'modul' && ort[2] ? { modul: ort[2], teil: ort[3] && ort[4] ? [ort[3], Number(ort[4]) || 0] : undefined } : null
+  const modul = auswahl ? bestand.dokumente.get(auswahl.modul) : undefined
   // Die Runde wird einmal zusammengestellt, damit sie sich beim Bewerten nicht unter der Hand ändert
-  const [runde] = useState<Lernkarte[]>(() => faellige(bestand))
+  const [runde] = useState<Lernkarte[]>(() => (auswahl ? modulRunde(bestand, auswahl) : allgemeineRunde(bestand)))
   const [i, setI] = useState(0)
   const [sicher, setSicher] = useState<string | null>(null)
   const [offen, setOffen] = useState(false)
@@ -68,8 +73,12 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
   if (ansicht === 'fragen') return <KapitelFragen />
   if (ansicht === 'vorfragen') return <Vorfragen />
   if (ansicht === 'alle') return <AlleKarten />
+  if (auswahl && !k) return <ModulFertig modulId={auswahl.modul} titel={modul?.titel ?? 'Modul'} geschafft={runde.length} />
   if (!runde.length) return <AlleKarten hinweis="Heute ist nichts fällig. Hier sind alle deine Karten." />
   if (!k) return <AlleKarten hinweis={`Runde geschafft: ${runde.length} Karten. Morgen geht es weiter.`} />
+  const wo = einordnen(bestand, k.e)
+  const woModul = !auswahl && wo.modul ? bestand.dokumente.get(wo.modul)?.titel : undefined
+  const woText = [woModul, ...wo.abschnitt].filter(Boolean).join(' › ')
 
   // Frage und Antwort frisch aus dem Bestand, damit eine Änderung sofort zu sehen ist
   const neu = bestand.dokumente.get(k.e.id)
@@ -96,7 +105,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
       </div>
       <article className="karte lern-karte">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span className="art">LERNKARTE</span>
+          <span className="art">{modul ? modul.titel.toUpperCase() : 'LERNKARTE'}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="klein-leise">
               {i + 1} / {runde.length}
@@ -106,6 +115,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
             </a>
           </span>
         </div>
+        {woText && !bearbeiten && <div className="klein-leise lern-wo">{woText}</div>}
         {bearbeiten && neu ? <Bearbeiten e={neu} onFertig={() => setBearbeiten(false)} /> : <div className="frage">{frage}</div>}
         {!offen && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -169,5 +179,27 @@ function MitschriftLink({ e }: { e: Eintrag }) {
       In der Mitschrift: {s.titel}
       {s.abschnitt.length ? ` › ${s.abschnitt.join(' › ')}` : ''}
     </a>
+  )
+}
+
+/** Ende einer Modulrunde (oder nichts fällig): zurück zum Modul oder weiter mit der allgemeinen Runde */
+function ModulFertig({ modulId, titel, geschafft }: { modulId: string; titel: string; geschafft: number }) {
+  return (
+    <div className="lernen-seite">
+      <div className="karte lern-karte" style={{ gap: 14 }}>
+        <span className="art">{titel.toUpperCase()}</span>
+        <div className="frage" style={{ fontSize: 22 }}>
+          {geschafft ? `Runde geschafft: ${geschafft} ${geschafft === 1 ? 'Karte' : 'Karten'}.` : 'Hier ist heute nichts fällig.'}
+        </div>
+        <div className="reihe">
+          <a className="knopf" href={ortLink('sammeln', 'modul', modulId)}>
+            Zum Modul
+          </a>
+          <a className="knopf haupt" href={ortLink('lernen')}>
+            Allgemeine Runde
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }
