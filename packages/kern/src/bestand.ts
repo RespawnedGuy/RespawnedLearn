@@ -34,6 +34,8 @@ export interface Projekt {
   zugang?: string
   /** oben in der Projektliste */
   favorit: boolean
+  /** Absender, deren Mails zu diesem Projekt gehören: Adressen (max@firma.de) oder Domains (@firma.de), klein */
+  absender?: string[]
 }
 
 export interface Journal {
@@ -157,7 +159,8 @@ export class Bestand {
           erstellt: typeof f.erstellt === 'string' ? f.erstellt.slice(0, 10) : undefined,
           pfad,
           zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined,
-          favorit: f.favorit === true
+          favorit: f.favorit === true,
+          absender: Array.isArray(f.absender) ? f.absender.map((x) => String(x).trim().toLowerCase()).filter(Boolean) : undefined
         })
       }
       if (e.typ === 'journal' && typeof f.datum === 'string') {
