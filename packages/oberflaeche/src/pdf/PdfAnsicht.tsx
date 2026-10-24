@@ -35,6 +35,8 @@ export interface PdfAnsichtProps {
   vorhalten?: boolean
   /** Text, wenn das PDF offline nicht auf dem Gerät liegt */
   ohnePdf?: string
+  /** zusätzlicher Inhalt an jeder Marke (z. B. ihr Kurztext auf dem Plan) */
+  markenInhalt?: (m: Marke) => ReactNode
 }
 
 /** Woher die Seiten kommen: Bilder vom Server oder das PDF selbst (pdf.js) */
@@ -198,6 +200,7 @@ function Seite(p: PdfAnsichtProps & { quelle: Quelle; aufPdf: () => void; nr: nu
           onClick={() => p.onMarke?.(m)}
         >
           {p.app === 'arbeit' && <span className="nummer">{alleNummern.get(m.id)}</span>}
+          {p.markenInhalt?.(m)}
         </button>
       ))}
       {p.zusatz?.(p.nr)}
