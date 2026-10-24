@@ -211,15 +211,19 @@ export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null
   )
 }
 
-/** Wechsel zwischen den beiden Apps, immer sichtbar oben links */
+/** Wechsel zwischen den Bereichen, immer sichtbar oben links. Organisation wohnt in der Arbeits-App (#/organisation). */
 function AppSchalter({ app }: { app: string }) {
   return (
     <nav className="app-schalter" aria-label="App wechseln">
-      <a href="/" className={app === 'arbeit' ? 'aktiv' : ''} aria-current={app === 'arbeit' ? 'page' : undefined}>
+      <a href="/#/" className={app === 'arbeit' ? 'aktiv' : ''} aria-current={app === 'arbeit' ? 'page' : undefined}>
         Arbeiten
       </a>
       <a href="/lernen/" className={app === 'lernen' ? 'aktiv' : ''} aria-current={app === 'lernen' ? 'page' : undefined}>
         Lernen
+      </a>
+      <a href="/#/organisation" className={app === 'organisation' ? 'aktiv' : ''} aria-current={app === 'organisation' ? 'page' : undefined}>
+        <span className="nur-breit">Organisation</span>
+        <span className="nur-schmal">Orga</span>
       </a>
     </nav>
   )
