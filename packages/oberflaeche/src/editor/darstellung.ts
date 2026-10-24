@@ -282,6 +282,7 @@ class Wissen extends WidgetType {
 const UEBERSCHRIFT = /^(#{1,6})( +)(.*)$/
 const STATUS = /\s+[-–]\s+(offen|blockiert|wartet|erledigt|gelöst)(?=\s+\^[a-z0-9-]+$|$)/i
 const AUFGABE = /^(\s*)([-*] \[( |x|X)\] )/
+const BLOCKKENNUNG = /\s\^[a-z0-9-]+\s*$/
 const WICHTIG = /(?:^|\s+)#wichtig(?=\s|$)/i
 
 function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
@@ -305,6 +306,10 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
     }
     if (imCode) continue
     const roh = cursorZeilen.has(n)
+
+    // Blockkennung am Zeilenende (`^a7k2c9`, Ziel eines Links auf diese Stelle) bleibt unsichtbar
+    const kennung = BLOCKKENNUNG.exec(t)
+    if (kennung && !roh) deko.push(Decoration.replace({}).range(zeile.from + kennung.index, zeile.to))
 
     if (t.startsWith('>')) {
       if (callout === null) callout = /^>\s*\[!blockade\]/i.test(t) ? 'blockade' : 'sonst'

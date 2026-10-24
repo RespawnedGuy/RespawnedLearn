@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
-import { inhaltVon, kapitelBei, lernziele, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
+import { gliederung, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
 import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rvx/oberflaeche'
 import { KapitelUebersicht, kapitelKurz } from './Kapitel'
-import { neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
+import { neueMitschrift, neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
 export function zielLink(z: Lernziel): string {
@@ -22,7 +22,12 @@ export function wann(am: string, jetzt = new Date()): string {
 
 function stelleText(z: Lernziel, b: Bestand): string {
   const s = z.zuletzt
-  if (!s) return 'noch nicht begonnen'
+  if (!s) {
+    // Ohne Lesestelle: Lehrgang mit Mitschrift, zuletzt mitgeschrieben
+    const m = z.modul ? mitschriftenVon(b, z.modul.id) : []
+    const am = m.map((e) => String(e.felder.geaendert ?? e.felder.erstellt ?? '')).sort().pop()
+    return am ? `Zuletzt mitgeschrieben ${wann(am)}` : 'noch nicht begonnen'
+  }
   const pdf = z.quellen.length > 1 ? `${z.quellen.find((q) => q.id === s.anhang)?.titel ?? 'PDF'}, ` : ''
   const k = kapitelBei(inhaltVon(b, s.anhang)?.kapitel ?? [], s.seite)
   return `Weiter bei ${pdf}S. ${s.seite}${k ? ` (${kapitelKurz(k, 36)})` : ''} · ${wann(s.am)}`
@@ -111,7 +116,10 @@ function Gruppe({ titel, ziele }: { titel?: string; ziele: Lernziel[] }) {
 
 function Kachel({ z }: { z: Lernziel }) {
   const { speicher, bestand } = useDaten()
-  const art = !z.modul || z.quellen.length === 1 ? 'Buch' : `Modul · ${z.quellen.length} PDFs`
+  const mitschriften = z.modul ? mitschriftenVon(bestand, z.modul.id).length : 0
+  const art =
+    !z.modul || (z.quellen.length === 1 && !mitschriften) ? 'Buch'
+    : [z.quellen.length && `${z.quellen.length} ${z.quellen.length === 1 ? 'PDF' : 'PDFs'}`, mitschriften && `${mitschriften} ${mitschriften === 1 ? 'Mitschrift' : 'Mitschriften'}`].filter(Boolean).join(' · ') || 'Modul'
   return (
     <div className="karte lern-kachel">
       <a className="lern-weiter" href={zielLink(z)}>
@@ -250,6 +258,8 @@ export function ModulSeite({ id }: { id: string }) {
         />
       </label>
 
+      <Mitschriften modulId={m.id} />
+
       <h2 className="lern-gruppe-titel" style={{ marginTop: 24 }}>
         {z.quellen.length === 1 ? 'PDF' : 'PDFs'}
       </h2>
@@ -264,7 +274,7 @@ export function ModulSeite({ id }: { id: string }) {
             entfernen={() => void setzeQuellen(speicher, m, m.quellen.filter((x) => x !== q.id))}
           />
         ))}
-        {!z.quellen.length && <div className="leer">Noch keine PDFs in diesem Modul.</div>}
+        {!z.quellen.length && <div className="klein-leise">Noch keine PDFs in diesem Modul.</div>}
       </div>
       <div className="reihe" style={{ marginTop: 12 }}>
         <button type="button" className="knopf" onClick={() => eingabe.current?.click()}>
@@ -313,6 +323,67 @@ export function ModulSeite({ id }: { id: string }) {
           </div>
         </Dialog>
       )}
+    </div>
+  )
+}
+
+/** Mitschriften des Moduls mit ihrer Gliederung; ein Tipp auf eine Überschrift öffnet die Mitschrift dort */
+function Mitschriften({ modulId }: { modulId: string }) {
+  const { speicher, bestand } = useDaten()
+  const liste = mitschriftenVon(bestand, modulId)
+  return (
+    <>
+      <h2 className="lern-gruppe-titel" style={{ marginTop: 24 }}>
+        {liste.length === 1 ? 'Mitschrift' : 'Mitschriften'}
+      </h2>
+      <div className="modul-mitschriften">
+        {liste.map((e) => (
+          <MitschriftZeile key={e.id} e={e} />
+        ))}
+        {!liste.length && <div className="klein-leise">Noch keine Mitschrift. Für Lehrgänge und Vorlesungen ohne Skript.</div>}
+      </div>
+      <div className="reihe" style={{ marginTop: 12 }}>
+        <button type="button" className="knopf" onClick={async () => geheZu('sammeln', 'mitschrift', await neueMitschrift(speicher, modulId))}>
+          Neue Mitschrift
+        </button>
+      </div>
+    </>
+  )
+}
+
+function MitschriftZeile({ e }: { e: Eintrag }) {
+  const { bestand } = useDaten()
+  const [auf, setAuf] = useState(false)
+  const teile = gliederung(e.rumpf)
+  const oben = obersteEbene(teile, e.rumpf.split('\n').length)
+  // Zugeklappt nur die oberste gliedernde Ebene, aufgeklappt alles darunter
+  const zeige = auf ? teile.filter((u) => u.ebene >= oben) : teile.filter((u) => u.ebene === oben)
+  const karten = kartenAus(bestand, e.id).length
+  const geaendert = String(e.felder.geaendert ?? e.felder.erstellt ?? '').slice(0, 10)
+  return (
+    <div className="karte modul-mitschrift">
+      <a href={ortLink('sammeln', 'mitschrift', e.id)} className="modul-pdf-titel">
+        <strong>{e.titel}</strong>
+        <span className="klein-leise">
+          {teile.length ? `${teile.length} Abschnitte` : 'noch leer'}
+          {karten ? ` · ${karten} ${karten === 1 ? 'Lernkarte' : 'Lernkarten'}` : ''}
+          {geaendert ? ` · geändert ${kurzDatum(geaendert)}` : ''}
+        </span>
+      </a>
+      {zeige.length > 0 && (
+        <div className="modul-mitschrift-gliederung">
+          {zeige.map((u) => (
+            <a key={u.zeile} href={ortLink('sammeln', 'mitschrift', e.id, `z${u.zeile}`)} style={{ paddingLeft: (u.ebene - oben) * 16 }}>
+              {u.titel}
+            </a>
+          ))}
+        </div>
+      )}
+      {teile.some((u) => u.ebene > oben) ? (
+        <button type="button" className="knopf still klein" style={{ alignSelf: 'flex-start' }} onClick={() => setAuf((a) => !a)}>
+          {auf ? 'Weniger' : 'Ganze Gliederung'}
+        </button>
+      ) : null}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Note } from '@rvx/kern'
+import type { Eintrag, Note } from '@rvx/kern'
 import { ortLink, useDaten } from '@rvx/oberflaeche'
 import { Abrufflaeche, KiRueckmeldung, useAbruf, type Abruf } from './Abruf'
 import { Inhalt } from './Inhalt'
@@ -7,6 +7,7 @@ import { Bearbeiten } from './Bearbeiten'
 import { Eintraege } from './Eintraege'
 import { FragenHinweis, KapitelFragen } from './Fragen'
 import { Vorfragen, VorfragenHinweis } from './Vorfragen'
+import { mitschriftSpur } from './Nutzen'
 import { bewerte, faellige, lernkarten, type Lernkarte } from './wissen'
 
 const SICHER = [
@@ -122,6 +123,7 @@ export function Lernen({ ansicht }: { ansicht?: string }) {
             <Inhalt text={antwort} />
           </div>
         )}
+        {offen && !bearbeiten && neu && <MitschriftLink e={neu} />}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
           {offen && !bearbeiten && neu && (
             <button type="button" className="knopf still" style={{ height: 48, marginRight: 'auto' }} onClick={() => setBearbeiten(true)}>
@@ -154,5 +156,18 @@ function KartenAbruf({ frage, antwort, offen }: { frage: string; antwort: string
       {!offen && <Abrufflaeche abruf={abruf} />}
       {mitText && <KiRueckmeldung abruf={abruf} art="karte" frage={frage} muster={antwort} fest={offen} />}
     </>
+  )
+}
+
+/** Nach dem Aufdecken: zurück an die Stelle in der Mitschrift, aus der die Karte stammt */
+function MitschriftLink({ e }: { e: Eintrag }) {
+  const { bestand } = useDaten()
+  const s = mitschriftSpur(bestand, e)
+  if (!s) return null
+  return (
+    <a className="klein-leise" href={s.link}>
+      In der Mitschrift: {s.titel}
+      {s.abschnitt.length ? ` › ${s.abschnitt.join(' › ')}` : ''}
+    </a>
   )
 }

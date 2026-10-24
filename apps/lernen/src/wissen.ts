@@ -70,6 +70,47 @@ export function quellenPdfs(b: Bestand): Eintrag[] {
   return lernPdfs(b)
 }
 
+// ---------- Mitschriften (eine `notiz` mit dem Modul als Thema) ----------
+
+/** Neue, leere Mitschrift zu einem Modul; der Titel ist das Datum, ändern geht jederzeit */
+export async function neueMitschrift(speicher: Speicher, modulId: string): Promise<string> {
+  const id = ulid()
+  const jetzt = zeitstempel()
+  const [j, m, d] = tag().split('-')
+  await speicher.schreibe(
+    pfade.karte(id),
+    neuesDokument([
+      ['id', id],
+      ['typ', 'notiz'],
+      ['erstellt', jetzt],
+      ['geaendert', jetzt],
+      ['titel', `Mitschrift ${d}.${m}.${j}`],
+      ['thema', `[[${modulId}]]`]
+    ])
+  )
+  return id
+}
+
+/** Lernkarte zu einer Stelle der Mitschrift: eigene Datei, zeigt mit `stelle` auf den Absatz (Blockkennung) */
+export async function karteAusMitschrift(speicher: Speicher, p: { mitschrift: Eintrag; anker: string; frage: string; antwort: string }): Promise<string> {
+  const id = ulid()
+  const jetzt = zeitstempel()
+  const kopf: [string, Wert][] = [
+    ['id', id],
+    ['typ', 'frage'],
+    ['erstellt', jetzt],
+    ['geaendert', jetzt],
+    ['titel', p.frage],
+    ['stelle', `[[${p.mitschrift.id}#^${p.anker}]]`]
+  ]
+  const modul = p.mitschrift.felder.thema
+  if (typeof modul === 'string') kopf.push(['thema', modul])
+  // Mehrzeilige Antworten bleiben zusammen: keine Leerzeile darin, sonst endet der Abrufblock
+  const antwort = p.antwort.split('\n').filter((z) => z.trim()).join('\n')
+  await speicher.schreibe(pfade.karte(id), neuesDokument(kopf, `?? ${p.frage}\n:: ${antwort}\n`))
+  return id
+}
+
 // ---------- Module (ein Buch ist ein Modul mit einem PDF) ----------
 
 export async function neuesModul(speicher: Speicher, p: { titel: string; ziel?: string; quellen: string[]; favorit?: boolean }): Promise<string> {

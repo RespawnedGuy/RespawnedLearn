@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { kurzDatum, linkZiel, notizZiele, type Eintrag } from '@rvx/kern'
+import { abschnittAn, kurzDatum, linkZiel, notizZiele, stelleVon, zeileVonAnker, type Bestand, type Eintrag } from '@rvx/kern'
 import { geheZu, ortLink, useDaten } from '@rvx/oberflaeche'
 import { Ausschnitt, Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
@@ -73,6 +73,15 @@ function ThemaWahl({ e }: { e: Eintrag }) {
   )
 }
 
+/** Stelle in der Mitschrift, auf die eine Lernkarte zeigt (Titel, Überschriften darüber, Link genau dorthin) */
+export function mitschriftSpur(b: Bestand, e: Eintrag): { titel: string; abschnitt: string[]; link: string } | null {
+  const s = stelleVon(e)
+  const m = s ? b.dokumente.get(s.notiz) : undefined
+  if (!s || !m) return null
+  const zeile = zeileVonAnker(m.rumpf, s.anker)
+  return { titel: m.titel, abschnitt: zeile >= 0 ? abschnittAn(m.rumpf, zeile) : [], link: ortLink('sammeln', 'mitschrift', m.id, s.anker) }
+}
+
 function vorTagen(iso: string): string {
   const t = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)
   return t <= 0 ? 'heute' : t === 1 ? 'gestern' : `vor ${t} Tagen`
@@ -88,6 +97,8 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
   const stand = eigen ?? fragen.map((f) => st.get(f.id)).find(Boolean)
   const sitzt = stand && stand.karte.due.getTime() > Date.now()
   const sp = spuren(bestand, e.id)
+  const ms = mitschriftSpur(bestand, e)
+  const alsMitschrift = e.typ === 'notiz' && bestand.dokumente.get(linkZiel(e.felder.thema) ?? '')?.typ === 'modul'
   const vk = verknuepft(bestand, e)
   return (
     <div className="nutzen-raster">
@@ -101,6 +112,11 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
             <span className="chip">{TYPNAME[e.typ] ?? e.typ}</span>
             {e.typ === 'notiz' && <ThemaWahl e={e} />}
             <span style={{ flex: 1 }} />
+            {alsMitschrift && (
+              <a className="knopf klein" href={ortLink('sammeln', 'mitschrift', e.id)}>
+                Als Mitschrift öffnen
+              </a>
+            )}
             <a className="knopf still klein" href={ortLink('nutzen')}>
               Alle Einträge
             </a>
@@ -117,6 +133,15 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
             )}
           </div>
           {e.rumpf.trim() ? <Inhalt text={e.rumpf} /> : <span className="klein-leise">Noch kein Text. Über „Bearbeiten“ in eigenen Worten ergänzen.</span>}
+          {ms && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="passt-titel">Aus deiner Mitschrift</div>
+              <a href={ms.link} style={{ fontSize: 14 }}>
+                {ms.titel}
+                {ms.abschnitt.length ? ` › ${ms.abschnitt.join(' › ')}` : ''}
+              </a>
+            </div>
+          )}
           {sp.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div className="passt-titel">Deine Spuren</div>

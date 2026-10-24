@@ -1,8 +1,10 @@
-import { Daumenleiste, Kopf, ortLink, useDaten, useOrt, type LeistenZiel } from '@rvx/oberflaeche'
+import { Daumenleiste, Kopf, Meldungen, ortLink, useDaten, useOrt, type LeistenZiel } from '@rvx/oberflaeche'
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
-import { lernziele, modulVon } from '@rvx/kern'
+import { linkZiel, lernziele, modulVon } from '@rvx/kern'
+import { PlusKnopf, useTastaturOffen } from './PlusKnopf'
+import { usePlus } from './plus'
 import { faellige } from './wissen'
 
 /** Lern-App: drei Bereiche. Sie kennt keine Projekte. */
@@ -10,7 +12,11 @@ export function App() {
   const ort = useOrt()
   const { bestand } = useDaten()
   const bereich = ort[0] ?? 'sammeln'
-  const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' ? bestand.dokumente.get(ort[1]) : undefined
+  const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' && ort[1] !== 'mitschrift' ? bestand.dokumente.get(ort[1]) : undefined
+  const mitschrift = bereich === 'sammeln' && ort[1] === 'mitschrift' && ort[2] ? bestand.dokumente.get(ort[2]) : undefined
+  const mitschriftModul = mitschrift ? linkZiel(mitschrift.felder.thema) : null
+  const plus = usePlus()
+  const tastatur = useTastaturOffen()
   const modul = bereich === 'sammeln' && ort[1] === 'modul' ? lernziele(bestand).find((z) => z.id === ort[2]) : undefined
   const faellig = faellige(bestand).length
 
@@ -26,6 +32,7 @@ export function App() {
   const buchModul = quelle ? modulVon(bestand, quelle.id) : undefined
   const oben =
     quelle ? (buchModul && buchModul.quellen.length > 1 ? ortLink('sammeln', 'modul', buchModul.id) : ortLink('sammeln'))
+    : mitschrift ? (mitschriftModul ? ortLink('sammeln', 'modul', mitschriftModul) : ortLink('nutzen', mitschrift.id))
     : modul ? ortLink('sammeln')
     : bereich === 'lernen' && ort[1] ? ortLink('lernen')
     : bereich === 'nutzen' && ort[1] ? ortLink('nutzen')
@@ -34,9 +41,10 @@ export function App() {
 
   return (
     <>
-      <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
+      <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
       {bereich === 'lernen' ? <Lernen key={ort[1] ?? ''} ansicht={ort[1]} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
-      <Daumenleiste ziele={ziele} />
+      <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
+      <Meldungen />
     </>
   )
 }

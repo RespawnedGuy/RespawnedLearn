@@ -22,6 +22,12 @@ export async function frageVorschlagen(speicher: Speicher, quelle: Eintrag, seit
   return r?.frage?.trim() || null
 }
 
+/** Frage zu einer Stelle der eigenen Mitschrift (die Stelle ist die Antwort) */
+export async function frageZurMitschrift(titel: string, abschnitt: string[], stelle: string, signal?: AbortSignal): Promise<string | null> {
+  const r = await frageServer<{ frage: string }>('vorschlag', { art: 'mitschrift', buch: titel, abschnitt: abschnitt.join(' › '), stelle }, signal)
+  return r?.frage?.trim() || null
+}
+
 /** Nur Rechtschreibung und Tippfehler; null, wenn nichts zu ändern ist oder die KI nicht erreichbar ist */
 export async function korrigiere(text: string): Promise<string | null> {
   const r = await frageServer<{ text: string }>('korrektur', { text })

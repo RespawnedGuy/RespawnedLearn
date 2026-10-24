@@ -6,6 +6,7 @@ import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
 import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
+import { Mitschrift } from './Mitschrift'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -24,6 +25,7 @@ function liesSeite(schluessel: string): boolean {
 export function Sammeln({ ort }: { ort: string[] }) {
   const { bestand } = useDaten()
   if (ort[1] === 'modul' && ort[2]) return <ModulSeite key={ort[2]} id={ort[2]} />
+  if (ort[1] === 'mitschrift' && ort[2]) return <Mitschrift key={ort[2]} id={ort[2]} anker={ort[3]} />
   const quelle = ort[1] ? bestand.dokumente.get(ort[1]) : undefined
   if (quelle) return <Uebungsplatz quelle={quelle} seite={ort[2] ? Number(ort[2]) || 1 : 1} />
   return <Start />

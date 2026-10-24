@@ -4,7 +4,7 @@ import { Editor, ausschnitt, bildMitTinte, geheZu, tintenStand, useDaten, type D
 import { WISSEN, aendereEintrag } from './wissen'
 
 /** Was der Editor in der Lern-App darstellt: Ausschnitte aus dem Skript, Bilder, Links auf anderes Wissen */
-function useHilfen(): DarstellungHilfen {
+export function useHilfen(): DarstellungHilfen {
   const { speicher, bestand } = useDaten()
   const ref = useRef(bestand)
   ref.current = bestand
