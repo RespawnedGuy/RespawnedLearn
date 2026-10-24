@@ -9,6 +9,10 @@ export const pfade = {
   projekt: (kuerzel: string) => `arbeit/projekte/${kuerzel}.md`,
   vorlage: (id: string) => `arbeit/vorlagen/${id}.md`,
   aufgabe: (id: string) => `arbeit/aufgaben/${id}.md`,
+  /** Termin aus einem Kalender, angelegt erst mit „Ins Journal“ (Bereich Organisation) */
+  termin: (id: string) => `arbeit/termine/${id}.md`,
+  /** Abbild eines Kalenders (schreibt der Server aus dem iCal-Link) */
+  kalender: (id: string) => `gemeinsam/kalender/${id}.json`,
   bericht: (id: string) => `arbeit/berichte/${id}.md`,
   /** Eingang (`erfassung`): Sprachnotizen und anderes, was die Pipeline hereinholt */
   erfassung: (id: string) => `arbeit/eingang/${id}.md`,
