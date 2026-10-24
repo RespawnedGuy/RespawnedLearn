@@ -107,7 +107,8 @@
 .modul-seite .reihe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* Vollbild im Übungsplatz: Kopf und Leiste weg, Seite und Blatt passen ganz auf den Schirm */
-body.vollbild-an .kopf, body.vollbild-an .plan-leiste { display: none; }
+body.vollbild-an .kopf, body.vollbild-an .plan-leiste, body.vollbild-an .daumenleiste { display: none; }
+body.vollbild-an { padding-bottom: 0; }
 body.vollbild-an .uebungsplatz { padding-top: 12px; }
 body.vollbild-an .platz-skript .pdf-seiten { padding: 0; }
 body.vollbild-an .platz-blatt { align-items: center; }

@@ -1,44 +1,25 @@
-import { Kopf, geheZu, ortLink, useDaten, useOrt, type MenueGruppe } from '@rvx/oberflaeche'
+import { Daumenleiste, Kopf, ortLink, useDaten, useOrt, type LeistenZiel } from '@rvx/oberflaeche'
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
-import { lesestand, lernziele, modulVon, offeneFragen, ordneLernziele } from '@rvx/kern'
+import { lernziele, modulVon } from '@rvx/kern'
 import { faellige } from './wissen'
-import { zielLink } from './Start'
-
-const BEREICHE = [
-  ['sammeln', 'Sammeln'],
-  ['lernen', 'Lernen'],
-  ['nutzen', 'Nutzen']
-] as const
 
 /** Lern-App: drei Bereiche. Sie kennt keine Projekte. */
 export function App() {
   const ort = useOrt()
   const { bestand } = useDaten()
-  const bereich = (ort[0] ?? 'sammeln') as (typeof BEREICHE)[number][0]
+  const bereich = ort[0] ?? 'sammeln'
   const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' ? bestand.dokumente.get(ort[1]) : undefined
-  const ziele = lernziele(bestand)
-  const modul = bereich === 'sammeln' && ort[1] === 'modul' ? ziele.find((z) => z.id === ort[2]) : undefined
-  const reihe = ordneLernziele(ziele)
+  const modul = bereich === 'sammeln' && ort[1] === 'modul' ? lernziele(bestand).find((z) => z.id === ort[2]) : undefined
   const faellig = faellige(bestand).length
-  const fragen = offeneFragen(bestand, lesestand(bestand)).length
 
-  const gruppen: MenueGruppe[] = [
-    {
-      titel: 'Bereiche',
-      eintraege: [
-        ...BEREICHE.map(([id, titel]) => ({ titel, ziel: ortLink(id), aktiv: bereich === id && ort[1] !== 'fragen' && ort[1] !== 'vorfragen', zahl: id === 'lernen' ? faellig : undefined })),
-        { titel: 'Vorfragen', ziel: ortLink('lernen', 'vorfragen'), aktiv: bereich === 'lernen' && ort[1] === 'vorfragen' },
-        ...(fragen ? [{ titel: 'Fragen zum Kapitel', ziel: ortLink('lernen', 'fragen'), aktiv: bereich === 'lernen' && ort[1] === 'fragen', zahl: fragen }] : [])
-      ]
-    },
-    {
-      titel: 'Module und Bücher',
-      eintraege: [...reihe.favoriten, ...reihe.kuerzlich]
-        .slice(0, 8)
-        .map((z) => ({ titel: z.titel, ziel: zielLink(z), aktiv: modul?.id === z.id || (!!quelle && z.quellen.some((q) => q.id === quelle.id)) }))
-    }
+  // Feste Ziele wie in Arbeit: am PC als Reiter oben, am Handy in der Daumenleiste. Vorfragen und Kapitelfragen
+  // kündigen sich als Hinweis über der Lernrunde an, Module und Bücher stehen auf der Startseite unter Sammeln.
+  const ziele: LeistenZiel[] = [
+    { titel: 'Sammeln', symbol: 'sammeln', ziel: ortLink('sammeln'), aktiv: bereich === 'sammeln' },
+    { titel: 'Lernen', symbol: 'lernen', ziel: ortLink('lernen'), aktiv: bereich === 'lernen', zahl: faellig },
+    { titel: 'Nutzen', symbol: 'nutzen', ziel: ortLink('nutzen'), aktiv: bereich === 'nutzen' }
   ]
 
   // Eine Ebene höher, falls es keinen Verlauf gibt; die Startseite unter Sammeln ist ganz oben
@@ -53,23 +34,9 @@ export function App() {
 
   return (
     <>
-      <Kopf
-        app="lernen"
-        oben={oben}
-        ort={quelle ? quelle.titel : modul ? modul.titel : BEREICHE.find(([id]) => id === bereich)?.[1] ?? 'Lernen'}
-        gruppen={gruppen}
-        mitte={
-          <nav className="segmente" aria-label="Bereiche">
-            {BEREICHE.map(([id, titel]) => (
-              <button key={id} type="button" className={bereich === id ? 'aktiv' : ''} onClick={() => geheZu(id)}>
-                {titel}
-                {id === 'lernen' && faellig > 0 ? ` · ${faellig}` : ''}
-              </button>
-            ))}
-          </nav>
-        }
-      />
+      <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
       {bereich === 'lernen' ? <Lernen key={ort[1] ?? ''} ansicht={ort[1]} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+      <Daumenleiste ziele={ziele} />
     </>
   )
 }

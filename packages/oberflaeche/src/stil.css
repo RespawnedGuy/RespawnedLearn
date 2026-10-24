@@ -58,7 +58,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .kopf-zeile { height: 60px; padding: 0 16px; display: flex; align-items: center; gap: 12px; }
 .kopf-links { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
-.kopf-mitte { display: flex; justify-content: center; }
 .kopf-rechts { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end; min-width: 0; }
 .kopf-logo { width: 32px; height: 32px; flex: none; }
 .zurueck-pfeil {
@@ -72,29 +71,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: rgba(31, 34, 40, 0.82); color: #fff; border-radius: 14px; box-shadow: var(--schatten-hoch);
 }
 .zurueck-pfeil.schwebend:hover:not(:disabled) { background: rgba(31, 34, 40, 0.92); }
-.kopf-ort {
-  height: 44px; padding: 0 8px; border: none; background: transparent; border-radius: 10px;
-  font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 4px; cursor: pointer;
-  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.kopf-ort:hover { background: var(--mulde-hell); }
-.kopf-menue { border-top: 1px solid var(--linie); padding: 12px 16px 16px; display: flex; flex-wrap: wrap; gap: 20px 36px; align-items: flex-start; }
-.kopf-menue.fixiert { padding: 6px 16px; gap: 4px 20px; }
-.kopf-gruppe { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
-.kopf-menue.fixiert .kopf-gruppe { flex-direction: row; flex-wrap: wrap; align-items: center; min-width: 0; }
-.kopf-gruppe-titel { font-size: 12px; font-weight: 700; color: var(--leise); letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 8px; }
-.kopf-menue.fixiert .kopf-gruppe-titel { display: none; }
-.kopf-eintrag {
-  text-align: left; border: none; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer;
-  font-size: 15px; color: var(--tinte); display: flex; justify-content: space-between; gap: 12px; text-decoration: none;
-}
-.kopf-eintrag:hover { background: var(--mulde-hell); }
-.kopf-eintrag.aktiv { background: var(--akzent-weich); color: var(--akzent-dunkel); font-weight: 700; }
-.kopf-eintrag .zahl { color: var(--leise); font-size: 13px; }
-.kopf-nadel { margin-left: auto; align-self: flex-start; }
-.kopf-eintrag.betont { font-weight: 700; }
 
-/* Reiter (Arbeits-App): feste Ziele, ein Klick springt hin */
+/* Reiter (beide Apps): feste Ziele, ein Klick springt hin */
 .kopf-reiter { display: flex; align-items: center; gap: 2px; min-width: 0; margin-left: 8px; }
 .kopf-reiter-knopf {
   height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none;
@@ -280,12 +258,6 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   .app-schalter { margin: 0; }
   .app-schalter a { padding: 6px 8px; font-size: 13px; }
   .kopf-rechts { gap: 4px; }
-  /* Bereiche in der Mitte (Lern-App) bekommen am Handy eine eigene Zeile unter dem Schalter */
-  .kopf-zeile:has(.kopf-mitte) { flex-wrap: wrap; height: auto; min-height: 60px; padding-bottom: 8px; row-gap: 0; }
-  .kopf-zeile:has(.kopf-mitte) .kopf-links, .kopf-zeile:has(.kopf-mitte) .kopf-rechts { height: 60px; }
-  .kopf-mitte { order: 3; flex-basis: 100%; }
-  .kopf-mitte .segmente { flex: 1; }
-  .kopf-mitte .segmente button { flex: 1; }
 }
 @media (min-width: 721px) {
   .nur-schmal { display: none !important; }
@@ -301,4 +273,36 @@ button.marke { padding: 0; }
   }
   .cm-tooltip.cm-tooltip-autocomplete > ul { max-height: min(50vh, calc(var(--sichtbar, 100vh) * 0.45)); min-width: 0; max-width: none !important; }
   .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 12px 12px !important; font-size: 16px; }
+}
+
+/* ---------- Daumenleiste (Handy): feste Ziele unten (beide Apps) ---------- */
+.daumenleiste { display: none; }
+@media (max-width: 720px) {
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .daumenleiste {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 32;
+    background: rgba(255, 255, 255, 0.9); backdrop-filter: saturate(1.4) blur(12px);
+    border-top: 1px solid var(--linie); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Tastatur offen (Arbeit): nur „+“ bleibt, an derselben Stelle über der Tastatur */
+  .daumenleiste.tastatur { background: transparent; backdrop-filter: none; border: none; bottom: var(--tastatur, 0px); pointer-events: none; padding-bottom: 8px; }
+  .daumenleiste.tastatur > * { pointer-events: auto; }
+  .daumenleiste.tastatur .daumen-zeile { pointer-events: none; }
+  .daumenleiste.tastatur .daumen-plus { pointer-events: auto; }
+  /* Werkzeuge für PDF und Blatt schweben über der Leiste, nicht auf ihr */
+  body:has(.daumenleiste:not(.tastatur)) .werkzeug { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+.daumen-zeile { height: 64px; display: flex; align-items: center; justify-content: space-around; padding: 0 4px; }
+.daumen-ziel {
+  flex: 1 1 0; min-width: 0; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--leise); text-decoration: none; border-radius: 12px; font-size: 11px; font-weight: 600; touch-action: manipulation;
+}
+.daumen-ziel:active { background: var(--mulde-hell); }
+.daumen-ziel.aktiv { color: var(--akzent-dunkel); font-weight: 800; }
+.daumen-ziel.aktiv .daumen-symbol { background: var(--akzent-weich); }
+.daumen-symbol { position: relative; width: 52px; height: 30px; border-radius: 15px; display: grid; place-items: center; }
+.daumen-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.daumen-zahl {
+  position: absolute; top: -3px; left: 30px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--akzent); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
 }
