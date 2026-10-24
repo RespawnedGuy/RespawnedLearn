@@ -106,15 +106,15 @@ export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null
 function AppSchalter({ app }: { app: string }) {
   return (
     <nav className="app-schalter" aria-label="App wechseln">
+      <a href="/#/organisation" className={app === 'organisation' ? 'aktiv' : ''} aria-current={app === 'organisation' ? 'page' : undefined}>
+        <span className="nur-breit">Organisation</span>
+        <span className="nur-schmal">Orga</span>
+      </a>
       <a href="/#/" className={app === 'arbeit' ? 'aktiv' : ''} aria-current={app === 'arbeit' ? 'page' : undefined}>
         Arbeiten
       </a>
       <a href="/lernen/" className={app === 'lernen' ? 'aktiv' : ''} aria-current={app === 'lernen' ? 'page' : undefined}>
         Lernen
-      </a>
-      <a href="/#/organisation" className={app === 'organisation' ? 'aktiv' : ''} aria-current={app === 'organisation' ? 'page' : undefined}>
-        <span className="nur-breit">Organisation</span>
-        <span className="nur-schmal">Orga</span>
       </a>
     </nav>
   )

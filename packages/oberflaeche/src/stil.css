@@ -35,6 +35,14 @@
   --akzent-weich: #efebfa;
 }
 
+/* Organisation (Termine, Nachrichten): Blau. Wohnt in der Arbeits-App, die Klasse setzt App.tsx am body */
+.app-organisation {
+  --akzent: #2563b8;
+  --akzent-text: #1d55a0;
+  --akzent-dunkel: #163f78;
+  --akzent-weich: #e4edf9;
+}
+
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 body {
