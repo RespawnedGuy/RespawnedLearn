@@ -18,6 +18,7 @@ const pfade: Record<string, string> = {
   zuordnen: 'M3 13l3-8h12l3 8v6H3z M3 13h5l1 2h6l1-2h5',
   termine: 'M4 5h16v15H4z M4 10h16 M8 3v4 M16 3v4',
   nachrichten: 'M3 5h18v14H3z M3 6l9 7 9-7',
+  planung: 'M3 3v18h18 M7 7h7 M10 12h9 M7 17h6',
   // Lern-App
   sammeln: 'M4 5a1 1 0 0 1 1-1h5a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4z M20 5a1 1 0 0 0-1-1h-5a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z',
   lernen: 'M4 7h13v13H4z M7 4h13v13 M8 13l2 2 4-4',
