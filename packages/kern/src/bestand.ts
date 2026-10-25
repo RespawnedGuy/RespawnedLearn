@@ -157,7 +157,8 @@ export class Bestand {
           status,
           archiviert: status === 'archiviert' || status === 'abgeschlossen',
           privat: f.bereich === 'privat' || (Array.isArray(f.tags) && f.tags.includes('privat')),
-          adresse: typeof f.adresse === 'string' && f.adresse.trim() ? f.adresse.trim() : undefined,
+          // `standort` stammt aus dem Import der alten RespawnedNotes und gilt, solange `adresse` fehlt
+          adresse: [f.adresse, f.standort].map((x) => (typeof x === 'string' ? x.trim() : '')).find(Boolean) || undefined,
           erstellt: typeof f.erstellt === 'string' ? f.erstellt.slice(0, 10) : undefined,
           pfad,
           zugang: typeof f.zugang === 'string' && f.zugang ? f.zugang : undefined,
