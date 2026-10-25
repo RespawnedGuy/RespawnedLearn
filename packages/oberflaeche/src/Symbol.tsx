@@ -7,6 +7,8 @@ const pfade: Record<string, string> = {
   aufnahme: 'M9 3h6v10a3 3 0 0 1-6 0z M5 11a7 7 0 0 0 14 0 M12 18v3',
   kamera: 'M3 8h4l2-3h6l2 3h4v11H3z M12 10a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z',
   foto: 'M3 4h18v16H3z M3 16l5-5 4 4 3-3 6 6 M15.5 7.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z',
+  tabelle: 'M3 5h18v14H3z M3 10h18 M3 15h18 M9 5v14 M15 5v14',
+  bericht: 'M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h4',
   projekt: 'M9 3L7 21 M17 3l-2 18 M4 8h17 M3 16h17',
   vorlage: 'M6 3h9l4 4v14H6z M14 3v5h5 M9 13h7 M9 17h5',
   stopp: 'M7 7h10v10H7z',

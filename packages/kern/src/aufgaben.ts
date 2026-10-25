@@ -76,7 +76,9 @@ export function ersetzeLinksAuf(text: string, id: string, ersatz: (anzeige: stri
   let pos = 0
   for (const l of findeLinks(text)) {
     if (l.einbettung || l.ziel !== id) continue
-    out += text.slice(pos, l.von) + ersatz(l.anzeige)
+    // In einer Tabellenzelle bleibt der Trenner `\|`, sonst zerfällt die Zeile
+    const neu = ersatz(l.anzeige)
+    out += text.slice(pos, l.von) + (text.slice(l.von, l.bis).includes('\\|') ? neu.replace(/(?<!\\)\|/g, '\\|') : neu)
     pos = l.bis
   }
   return pos === 0 ? text : out + text.slice(pos)

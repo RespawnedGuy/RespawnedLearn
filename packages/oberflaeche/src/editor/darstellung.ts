@@ -2,6 +2,7 @@
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { EditorState, StateEffect, type Extension, type Range, type Text } from '@codemirror/state'
 import { ankerParameter, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rvx/kern'
+import { dekoriereZeile, tabellenBedienung, tabellenZeilen } from './tabelle'
 
 export interface DarstellungHilfen {
   /** Bild eines markierten Ausschnitts (Stelle im Plan oder Skript) */
@@ -20,6 +21,8 @@ export interface DarstellungHilfen {
   blockierer?(id: string): { id: string; titel: string; zustand: string } | null
   /** Fotos in der Notiz einer Aufgabe; sie stehen im Journal klein direkt hinter dem Aufgabenlink */
   aufgabeBilder?(id: string): string[]
+  /** Typ des Dokuments hinter einer ID; in Tabellenzellen wird nur ein Anhang eingebettet, alles andere (etwa ein Bericht) steht als Link */
+  typ?(id: string): string | null
   /** Aufnahme eines Anhangs (Sprachnotiz), null bei allem, was kein Audio ist */
   ton?(id: string): (() => Promise<string | null>) | null
 }
@@ -342,6 +345,12 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
   const danach = sperren(doc, h)
   const zu = new Set<number>()
   for (const z of gesperrteZeilen(doc, danach)) for (let i = z.von; i <= z.bis; i++) zu.add(i)
+  const tabelle = tabellenZeilen(doc)
+  const tabelleMitCursor = new Set<number>()
+  for (const n of cursorZeilen) {
+    const t = tabelle.get(n)
+    if (t) tabelleMitCursor.add(t.kopf)
+  }
 
   for (let n = 1; n <= doc.lines; n++) {
     const zeile = doc.line(n)
@@ -354,6 +363,13 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
     const roh = cursorZeilen.has(n)
     const gesperrt = zu.has(n)
     if (gesperrt) deko.push(Decoration.line({ class: 'cm-gesperrt' }).range(zeile.from))
+
+    const tab = tabelle.get(n)
+    if (tab) {
+      dekoriereZeile(deko, zeile, tab, tabelleMitCursor.has(tab.kopf), gesperrt)
+      if (tab.rolle !== 'trenner') verweise(view, deko, zeile, roh, h, true)
+      continue
+    }
 
     // Blockkennung am Zeilenende (`^a7k2c9`, Ziel eines Links auf diese Stelle) bleibt unsichtbar
     const kennung = BLOCKKENNUNG.exec(t)
@@ -409,6 +425,15 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       if (an && zeile.to > von + a[2].length) deko.push(Decoration.mark({ class: 'cm-erledigt-text' }).range(von + a[2].length, zeile.to))
     }
 
+    verweise(view, deko, zeile, roh, h, false)
+  }
+  return Decoration.set(deko, true)
+}
+
+/** Links und Einbettungen einer Zeile. In einer Tabellenzelle wird nur ein Anhang eingebettet, ein Bericht bleibt ein Link. */
+function verweise(view: EditorView, deko: Range<Decoration>[], zeile: { from: number; text: string }, roh: boolean, h: DarstellungHilfen, inZelle: boolean) {
+  {
+    const t = zeile.text
     for (const l of findeLinks(t)) {
       const von = zeile.from + l.von
       const bis = zeile.from + l.bis
@@ -424,7 +449,7 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
         w = new Wissen(wi.titel, wi.text, () => h.oeffne(l))
       } else if (l.einbettung && h.ton?.(l.ziel)) {
         w = new Ton(l.ziel, l.anzeige ?? h.titel(l.ziel) ?? 'Aufnahme', h.ton(l.ziel)!)
-      } else if (l.einbettung) {
+      } else if (l.einbettung && (!inZelle || !h.typ || h.typ(l.ziel) === 'anhang')) {
         w = new Bild(`${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
       } else {
         const zustand = h.zustand?.(l.ziel) ?? null
@@ -435,11 +460,10 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
       deko.push(Decoration.replace({ widget: w }).range(von, bis))
     }
   }
-  return Decoration.set(deko, true)
 }
 
 export function darstellung(hilfen: () => DarstellungHilfen): Extension {
-  return [sperrFilter(hilfen), ViewPlugin.fromClass(
+  return [sperrFilter(hilfen), tabellenBedienung, ViewPlugin.fromClass(
     class {
       decorations: DecorationSet
       constructor(view: EditorView) {

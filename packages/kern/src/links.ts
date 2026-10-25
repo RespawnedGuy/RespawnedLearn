@@ -12,7 +12,8 @@ export interface Link {
   bis: number
 }
 
-const LINK = /(!?)\[\[([^\]|#@\n]+)(?:@(\d{4}-\d{2}-\d{2}))?(?:#([^\]|\n]+))?(?:\|([^\]\n]+))?\]\]/g
+// In Tabellenzellen steht `\|` statt `|` vor dem Anzeigetext (tabelle.ts)
+const LINK = /(!?)\[\[([^\]|#@\\\n]+)(?:@(\d{4}-\d{2}-\d{2}))?(?:#([^\]|\\\n]+))?(?:\\?\|([^\]\n]+))?\]\]/g
 
 export function findeLinks(text: string): Link[] {
   const out: Link[] = []
@@ -43,4 +44,9 @@ export function ankerParameter(anker: string | null): Record<string, string> {
 
 export function link(id: string, anzeige?: string): string {
   return anzeige ? `[[${id}|${anzeige.replace(/[\]|]/g, '')}]]` : `[[${id}]]`
+}
+
+/** Link auf einen Bericht im Journal (Vertrag 4): `[[Projekt-ID#bericht=<Schlüssel>|Titel]]`, öffnet Projekt > Berichte */
+export function berichtLink(projektId: string, schluessel: string, titel: string): string {
+  return `[[${projektId}#bericht=${encodeURIComponent(schluessel)}|${titel.replace(/[\]|]/g, '')}]]`
 }

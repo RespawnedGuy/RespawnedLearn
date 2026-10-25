@@ -14,6 +14,7 @@ export interface Einfuegen {
 
 export const FEST: Einfuegen[] = [
   { id: 'aufgabe', titel: 'Aufgabe', art: 'text', text: '- [ ] ', hinweis: 'Eigene Aufgabe, im Satz verlinkt' },
+  { id: 'tabelle', titel: 'Tabelle', art: 'text', text: '| {{cursor}} |   |   |\n|---|---|---|\n|   |   |   |\n|   |   |   |', hinweis: 'Zellen wie im Journal, Tab springt weiter' },
   { id: 'plan', titel: 'Stelle im Plan', art: 'aktion', hinweis: 'Markierung auf einem Plan des Projekts' },
   { id: 'aufnahme', titel: 'Sprachaufnahme', art: 'aktion', hinweis: 'Wird abgeschrieben und landet im Journal' },
   { id: 'kamera', titel: 'Kamera', art: 'aktion', hinweis: 'Foto aufnehmen' },
