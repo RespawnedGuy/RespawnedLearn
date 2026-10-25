@@ -25,8 +25,10 @@ export interface Projekt {
   archiviert: boolean
   /** Tag `privat` (alt: `bereich: privat`) */
   privat: boolean
-  /** Adresse des Objekts als Text */
+  /** Adresse des Objekts als Text (eigene, sonst aus einer Quelle wie NocoDB) */
   adresse?: string
+  /** Woher die Adresse kommt, wenn sie nicht im Projekt selbst steht (z. B. `nocodb`) */
+  adresseAus?: string
   /** Tag der Anlage (JJJJ-MM-TT), falls bekannt */
   erstellt?: string
   pfad: string
@@ -167,8 +169,39 @@ export class Bestand {
         this.journale.push({ datum: f.datum, pfad, text, gliederung: gliedere(text) })
       }
     }
+    this.projekteAusQuellen()
     this.projekte.sort((a, b) => a.titel.localeCompare(b.titel, 'de'))
     this.journale.sort((a, b) => b.datum.localeCompare(a.datum))
+  }
+
+  /**
+   * Projektadressen aus einer Quelle (`gemeinsam/kontakte/<quelle>-projekte.json`, Vertrag 5.1): nur für Projekte
+   * ohne eigene Adresse. Eine im Projekt eingetragene Adresse gewinnt immer.
+   */
+  private projekteAusQuellen() {
+    const klein = (s: string) => s.normalize('NFC').toLowerCase().trim()
+    for (const [pfad, text] of this.texte) {
+      const m = /^gemeinsam\/kontakte\/([^/]+)-projekte\.json$/.exec(pfad)
+      if (!m) continue
+      let liste: unknown
+      try {
+        liste = JSON.parse(text)
+      } catch {
+        continue
+      }
+      if (!Array.isArray(liste)) continue
+      for (const x of liste as { kuerzel?: unknown; titel?: unknown; adresse?: unknown }[]) {
+        const adresse = typeof x?.adresse === 'string' ? x.adresse.trim() : ''
+        if (!adresse) continue
+        const k = typeof x.kuerzel === 'string' ? klein(x.kuerzel.replace(/^#/, '')) : ''
+        const t = typeof x.titel === 'string' ? klein(x.titel) : ''
+        const p = (k && this.projekte.find((p) => klein(p.kuerzel) === k)) || (t && this.projekte.find((p) => klein(p.titel) === t))
+        if (p && !p.adresse) {
+          p.adresse = adresse
+          p.adresseAus = m[1]
+        }
+      }
+    }
   }
 
   projekt(kuerzelOderId: string): Projekt | undefined {
