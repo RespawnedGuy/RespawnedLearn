@@ -5,8 +5,9 @@ import { plusTage, tag } from './datum'
 export interface Einfuegen {
   id: string
   titel: string
-  /** text: wird eingesetzt; aktion: die App macht etwas (Plan öffnen, Foto aufnehmen, Sprachaufnahme) */
-  art: 'text' | 'aktion'
+  /** text: wird eingesetzt; aktion: die App macht etwas (Plan öffnen, Foto aufnehmen, Sprachaufnahme);
+   *  bericht: Berichtsvorlage, schreibt einen Bericht mit eigenen Aufgaben (berichtsvorlagen.ts) */
+  art: 'text' | 'aktion' | 'bericht'
   text?: string
   hinweis?: string
 }

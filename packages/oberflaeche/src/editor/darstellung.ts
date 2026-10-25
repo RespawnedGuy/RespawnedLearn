@@ -1,7 +1,7 @@
 // Darstellung im Editor: Markdown bleibt der gespeicherte Text, angezeigt wird es ruhig und direkt bedienbar.
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { StateEffect, type Range } from '@codemirror/state'
-import { ankerParameter, findeLinks, type Link } from '@rvx/kern'
+import { EditorState, StateEffect, type Extension, type Range, type Text } from '@codemirror/state'
+import { ankerParameter, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rvx/kern'
 
 export interface DarstellungHilfen {
   /** Bild eines markierten Ausschnitts (Stelle im Plan oder Skript) */
@@ -28,19 +28,21 @@ export interface DarstellungHilfen {
 export const neuZeichnen = StateEffect.define<null>()
 
 class Kasten extends WidgetType {
-  constructor(readonly an: boolean, readonly pos: number) {
+  constructor(readonly an: boolean, readonly pos: number, readonly gesperrt = false) {
     super()
   }
   eq(o: Kasten) {
-    return o.an === this.an && o.pos === this.pos
+    return o.an === this.an && o.pos === this.pos && o.gesperrt === this.gesperrt
   }
   toDOM(view: EditorView) {
     const s = document.createElement('span')
     s.className = `cm-kasten${this.an ? ' an' : ''}`
     s.setAttribute('role', 'checkbox')
     s.setAttribute('aria-checked', String(this.an))
+    if (this.gesperrt) s.setAttribute('aria-disabled', 'true')
     s.addEventListener('mousedown', (e) => {
       e.preventDefault()
+      if (this.gesperrt) return
       view.dispatch({ changes: { from: this.pos, to: this.pos + 1, insert: this.an ? ' ' : 'x' } })
     })
     return s
@@ -51,16 +53,16 @@ class Kasten extends WidgetType {
 }
 
 class StatusMarke extends WidgetType {
-  constructor(readonly status: string) {
+  constructor(readonly status: string, readonly text = status) {
     super()
   }
   eq(o: StatusMarke) {
-    return o.status === this.status
+    return o.status === this.status && o.text === this.text
   }
   toDOM() {
     const s = document.createElement('span')
     s.className = `cm-status cm-status-${this.status}`
-    s.textContent = this.status
+    s.textContent = this.text
     return s
   }
 }
@@ -284,6 +286,47 @@ const STATUS = /\s+[-–]\s+(offen|blockiert|wartet|erledigt|gelöst)(?=\s+\^[a-
 const AUFGABE = /^(\s*)([-*] \[( |x|X)\] )/
 const BLOCKKENNUNG = /\s\^[a-z0-9-]+\s*$/
 const WICHTIG = /(?:^|\s+)#wichtig(?=\s|$)/i
+const DANACH = /(?:^|\s+)#danach(?=\s|$)/i
+
+/**
+ * Abschnitte mit `#danach` (aus Berichtsvorlagen): gesperrt, solange darüber im selben Bericht eine Aufgabe
+ * oder ein Checkpunkt offen ist.
+ */
+function sperren(doc: Text, h: DarstellungHilfen): DanachAbschnitt[] {
+  const text = doc.toString()
+  if (!/#danach/i.test(text)) return []
+  return danachAbschnitte(text.split('\n'), (id) => {
+    const z = h.zustand?.(id) ?? null
+    return z === null ? null : z !== 'erledigt' && z !== 'verworfen'
+  })
+}
+
+/** Gesperrte Zeilen je Abschnitt (1-basiert, ohne Überschrift und ohne Leerzeilen am Ende, damit man dahinter weiterschreiben kann) */
+function gesperrteZeilen(doc: Text, danach: DanachAbschnitt[]): { von: number; bis: number }[] {
+  const r: { von: number; bis: number }[] = []
+  for (const a of danach) {
+    if (!a.gesperrt) continue
+    let bis = a.bis
+    while (bis > a.kopf + 1 && doc.line(bis).text.trim() === '') bis--
+    if (bis >= a.kopf + 2) r.push({ von: a.kopf + 2, bis })
+  }
+  return r
+}
+
+/** Tippen, Löschen und Verschieben in einem gesperrten Abschnitt abweisen; die Überschrift selbst bleibt änderbar */
+function sperrFilter(hilfen: () => DarstellungHilfen): Extension {
+  return EditorState.transactionFilter.of((tr) => {
+    if (!tr.docChanged || !(tr.isUserEvent('input') || tr.isUserEvent('delete') || tr.isUserEvent('move'))) return tr
+    const doc = tr.startState.doc
+    const bereiche = gesperrteZeilen(doc, sperren(doc, hilfen())).map((z) => ({ von: doc.line(z.von).from, bis: doc.line(z.bis).to }))
+    if (!bereiche.length) return tr
+    let abweisen = false
+    tr.changes.iterChangedRanges((from) => {
+      if (bereiche.some((b) => from >= b.von && from <= b.bis)) abweisen = true
+    })
+    return abweisen ? [] : tr
+  })
+}
 
 function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
   const doc = view.state.doc
@@ -296,6 +339,9 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
   }
   let imCode = false
   let callout: 'blockade' | 'sonst' | null = null
+  const danach = sperren(doc, h)
+  const zu = new Set<number>()
+  for (const z of gesperrteZeilen(doc, danach)) for (let i = z.von; i <= z.bis; i++) zu.add(i)
 
   for (let n = 1; n <= doc.lines; n++) {
     const zeile = doc.line(n)
@@ -306,6 +352,8 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
     }
     if (imCode) continue
     const roh = cursorZeilen.has(n)
+    const gesperrt = zu.has(n)
+    if (gesperrt) deko.push(Decoration.line({ class: 'cm-gesperrt' }).range(zeile.from))
 
     // Blockkennung am Zeilenende (`^a7k2c9`, Ziel eines Links auf diese Stelle) bleibt unsichtbar
     const kennung = BLOCKKENNUNG.exec(t)
@@ -342,6 +390,12 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
         const von = zeile.from + ebene + u[2].length + w.index
         deko.push(Decoration.replace({ widget: new StatusMarke('wichtig') }).range(von, von + w[0].length))
       }
+      const d = DANACH.exec(u[3])
+      if (d && !roh) {
+        const von = zeile.from + ebene + u[2].length + d.index
+        const wartet = danach.find((a) => a.kopf === n - 1)?.gesperrt
+        deko.push(Decoration.replace({ widget: wartet ? new StatusMarke('gesperrt', '🔒 erst wenn oben alles erledigt ist') : new StatusMarke('danach') }).range(von, von + d[0].length))
+      }
       const s = STATUS.exec(t)
       if (s && !roh) deko.push(Decoration.replace({ widget: new StatusMarke(s[1].toLowerCase()) }).range(zeile.from + s.index, zeile.from + s.index + s[0].length))
       continue
@@ -351,7 +405,7 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
     if (a) {
       const von = zeile.from + a[1].length
       const an = a[3] !== ' '
-      deko.push(Decoration.replace({ widget: new Kasten(an, von + 3) }).range(von, von + a[2].length))
+      deko.push(Decoration.replace({ widget: new Kasten(an, von + 3, gesperrt) }).range(von, von + a[2].length))
       if (an && zeile.to > von + a[2].length) deko.push(Decoration.mark({ class: 'cm-erledigt-text' }).range(von + a[2].length, zeile.to))
     }
 
@@ -384,8 +438,8 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
   return Decoration.set(deko, true)
 }
 
-export function darstellung(hilfen: () => DarstellungHilfen) {
-  return ViewPlugin.fromClass(
+export function darstellung(hilfen: () => DarstellungHilfen): Extension {
+  return [sperrFilter(hilfen), ViewPlugin.fromClass(
     class {
       decorations: DecorationSet
       constructor(view: EditorView) {
@@ -397,5 +451,5 @@ export function darstellung(hilfen: () => DarstellungHilfen) {
       }
     },
     { decorations: (v) => v.decorations }
-  )
+  )]
 }

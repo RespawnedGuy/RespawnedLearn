@@ -41,16 +41,18 @@ export function zustandAus(f: Record<string, Wert>, statusVon: (id: string) => u
 }
 
 /** Neue Aufgabe als Datei. Der Rumpf ist die Notiz. */
-export function aufgabeDokument(p: { id: string; titel: string; jetzt: string; projektId?: string | null; notiz?: string }): string {
+export function aufgabeDokument(p: { id: string; titel: string; jetzt: string; projektId?: string | null; notiz?: string; blockiertDurch?: string[] }): string {
+  const durch = p.blockiertDurch ?? []
   const kopf: [string, Wert][] = [
     ['id', p.id],
     ['typ', 'aufgabe'],
     ['erstellt', p.jetzt],
     ['geaendert', p.jetzt],
     ['titel', p.titel],
-    ['status', 'offen']
+    ['status', durch.length ? 'blockiert' : 'offen']
   ]
   if (p.projektId) kopf.push(['projekt', `[[${p.projektId}]]`])
+  if (durch.length) kopf.push(['blockiert_durch', durch.map((i) => `[[${i}]]`)])
   return neuesDokument(kopf, p.notiz ? p.notiz.replace(/\n*$/, '\n') : '')
 }
 
