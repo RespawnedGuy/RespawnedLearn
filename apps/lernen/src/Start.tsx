@@ -121,9 +121,12 @@ function Kachel({ z }: { z: Lernziel }) {
   const art =
     !z.modul || (z.quellen.length === 1 && !mitschriften) ? 'Buch'
     : [z.quellen.length && `${z.quellen.length} ${z.quellen.length === 1 ? 'PDF' : 'PDFs'}`, mitschriften && `${mitschriften} ${mitschriften === 1 ? 'Mitschrift' : 'Mitschriften'}`].filter(Boolean).join(' · ') || 'Modul'
+  const uebersicht = z.modul ? ortLink('sammeln', 'modul', z.modul.id) : null
+  const weiter = weiterLink(z, bestand)
   return (
     <div className="karte lern-kachel">
-      <a className="lern-weiter" href={zielLink(z)}>
+      {/* Klick auf die Kachel: Übersicht des Moduls. Ein loses PDF hat keine, dort geht es direkt ins PDF. */}
+      <a className="lern-weiter" href={uebersicht ?? weiter ?? zielLink(z)}>
         <span className="titel">{z.titel}</span>
         {z.modul?.ziel && <span className="lern-ziel">{z.modul.ziel}</span>}
         <span className="klein-leise">{stelleText(z, bestand)}</span>
@@ -131,15 +134,32 @@ function Kachel({ z }: { z: Lernziel }) {
       <div className="lern-fuss">
         <span className="chip">{art}</span>
         <span style={{ flex: 1 }} />
-        {z.modul && (
-          <a className="knopf still klein" href={ortLink('sammeln', 'modul', z.modul.id)}>
+        {uebersicht && (
+          <a className="knopf klein" href={uebersicht}>
             Übersicht
+          </a>
+        )}
+        {weiter && (
+          <a className="knopf haupt klein" href={weiter}>
+            {z.zuletzt || (z.modul && mitschriftenVon(bestand, z.modul.id).length) ? 'Weiterlernen' : 'Anfangen'}
           </a>
         )}
       </div>
       <FavoritStern an={z.favorit} onKlick={() => void schalteFavorit(speicher, z)} />
     </div>
   )
+}
+
+/** Wo es weitergeht: an der letzten Stelle im PDF oder in der zuletzt geänderten Mitschrift, je nachdem was jünger ist */
+function weiterLink(z: Lernziel, b: Bestand): string | null {
+  const m = z.modul ? mitschriftenVon(b, z.modul.id) : []
+  const zeit = (e: Eintrag) => String(e.felder.geaendert ?? e.felder.erstellt ?? '')
+  const neueste = [...m].sort((x, y) => zeit(y).localeCompare(zeit(x)))[0]
+  const pdf = z.quellen.length ? zielLink(z) : null
+  if (!neueste) return pdf
+  if (!pdf) return ortLink('sammeln', 'mitschrift', neueste.id)
+  const pdfZeit = z.zuletzt ? new Date(z.zuletzt.am).getTime() : 0
+  return new Date(zeit(neueste)).getTime() > pdfZeit ? ortLink('sammeln', 'mitschrift', neueste.id) : pdf
 }
 
 export function FavoritStern({ an, onKlick }: { an: boolean; onKlick: () => void }) {
