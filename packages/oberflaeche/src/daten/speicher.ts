@@ -26,6 +26,14 @@ const TAG_MS = 24 * 3600_000
 
 export type SyncZustand = 'bereit' | 'laeuft' | 'offline' | 'fehler'
 
+/** Antwort von /api/demo: läuft dieser Server als Demo, und wo liegt die andere Fassung (echt ↔ Demo) */
+export interface DemoInfo {
+  demo: boolean
+  /** Zeitpunkt des letzten Zurücksetzens (nur in der Demo) */
+  stand?: string
+  wechsel: string
+}
+
 export interface SpeicherOptionen {
   app: string
   /** Welche Textdateien diese App abgleicht (die Lern-App braucht z. B. `arbeit/` nicht) */
@@ -78,6 +86,8 @@ export class Speicher {
   version = 0
   /** Zeit des letzten vollständigen Abgleichs (0 = seit dem Start noch keiner): erst dann ist der Stand des Servers bekannt */
   abgeglichen = 0
+  /** Demomodus, sobald der Server geantwortet hat (null = noch unbekannt) */
+  demo: DemoInfo | null = null
 
   constructor(private o: SpeicherOptionen) {}
 
@@ -334,6 +344,8 @@ export class Speicher {
     this.zustand = 'laeuft'
     this.melde()
     try {
+      // 0. Demo zurückgesetzt? Dann nichts Altes hochladen, sondern leer neu anfangen
+      if (await this.demoPruefen()) return
       // 1. Eigene Änderungen hochladen
       for (const e of [...this.texte.values()].filter((x) => x.lokal)) {
         if (e.geloescht) {
@@ -381,6 +393,44 @@ export class Speicher {
       this.letzterFehler = String((err as Error)?.message ?? err)
     }
     this.melde()
+  }
+
+  /**
+   * Demomodus: Wurde die Demo zurückgesetzt (anderer `stand`), leert dieses Gerät seinen Speicher und lädt neu,
+   * statt alte Demo-Änderungen in die frischen Demodaten hochzuladen. Außerhalb der Demo passiert hier nichts.
+   */
+  private async demoPruefen(): Promise<boolean> {
+    const r = await fetch(`${this.api}/demo`).catch(() => null)
+    if (!r?.ok) return false
+    const d = (await r.json().catch(() => null)) as DemoInfo | null
+    if (!d) return false
+    if (JSON.stringify(d) !== JSON.stringify(this.demo)) {
+      this.demo = d
+      this.melde()
+    }
+    if (!d.demo || !d.stand) return false
+    const bekannt = (await anfrage(this.db.transaction('meta').objectStore('meta').get('demo-stand'))) as string | undefined
+    if (bekannt === d.stand) return false
+    if (bekannt === undefined && !this.texte.size) {
+      await anfrage(this.db.transaction('meta', 'readwrite').objectStore('meta').put(d.stand, 'demo-stand'))
+      return false
+    }
+    const t = this.db.transaction(['texte', 'binaer', 'meta'], 'readwrite')
+    for (const name of ['texte', 'binaer', 'meta']) t.objectStore(name).clear()
+    t.objectStore('meta').put(d.stand, 'demo-stand')
+    await new Promise<void>((ok, fehler) => {
+      t.oncomplete = () => ok()
+      t.onerror = () => fehler(t.error)
+    })
+    location.reload()
+    return true
+  }
+
+  /** Demo zurücksetzen (nur in der Demo): Der Server legt die Demodaten neu an, danach fängt dieses Gerät leer an */
+  async demoZuruecksetzen(): Promise<void> {
+    const r = await fetch(`${this.api}/demo/zuruecksetzen`, { method: 'POST' })
+    if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { fehler?: string }).fehler ?? `Zurücksetzen fehlgeschlagen (${r.status})`)
+    await this.sync()
   }
 
   /**

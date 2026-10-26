@@ -45,12 +45,13 @@ export function Kopf({
   oben?: string | null
 }) {
   const ref = useRef<HTMLElement>(null)
+  const { speicher } = useDaten()
   useKopfHoehe(ref)
   useEffect(() => {
     document.title = `${ort} · RespawnedNotes`
   }, [ort])
   return (
-    <header className="kopf" ref={ref}>
+    <header className={`kopf${speicher.demo?.demo ? ' mit-demo' : ''}`} ref={ref}>
       <div className="kopf-zeile">
         <div className="kopf-links">
           <ZurueckPfeil oben={oben} />
@@ -66,6 +67,7 @@ export function Kopf({
           </nav>
         </div>
         <div className="kopf-rechts">
+          <DemoSchild />
           {rechts}
           <SyncAnzeige />
           <Version />
@@ -117,6 +119,20 @@ function AppSchalter({ app }: { app: string }) {
         Lernen
       </a>
     </nav>
+  )
+}
+
+/** In der Demo immer sichtbar: Schild „Demo“, ein Tipp führt zur selben Ansicht in den echten Daten (falls eingerichtet) */
+function DemoSchild() {
+  const { speicher } = useDaten()
+  const d = speicher.demo
+  if (!d?.demo) return null
+  const titel = 'Demo mit erfundenen Daten. Nichts davon gelangt in deine echten Daten.'
+  if (!d.wechsel) return <span className="chip demo-schild" title={titel}>Demo</span>
+  return (
+    <a className="chip demo-schild" href={`${d.wechsel}${location.pathname}${location.hash}`} title={`${titel} Tippen: zu den echten Daten`}>
+      Demo<span className="nur-breit"> · zu echt</span>
+    </a>
   )
 }
 

@@ -1,5 +1,5 @@
 export { DatenAnbieter, useDaten } from './daten/DatenKontext'
-export { Speicher, geraet, konfliktPfad, type SyncZustand } from './daten/speicher'
+export { Speicher, geraet, konfliktPfad, type SyncZustand, type DemoInfo } from './daten/speicher'
 export { Kopf, SyncAnzeige, ZurueckPfeil, type KopfZiel } from './Kopf'
 export { useOrt, geheZu, ortLink, zurueck, kannZurueck } from './ort'
 export { Editor, type EditorGriff, type EditorKontext } from './editor/Editor'
