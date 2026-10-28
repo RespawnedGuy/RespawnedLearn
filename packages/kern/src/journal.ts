@@ -453,17 +453,56 @@ export function berichtStellen(text: string, g: Gliederung = gliedere(text)): Be
  * zusammenhält. Ist die Stelle nicht mehr eindeutig zu finden, bleibt der Text unverändert.
  */
 export function ersetzeBerichtStelle(text: string, s: { kuerzel: string; schluessel: string; nr: number; kopf: string }, rumpf: string): string {
-  const alle = berichtStellen(text).filter((x) => x.kuerzel === s.kuerzel && x.schluessel === s.schluessel)
-  let t = alle.find((x) => x.nr === s.nr && x.kopf === s.kopf)
-  if (!t) {
-    const gleich = alle.filter((x) => x.kopf === s.kopf)
-    if (gleich.length !== 1) return text
-    t = gleich[0]
-  }
+  const t = findeBerichtStelle(text, s)
+  if (!t) return text
   const zeilen = text.split('\n')
   const neu = rumpf.replace(/\n+$/, '')
   zeilen.splice(t.von + 1, t.bis - t.von - 1, ...(neu ? neu.split('\n') : []))
   return zeilen.join('\n').replace(/\n*$/, '\n')
+}
+
+/** Sucht eine Berichtsstelle wieder: zuerst nach Nummer und Kopfzeile, sonst nur nach eindeutiger Kopfzeile */
+function findeBerichtStelle(text: string, s: { kuerzel: string; schluessel: string; nr: number; kopf: string }): BerichtStelle | undefined {
+  const alle = berichtStellen(text).filter((x) => x.kuerzel === s.kuerzel && x.schluessel === s.schluessel)
+  const t = alle.find((x) => x.nr === s.nr && x.kopf === s.kopf)
+  if (t) return t
+  const gleich = alle.filter((x) => x.kopf === s.kopf)
+  return gleich.length === 1 ? gleich[0] : undefined
+}
+
+/**
+ * Löscht eine Berichtsstelle samt `##`-Zeile aus dem Journal. Die H1 des Projekts bleibt stehen.
+ * Ist die Stelle nicht mehr eindeutig zu finden, bleibt der Text unverändert.
+ */
+export function entferneBerichtStelle(text: string, s: { kuerzel: string; schluessel: string; nr: number; kopf: string }): string {
+  const t = findeBerichtStelle(text, s)
+  if (!t) return text
+  const zeilen = text.split('\n')
+  let bis = t.bis
+  while (bis < zeilen.length && zeilen[bis].trim() === '') bis++
+  // eine Leerzeile vor der nächsten Überschrift bleibt
+  const rest = bis < zeilen.length && t.von > 0 && zeilen[t.von - 1].trim() !== ''
+  zeilen.splice(t.von, bis - t.von, ...(rest ? [''] : []))
+  return zeilen.join('\n').replace(/\n*$/, '\n')
+}
+
+/** Links auf einen Bericht im Journal (`[[Projekt-ID#bericht=<Schlüssel>|Titel]]`) werden wieder normaler Text */
+export function loeseBerichtLinksAuf(text: string, projektId: string, schluessel: string): string {
+  let out = ''
+  let pos = 0
+  for (const l of findeLinks(text)) {
+    if (l.einbettung || l.ziel !== projektId || !l.anker?.startsWith('bericht=')) continue
+    let k = l.anker.slice(8)
+    try {
+      k = decodeURIComponent(k)
+    } catch {
+      // ungültig kodiert: so vergleichen, wie es dasteht
+    }
+    if (k !== schluessel) continue
+    out += text.slice(pos, l.von) + (l.anzeige ?? '').replace(/\\?\|/g, ' ').trim()
+    pos = l.bis
+  }
+  return pos === 0 ? text : out + text.slice(pos)
 }
 
 /**

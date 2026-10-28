@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Bestand, berichtFortschreiben, berichtSchluessel, berichtStellen, ersetzeBerichtStelle } from '../src'
+import { Bestand, berichtFortschreiben, berichtSchluessel, berichtStellen, entferneBerichtStelle, ersetzeBerichtStelle, loeseBerichtLinksAuf } from '../src'
 
 const kopf = (datum: string) => `---
 id: 01JJOURNAL${datum.replace(/-/g, '')}0000000
@@ -55,6 +55,25 @@ describe('Berichte aus dem Journal', () => {
     expect(neu).toContain('## Rückfragen Aufmaß\nArchiv oti?\n')
     // unbekannte Stelle: nichts ändern
     expect(ersetzeBerichtStelle(TAG1, { ...s, kopf: '## Weg' }, 'x')).toBe(TAG1)
+  })
+
+  it('löscht eine Berichtsstelle samt Überschrift, Nachbarn bleiben', () => {
+    const s = berichtStellen(TAG1).find((x) => x.kuerzel === 'dd_bsz_gehe' && x.schluessel === 'ema installation')!
+    const neu = entferneBerichtStelle(TAG1, s)
+    expect(neu).not.toContain('Weiterleitung GLT')
+    expect(neu).not.toContain('Com2bus')
+    expect(neu).toContain('## Rückfragen Aufmaß\nArchiv oti?\n\n# #dd_bsz_gehe\n\n# #anderes\n## EMA Installation\ngehört nicht dazu\n')
+    const r = berichtStellen(TAG1).find((x) => x.schluessel === 'rückfragen aufmaß')!
+    expect(entferneBerichtStelle(TAG1, r)).toContain('# #dd_bsz_gehe\n\n# #dd_bsz_gehe\n## EMA Installation')
+    expect(entferneBerichtStelle(TAG1, { ...s, kopf: '## Weg' })).toBe(TAG1)
+  })
+
+  it('Links auf einen gelöschten Bericht werden Text, andere bleiben', () => {
+    const t = '| Was | Bericht |\n|---|---|\n| EMA | [[P1#bericht=ema%20installation\\|EMA Installation]] |\nSiehe [[P1#bericht=r%C3%BCckfragen|Rückfragen]] und [[P1|Projekt]].\n'
+    const neu = loeseBerichtLinksAuf(t, 'P1', 'ema installation')
+    expect(neu).toContain('| EMA | EMA Installation |')
+    expect(neu).toContain('[[P1#bericht=r%C3%BCckfragen|Rückfragen]] und [[P1|Projekt]]')
+    expect(loeseBerichtLinksAuf(t, 'P2', 'ema installation')).toBe(t)
   })
 
   it('fortschreiben legt die ## im heutigen Journal an oder findet sie', () => {
