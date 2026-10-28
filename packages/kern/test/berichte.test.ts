@@ -68,4 +68,12 @@ describe('Berichte aus dem Journal', () => {
     expect(c.text).toContain('12V = 1\n\n## Brandschutz\n')
     expect(berichtStellen(c.text).filter((x) => x.kuerzel === 'dd_bsz_gehe').map((x) => x.titel)).toEqual(['Rückfragen Aufmaß', 'EMA Installation', 'Brandschutz'])
   })
+
+  it('eine ## mit #unterpunkt ist nur eine Überschrift, kein Bericht', () => {
+    const t = kopf('2026-10-28') + '# #dd_bsz_gehe\n## Montage\nKabel gezogen\n## Kabelweg #unterpunkt\nüber die Decke\n'
+    const z = t.split('\n')
+    const stellen = berichtStellen(t)
+    expect(stellen.map((x) => x.titel)).toEqual(['Montage'])
+    expect(stellen[0].bis).toBe(z.indexOf('## Kabelweg #unterpunkt'))
+  })
 })

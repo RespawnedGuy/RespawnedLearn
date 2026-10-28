@@ -191,6 +191,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-status-blockiert, .cm-status-wartet { background: #fde7e5; color: #a3261d; }
 .cm-status-erledigt, .cm-status-gelöst { background: #e3f1e8; color: var(--gut); }
 .cm-status-wichtig { background: #fff1d6; color: #9a5b00; }
+.cm-status-unterpunkt { background: var(--mulde-hell); color: var(--sehr-leise); font-weight: 600; }
 .cm-status-danach { background: var(--mulde-hell); color: var(--leise); font-weight: 600; }
 .cm-status-gesperrt { background: var(--mulde-hell); color: var(--leise); }
 .cm-gesperrt { opacity: 0.45; }

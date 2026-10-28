@@ -290,6 +290,7 @@ const AUFGABE = /^(\s*)([-*] \[( |x|X)\] )/
 const BLOCKKENNUNG = /\s\^[a-z0-9-]+\s*$/
 const WICHTIG = /(?:^|\s+)#wichtig(?=\s|$)/i
 const DANACH = /(?:^|\s+)#danach(?=\s|$)/i
+const UNTERPUNKT = /(?:^|\s+)#unterpunkt(?=\s|$)/i
 
 /**
  * Abschnitte mit `#danach` (aus Berichtsvorlagen): gesperrt, solange darüber im selben Bericht eine Aufgabe
@@ -411,6 +412,11 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
         const von = zeile.from + ebene + u[2].length + d.index
         const wartet = danach.find((a) => a.kopf === n - 1)?.gesperrt
         deko.push(Decoration.replace({ widget: wartet ? new StatusMarke('gesperrt', '🔒 erst wenn oben alles erledigt ist') : new StatusMarke('danach') }).range(von, von + d[0].length))
+      }
+      const up = UNTERPUNKT.exec(u[3])
+      if (up && !roh) {
+        const von = zeile.from + ebene + u[2].length + up.index
+        deko.push(Decoration.replace({ widget: new StatusMarke('unterpunkt', 'kein Bericht') }).range(von, von + up[0].length))
       }
       const s = STATUS.exec(t)
       if (s && !roh) deko.push(Decoration.replace({ widget: new StatusMarke(s[1].toLowerCase()) }).range(zeile.from + s.index, zeile.from + s.index + s[0].length))

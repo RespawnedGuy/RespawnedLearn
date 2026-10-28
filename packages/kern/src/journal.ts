@@ -14,6 +14,8 @@ export interface Abschnitt {
   anker: string | null
   /** `#wichtig` an der Überschrift */
   wichtig: boolean
+  /** `#unterpunkt` an einer H2: nur eine Überschrift, kein Bericht */
+  unterpunkt: boolean
   /** Projektkürzel aus der umgebenden H1, null außerhalb eines Projekts */
   projekt: string | null
   /** Zeile der Überschrift */
@@ -86,6 +88,7 @@ const ANKER_ENDE = /\s+\^([a-z0-9-]+)$/i
 const AUFGABE = /^(\s*)[-*] \[( |x|X)\] (.*)$/
 const BLOCKADE = /^>\s*\[!blockade\][+-]?\s*(.*)$/i
 const WICHTIG = /(^|\s+)#wichtig(?=\s|$)/gi
+const UNTERPUNKT = /(^|\s+)#unterpunkt(?=\s|$)/gi
 
 export function rumpfStart(zeilen: string[]): number {
   if (zeilen[0]?.trim() !== '---') return 0
@@ -93,7 +96,7 @@ export function rumpfStart(zeilen: string[]): number {
   return 0
 }
 
-export function zerlegeUeberschrift(roh: string): { titel: string; status: Status | null; anker: string | null; wichtig: boolean } {
+export function zerlegeUeberschrift(roh: string): { titel: string; status: Status | null; anker: string | null; wichtig: boolean; unterpunkt: boolean } {
   let titel = roh
   let anker: string | null = null
   const a = ANKER_ENDE.exec(titel)
@@ -103,14 +106,15 @@ export function zerlegeUeberschrift(roh: string): { titel: string; status: Statu
   }
   const ohne = titel.replace(WICHTIG, '')
   const wichtig = ohne !== titel
-  titel = ohne
+  titel = ohne.replace(UNTERPUNKT, '')
+  const unterpunkt = titel !== ohne
   let status: Status | null = null
   const s = STATUS_ENDE.exec(titel)
   if (s) {
     status = s[1].toLowerCase() as Status
     titel = titel.slice(0, s.index)
   }
-  return { titel: titel.trim(), status, anker, wichtig }
+  return { titel: titel.trim(), status, anker, wichtig, unterpunkt }
 }
 
 export function projektTag(h1Titel: string): { kuerzel: string; zusatz: string } | null {
@@ -404,7 +408,7 @@ export function setzeProjektTag(text: string, t: { von: number; kopf: string }, 
 }
 
 /**
- * Ein Abschnitt `##` unter `# #projekt` ist ein Bericht. Gleiche Titel im selben Projekt setzen ihn über
+ * Ein Abschnitt `##` unter `# #projekt` ist ein Bericht, außer er trägt `#unterpunkt`. Gleiche Titel im selben Projekt setzen ihn über
  * mehrere Tage fort; das Projekt zeigt sie zusammenhängend (Vertrag 0.21). Der Schlüssel macht Titel
  * vergleichbar, ohne Status, `#wichtig`, Anker, Groß-/Kleinschreibung und doppelte Leerzeichen.
  */
@@ -432,7 +436,7 @@ export function berichtStellen(text: string, g: Gliederung = gliedere(text)): Be
   const zaehler = new Map<string, number>()
   const out: BerichtStelle[] = []
   for (const a of g.abschnitte) {
-    if (a.ebene !== 2 || !a.projekt || !a.titel) continue
+    if (a.ebene !== 2 || !a.projekt || !a.titel || a.unterpunkt) continue
     const schluessel = berichtSchluessel(a.titel)
     const k = `${a.projekt}\n${schluessel}`
     const nr = zaehler.get(k) ?? 0
