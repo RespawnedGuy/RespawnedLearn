@@ -210,7 +210,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <h1>{e.titel}</h1>
             {stand?.zuletzt && (
-              <span className="klein-leise" style={{ color: sitzt ? 'var(--gut)' : '#a3261d', fontWeight: 600 }}>
+              <span className="klein-leise" style={{ color: sitzt ? 'var(--gut)' : 'var(--rot-text)', fontWeight: 600 }}>
                 {sitzt ? 'sitzt' : 'wieder fällig'} · zuletzt {vorTagen(stand.zuletzt)} geübt
               </span>
             )}

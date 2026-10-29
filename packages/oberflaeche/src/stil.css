@@ -11,12 +11,30 @@
   --linie: #e8e4dd;
   --mulde: #ece8e1;
   --mulde-hell: #f1eee8;
-  --akzent: #d2561c;
+  /* Akzent als Füllung trägt weiße Schrift: mindestens 4,5:1 (Apple HIG / WCAG), #c4501a = 4,66:1 */
+  --akzent: #c4501a;
+  --akzent-tief: #b4460f;
   --akzent-text: #b4460f;
   --akzent-dunkel: #8a350b;
   --akzent-weich: #fcebe0;
   --gut: #2b6b44;
+  --gut-weich: #e3f1e8;
   --warn: #9a6a00;
+  /* Rahmen von Bedienelementen (Haken, Stern): mindestens 3:1 gegen die Fläche */
+  --rand-stark: #8e8a82;
+  --linie-stark: #d6d0c6;
+  --rot-text: #a3261d;
+  --rot-weich: #fde7e5;
+  --rot-rand: #f2b8b2;
+  --rot-hauch: #fff6f4;
+  --gelb: #f0a020;
+  --gelb-text: #9a5b00;
+  --gelb-weich: #fff1d6;
+  --gelb-rand: #f0c060;
+  --markiert: #ffe1c7;
+  --glas: rgba(255, 255, 255, 0.78);
+  --glas-dicht: rgba(255, 255, 255, 0.9);
+  --toast: #24262b;
   --schatten: 0 1px 2px rgba(31, 34, 39, 0.06), 0 10px 30px rgba(31, 34, 39, 0.06);
   --schatten-hoch: 0 2px 4px rgba(31, 34, 39, 0.08), 0 18px 40px rgba(31, 34, 39, 0.16);
   --stift-alltag: #2e5bd8;
@@ -30,6 +48,7 @@
 
 .app-lernen {
   --akzent: #6a4fc4;
+  --akzent-tief: #5a3fb3;
   --akzent-text: #5a3fb3;
   --akzent-dunkel: #432e8a;
   --akzent-weich: #efebfa;
@@ -38,6 +57,7 @@
 /* Organisation (Termine, Nachrichten): Blau. Wohnt in der Arbeits-App, die Klasse setzt App.tsx am body */
 .app-organisation {
   --akzent: #2563b8;
+  --akzent-tief: #1d55a0;
   --akzent-text: #1d55a0;
   --akzent-dunkel: #163f78;
   --akzent-weich: #e4edf9;
@@ -51,16 +71,44 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  /* viewport-fit=cover: im Querformat nicht unter den Kameraausschnitt zeichnen */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 a { color: var(--akzent-text); }
 a:hover { color: var(--akzent-dunkel); }
 button, input, textarea, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+/* Der Platzhalter ist Anleitung, also lesbar (CodeMirror-Standard #888 hatte 3,2:1) */
+.cm-editor .cm-placeholder { color: var(--leise); }
+
+/* Bewegung reduzieren (Systemeinstellung): keine Animationen und Übergänge */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Trefferfläche mindestens 44 × 44 px bei Fingerbedienung (Apple HIG). Die Optik bleibt gleich,
+   ein unsichtbarer Rand um kleine Knöpfe fängt den Finger. any-pointer: auch das Surface mit Touchscreen.
+   :where hält position überschreibbar. */
+@media (any-pointer: coarse) {
+  :where(.knopf, .app-schalter a, .zurueck-pfeil, .segmente button, .chip-wahl, .suche-art) { position: relative; }
+  .knopf::after, .app-schalter a::after, .zurueck-pfeil::after, .segmente button::after, button.chip-wahl::after, .suche-art::after {
+    content: ''; position: absolute; inset: -2px;
+  }
+  .knopf.klein::after { inset: -6px -2px; }
+  .app-schalter a::after { inset: -7px 0; }
+  .zurueck-pfeil::after { inset: -2px -7px; }
+  .segmente button::after { inset: -5px 0; }
+  .segmente.klein button::after { inset: -7px 0; }
+  button.chip-wahl::after { inset: -8px -2px; }
+  select.chip-wahl { min-height: 44px; }
+}
 
 /* ---------- Kopf: ein Menü oben, überall gleich, ausklappbar und fixierbar ---------- */
 .kopf {
   position: sticky; top: 0; z-index: 30;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glas);
+  padding-top: env(safe-area-inset-top, 0px);
   backdrop-filter: saturate(1.4) blur(12px);
   border-bottom: 1px solid var(--linie);
 }
@@ -75,7 +123,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 @media (hover: hover) { .zurueck-pfeil:hover:not(:disabled) { background: var(--mulde-hell); } }
 .zurueck-pfeil:disabled { visibility: hidden; }
 .zurueck-pfeil.schwebend {
-  position: fixed; top: 10px; left: 10px; margin: 0; z-index: 45; width: 48px; height: 48px;
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(10px + env(safe-area-inset-left, 0px)); margin: 0; z-index: 45; width: 48px; height: 48px;
   background: rgba(31, 34, 40, 0.82); color: #fff; border-radius: 14px; box-shadow: var(--schatten-hoch);
 }
 .zurueck-pfeil.schwebend:hover:not(:disabled) { background: rgba(31, 34, 40, 0.92); }
@@ -116,7 +164,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sync { font-size: 13px; color: var(--leise); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .sync::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--gut); }
 .sync.laeuft::before { background: var(--akzent); }
-.version { font-size: 12px; color: var(--sehr-leise); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.version { font-size: 12px; color: var(--leise); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sync.offline::before, .sync.ungesichert::before { background: var(--sehr-leise); }
 .sync.fehler::before { background: var(--stift-wichtig); }
 
@@ -125,12 +173,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche);
   font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; color: inherit;
 }
-.knopf:hover { border-color: #d6d0c6; }
+.knopf:hover { border-color: var(--linie-stark); }
 .knopf.haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 700; }
-.knopf.haupt:hover { background: var(--akzent-text); }
+.knopf.haupt:hover { background: var(--akzent-tief); }
 .knopf.still { border-color: transparent; background: transparent; color: var(--akzent-text); }
 .knopf.still:hover { background: var(--mulde-hell); }
 .knopf.klein { height: 32px; padding: 0 10px; font-size: 13px; }
+/* Zerstörend (Löschen, Verwerfen): rot wie in iOS, die Rückfrage bleibt */
+.knopf.gefahr { color: var(--rot-text); }
 .knopf:disabled { opacity: 0.5; cursor: default; }
 .symbol { width: 40px; padding: 0; justify-content: center; }
 
@@ -139,7 +189,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .klein-leise { font-size: 13px; color: var(--leise); }
 .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--mulde-hell); border-radius: 8px; padding: 3px 8px; font-size: 12px; font-weight: 600; color: var(--leise); }
 .chip.akzent { background: var(--akzent-weich); color: var(--akzent-dunkel); }
-.chip.rot { background: #fde7e5; color: #a3261d; }
+.chip.rot { background: var(--rot-weich); color: var(--rot-text); }
 /* Demo: kräftig, damit beim Vorführen niemand die Demo für echte Daten hält */
 .chip.demo-schild { background: #2a2622; color: #fff; text-decoration: none; white-space: nowrap; letter-spacing: 0.02em; }
 .chip-wahl { border: none; font-family: inherit; cursor: pointer; max-width: 220px; }
@@ -188,17 +238,17 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-zeichen { font-family: var(--mono); font-size: 13px; color: var(--sehr-leise); font-weight: 400; }
 .cm-projekttag { color: var(--akzent-text); }
 .cm-status { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-left: 4px; vertical-align: 2px; background: var(--mulde-hell); color: var(--leise); }
-.cm-status-blockiert, .cm-status-wartet { background: #fde7e5; color: #a3261d; }
-.cm-status-erledigt, .cm-status-gelöst { background: #e3f1e8; color: var(--gut); }
-.cm-status-wichtig { background: #fff1d6; color: #9a5b00; }
-.cm-status-unterpunkt { background: var(--mulde-hell); color: var(--sehr-leise); font-weight: 600; }
+.cm-status-blockiert, .cm-status-wartet { background: var(--rot-weich); color: var(--rot-text); }
+.cm-status-erledigt, .cm-status-gelöst { background: var(--gut-weich); color: var(--gut); }
+.cm-status-wichtig { background: var(--gelb-weich); color: var(--gelb-text); }
+.cm-status-unterpunkt { background: var(--mulde-hell); color: var(--leise); font-weight: 600; }
 .cm-status-danach { background: var(--mulde-hell); color: var(--leise); font-weight: 600; }
 .cm-status-gesperrt { background: var(--mulde-hell); color: var(--leise); }
 .cm-gesperrt { opacity: 0.45; }
 .cm-gesperrt .cm-kasten { cursor: not-allowed; }
 .cm-status-offen { background: var(--akzent-weich); color: var(--akzent-dunkel); }
-.cm-kasten { width: 18px; height: 18px; border-radius: 5px; border: 2px solid #c8c2b8; display: inline-block; vertical-align: -3px; margin-right: 6px; cursor: pointer; background: #fff; }
-.cm-kasten.an { background: var(--akzent); border-color: var(--akzent); box-shadow: inset 0 0 0 2px #fff; }
+.cm-kasten { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--rand-stark); display: inline-block; vertical-align: -3px; margin-right: 6px; cursor: pointer; background: var(--flaeche); }
+.cm-kasten.an { background: var(--akzent); border-color: var(--akzent); box-shadow: inset 0 0 0 2px var(--flaeche); }
 .cm-erledigt-text { color: var(--sehr-leise); text-decoration: line-through; }
 .cm-link { color: var(--akzent-text); cursor: pointer; }
 /* Eigene Aufgabe im Satz: Kreis davor, Farbe = Zustand */
@@ -209,7 +259,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-aufgabe.zustand-faellig::before { background: var(--akzent); border-color: var(--akzent); }
 .cm-aufgabe.zustand-wartet { color: var(--warn); }
 .cm-aufgabe.zustand-wartet::before { border-style: dashed; }
-.cm-aufgabe.zustand-blockiert { color: #a3261d; }
+.cm-aufgabe.zustand-blockiert { color: var(--rot-text); }
 /* Blockiert: kleines Stoppschild (rotes Achteck mit weißem Balken) */
 .cm-aufgabe.zustand-blockiert::before {
   width: 0.9em; height: 0.9em; border: none; border-radius: 0; vertical-align: -0.12em;
@@ -221,22 +271,22 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-aufgabe.zustand-erledigt { color: var(--gut); text-decoration-line: line-through; }
 .cm-aufgabe.zustand-erledigt::before { background: var(--gut); }
 .cm-aufgabe.zustand-verworfen { color: var(--sehr-leise); text-decoration-line: line-through; font-weight: 400; }
-.cm-blockade { background: #fff6f4; border-left: 3px solid var(--stift-wichtig); padding-left: 12px !important; }
-.cm-status-blockade { background: #fde7e5; color: #a3261d; margin: 0 8px 0 0; }
-.cm-feld { font-weight: 700; color: #a3261d; }
+.cm-blockade { background: var(--rot-hauch); border-left: 3px solid var(--stift-wichtig); padding-left: 12px !important; }
+.cm-status-blockade { background: var(--rot-weich); color: var(--rot-text); margin: 0 8px 0 0; }
+.cm-feld { font-weight: 700; color: var(--rot-text); }
 .cm-callout { background: var(--mulde-hell); border-left: 3px solid var(--linie); padding-left: 12px !important; }
-.cm-klapp { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--linie); border-radius: 999px; background: var(--flaeche, #fff); color: var(--leise); font: inherit; font-size: 0.8em; cursor: pointer; vertical-align: 1px; }
+.cm-klapp { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--linie); border-radius: 999px; background: var(--flaeche); color: var(--leise); font: inherit; font-size: 0.8em; cursor: pointer; vertical-align: 1px; }
 .cm-aufgabe-bilder { display: inline-flex; gap: 3px; vertical-align: middle; margin: 0 2px 0 5px; }
 .cm-aufgabe-bild { display: inline-flex; align-items: center; justify-content: center; width: 2.4em; height: 2.4em; border-radius: 6px; overflow: hidden; background: var(--mulde); border: 1px solid var(--linie); cursor: pointer; font-size: 12px; font-weight: 700; color: var(--leise); }
 .cm-aufgabe-bild img { width: 100%; height: 100%; object-fit: cover; }
 .cm-ton { display: inline-flex; vertical-align: middle; margin: 2px 0; max-width: 100%; }
-.cm-ton button { font: inherit; font-size: 13px; color: var(--leise); background: #fff; border: 1px solid var(--linie); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.cm-ton button { font: inherit; font-size: 13px; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .cm-ton audio { height: 36px; max-width: 100%; }
-.cm-ausschnitt { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; background: #fff; border: 1px solid var(--linie); border-radius: 10px; padding: 4px 10px 4px 4px; margin: 2px 0; cursor: pointer; font-size: 13px; color: var(--leise); max-width: 100%; }
+.cm-ausschnitt { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 10px; padding: 4px 10px 4px 4px; margin: 2px 0; cursor: pointer; font-size: 13px; color: var(--leise); max-width: 100%; }
 .cm-ausschnitt img, .cm-ausschnitt .platz { width: 120px; height: 64px; object-fit: contain; background: #fff; border-radius: 6px; background: var(--mulde); flex: none; }
 .cm-wissen { display: block; background: var(--akzent-weich); border-radius: 10px; padding: 8px 12px; margin: 4px 0; font-size: 15px; color: var(--tinte); white-space: normal; }
 .cm-wissen b { color: var(--akzent-dunkel); }
-.cm-tooltip.cm-tooltip-autocomplete { border: none; border-radius: 14px; box-shadow: var(--schatten-hoch); background: #fff; padding: 6px; overflow: hidden; }
+.cm-tooltip.cm-tooltip-autocomplete { border: none; border-radius: 14px; box-shadow: var(--schatten-hoch); background: var(--flaeche); padding: 6px; overflow: hidden; }
 .cm-tooltip.cm-tooltip-autocomplete > ul { font-family: 'Manrope', system-ui, sans-serif !important; max-height: 28em !important; min-width: 280px; }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 8px 10px !important; border-radius: 9px; line-height: 1.3; }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--akzent-weich); color: var(--akzent-dunkel); }
@@ -259,7 +309,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .marke.gewaehlt { box-shadow: 0 0 0 3px rgba(210, 86, 28, 0.3); }
 .marke .nummer { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--akzent); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(106, 79, 196, 0.06); border-radius: 3px; pointer-events: none; }
-.schwebe { position: absolute; z-index: 20; background: #fff; border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }
+.schwebe { position: absolute; z-index: 20; background: var(--flaeche); border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }
 .schwebe .reihe { display: flex; gap: 4px; flex-wrap: wrap; }
 
 @media (max-width: 720px) {
@@ -298,8 +348,8 @@ button.marke { padding: 0; }
   body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
   .daumenleiste {
     display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 32;
-    background: rgba(255, 255, 255, 0.9); backdrop-filter: saturate(1.4) blur(12px);
-    border-top: 1px solid var(--linie); padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--glas-dicht); backdrop-filter: saturate(1.4) blur(12px);
+    border-top: 1px solid var(--linie); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   }
   /* Tastatur offen (Arbeit): nur „+“ bleibt, an derselben Stelle über der Tastatur */
   .daumenleiste.tastatur { background: transparent; backdrop-filter: none; border: none; bottom: var(--tastatur, 0px); pointer-events: none; padding-bottom: 8px; }
