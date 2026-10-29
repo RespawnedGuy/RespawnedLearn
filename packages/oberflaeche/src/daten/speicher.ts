@@ -11,6 +11,11 @@ interface TextEintrag {
   basis: string | null
   lokal: boolean
   geloescht?: boolean
+  /**
+   * Fassungen, die schon hochgeschickt wurden, ohne dass eine Antwort kam (höchstens drei). Steht eine davon auf
+   * dem Server, hat der Server die eigene Fassung und es ist kein Konflikt (Antwort im Funkloch verloren).
+   */
+  gesendet?: string[]
 }
 
 interface BinaerEintrag {
@@ -161,7 +166,7 @@ export class Speicher {
   async schreibe(pfad: string, text: string): Promise<void> {
     const alt = this.texte.get(pfad)
     if (alt && !alt.geloescht && alt.text === text) return
-    await this.speichereEintrag({ pfad, text, basis: alt?.basis ?? null, lokal: true })
+    await this.speichereEintrag({ pfad, text, basis: alt?.basis ?? null, lokal: true, gesendet: alt?.gesendet })
     this.melde()
     this.planen(1500)
   }
@@ -346,18 +351,25 @@ export class Speicher {
     try {
       // 0. Demo zurückgesetzt? Dann nichts Altes hochladen, sondern leer neu anfangen
       if (await this.demoPruefen()) return
-      // 1. Eigene Änderungen hochladen
-      for (const e of [...this.texte.values()].filter((x) => x.lokal)) {
+      // 1. Eigene Änderungen hochladen. Jeder Eintrag wird frisch gelesen: Während eines Uploads kann weitergeschrieben werden.
+      for (const pfad of [...this.texte.values()].filter((x) => x.lokal).map((x) => x.pfad)) {
+        const e = this.texte.get(pfad)
+        if (!e?.lokal) continue
         if (e.geloescht) {
           const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(e.pfad)}`, { method: 'DELETE', headers: { 'x-basis': e.basis ?? '' } })
-          if (r.ok || r.status === 409) await this.entferneEintrag(e.pfad) // bei 409 kommt die neuere Fassung gleich wieder
+          if (!r.ok && r.status !== 409) continue
+          const jetzt = this.texte.get(e.pfad)
+          // bei 409 kommt die neuere Fassung gleich wieder; wurde inzwischen neu geschrieben, bleibt das stehen
+          if (jetzt?.geloescht) await this.entferneEintrag(e.pfad)
+          else if (jetzt && r.ok) await this.speichereEintrag({ ...jetzt, basis: null })
           continue
         }
+        if (!e.gesendet?.includes(e.text)) await this.speichereEintrag({ ...e, gesendet: [...(e.gesendet ?? []), e.text].slice(-3) })
         const r = await this.put(e.pfad, e.text, e.basis)
         if (r.ok) {
-          // Inzwischen weitergeschrieben? Dann bleibt die Datei lokal geändert, nur der Stand rückt nach.
-          const jetzt = this.texte.get(e.pfad)!
-          await this.speichereEintrag({ ...jetzt, basis: r.hash, lokal: jetzt.text !== e.text })
+          // Inzwischen weitergeschrieben oder gelöscht? Dann bleibt die Datei lokal geändert, nur der Stand rückt nach.
+          const jetzt = this.texte.get(e.pfad) ?? { ...e, geloescht: true }
+          await this.speichereEintrag({ ...jetzt, basis: r.hash, lokal: !!jetzt.geloescht || jetzt.text !== e.text, gesendet: undefined })
         } else await this.konflikt(e)
       }
       // 2. Stand des Servers holen
@@ -372,7 +384,8 @@ export class Speicher {
         const e = this.texte.get(pfad)
         if (e?.lokal || e?.basis === hash) continue
         const t = await this.holeText(pfad)
-        if (t) await this.speichereEintrag({ pfad, text: t.text, basis: t.hash, lokal: false })
+        // Während des Ladens weitergeschrieben? Dann bleibt das Getippte, der nächste Abgleich klärt den Konflikt.
+        if (t && !this.texte.get(pfad)?.lokal) await this.speichereEintrag({ pfad, text: t.text, basis: t.hash, lokal: false })
         // Beim ersten Abgleich sind es viele Dateien: Was schon da ist, gleich zeigen
         if (Date.now() - gemeldet > 1000) {
           gemeldet = Date.now()
@@ -380,7 +393,10 @@ export class Speicher {
         }
       }
       // 3. Auf dem Server gelöschte Dateien auch hier entfernen (nur unveränderte)
-      for (const e of [...this.texte.values()]) if (!e.lokal && e.basis !== null && !this.fern.has(e.pfad)) await this.entferneEintrag(e.pfad)
+      for (const pfad of [...this.texte.keys()]) {
+        const e = this.texte.get(pfad)
+        if (e && !e.lokal && e.basis !== null && !this.fern.has(pfad)) await this.entferneEintrag(pfad)
+      }
       // 4. Neue Originale (PDF, Foto) zuletzt hochladen: Ein großes PDF dauert, und bricht es ab (Netz weg,
       // Seite neu geladen), sollen Tinte und Notizen der anderen Geräte trotzdem schon angekommen sein.
       await this.originaleHochladen()
@@ -436,19 +452,31 @@ export class Speicher {
   /**
    * Ein anderes Gerät war schneller. Ein Tagesjournal, das auf zwei Geräten offline neu entstand, wird
    * zusammengeführt (der eigene Text kommt unten an). Alles andere bekommt eine Konfliktkopie.
+   * Steht auf dem Server eine eigene frühere Fassung (Antwort verloren), ist es kein Konflikt.
    */
   private async konflikt(e: TextEintrag) {
     const server = await this.holeText(e.pfad)
-    if (!server) return this.speichereEintrag({ ...e, basis: null })
+    // Was jetzt auf dem Gerät steht: Während Upload und Laden kann weitergeschrieben worden sein
+    const jetzt = this.texte.get(e.pfad)
+    const eigen = jetzt && !jetzt.geloescht ? jetzt : e
+    if (!server) return this.speichereEintrag({ ...eigen, basis: null })
+    if (server.text === eigen.text || eigen.gesendet?.includes(server.text)) {
+      await this.speichereEintrag({ ...eigen, basis: server.hash, lokal: server.text !== eigen.text, gesendet: undefined })
+      if (server.text !== eigen.text) this.nochmal = true
+      return
+    }
     if (e.basis === null && e.pfad.startsWith('arbeit/journal/')) {
-      const eigener = zerlege(e.text).rumpf.trim()
-      const text = eigener ? `${server.text.replace(/\n*$/, '')}\n\n${eigener}\n` : server.text
+      const rumpf = zerlege(eigen.text).rumpf.trim()
+      const text = rumpf ? `${server.text.replace(/\n*$/, '')}\n\n${rumpf}\n` : server.text
       await this.speichereEintrag({ pfad: e.pfad, text, basis: server.hash, lokal: text !== server.text })
       return
     }
     const kopie = konfliktPfad(e.pfad, geraet())
-    await this.speichereEintrag({ pfad: kopie, text: e.text, basis: null, lokal: true })
-    await this.speichereEintrag({ pfad: e.pfad, text: server.text, basis: server.hash, lokal: false })
+    // Beide Einträge im selben Takt setzen, damit dazwischen nichts Getipptes überschrieben wird
+    await Promise.all([
+      this.speichereEintrag({ pfad: kopie, text: eigen.text, basis: null, lokal: true }),
+      this.speichereEintrag({ pfad: e.pfad, text: server.text, basis: server.hash, lokal: false })
+    ])
     this.nochmal = true
   }
 }
