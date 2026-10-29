@@ -43,7 +43,7 @@
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   --serif: 'Source Serif 4', Georgia, serif;
   --hand: 'Caveat', cursive;
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 .app-lernen {
@@ -63,13 +63,70 @@
   --akzent-weich: #e4edf9;
 }
 
+/* ---------- Dunkelmodus: folgt der Systemeinstellung (Apple HIG „Dark Mode“) ----------
+   Warmes Dunkelgrau statt Schwarz, Flächen heben sich durch Helligkeit ab (Schatten wirken im Dunkeln kaum).
+   Akzent als Füllung bleibt so dunkel, dass weiße Schrift 4,5:1 hält; Akzent als Text wird heller.
+   Papier (PDF-Seiten, Schreibblatt) bleibt weiß, damit Tinte und Pläne aussehen wie gedruckt. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grund: #17181b;
+    --flaeche: #222327;
+    --tinte: #ecebe8;
+    --leise: #a9adb5;
+    --sehr-leise: #6c7078;
+    --linie: #34363b;
+    --mulde: #2c2e33;
+    --mulde-hell: #292a2f;
+    --akzent-text: #f2955f;
+    --akzent-dunkel: #f6b088;
+    --akzent-weich: #3d2619;
+    --gut: #5cc488;
+    --gut-weich: #1d3326;
+    --warn: #e0b040;
+    --rand-stark: #7f828a;
+    --linie-stark: #4a4d54;
+    --rot-text: #ff8a80;
+    --rot-weich: #3d1f1d;
+    --rot-rand: #6e2f2a;
+    --rot-hauch: #2b1d1c;
+    --gelb-text: #e6b450;
+    --gelb-weich: #3a2e14;
+    --gelb-rand: #7a5a1c;
+    --markiert: #5a3415;
+    --glas: rgba(30, 31, 35, 0.8);
+    --glas-dicht: rgba(30, 31, 35, 0.92);
+    --toast: #34363c;
+    --schatten: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.25);
+    --schatten-hoch: 0 2px 4px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.5);
+  }
+  .app-lernen {
+    --akzent-text: #b9a6f5;
+    --akzent-dunkel: #d4c8fb;
+    --akzent-weich: #2c2544;
+  }
+  .app-organisation {
+    --akzent-text: #8ab4ef;
+    --akzent-dunkel: #b9d2f6;
+    --akzent-weich: #1b2a40;
+  }
+  .dialog-huelle { background: rgba(0, 0, 0, 0.5); }
+  /* CodeMirror kennt den Dunkelmodus nicht von selbst: Cursor und Markierung anpassen */
+  .cm-editor .cm-cursor { border-left-color: var(--tinte); }
+  .cm-editor .cm-selectionBackground, .cm-editor.cm-focused .cm-selectionBackground, .cm-content ::selection { background: #4a3a30; }
+}
+
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
+/* Schriftgrößen in rem: folgen der Schriftgröße von Browser und System. Auf iPhone und iPad liefert
+   -apple-system-body die Größe aus „Textgröße“ (Dynamic Type), Standard 17 px = HIG-Fließtext. */
+@supports (-webkit-touch-callout: none) {
+  html { font: -apple-system-body; }
+}
 body {
   background: var(--grund);
   color: var(--tinte);
   font-family: 'Manrope', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 1rem;
   -webkit-font-smoothing: antialiased;
   /* viewport-fit=cover: im Querformat nicht unter den Kameraausschnitt zeichnen */
   padding-left: env(safe-area-inset-left, 0px);
@@ -132,7 +189,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .kopf-reiter { display: flex; align-items: center; gap: 2px; min-width: 0; margin-left: 8px; }
 .kopf-reiter-knopf {
   height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none;
-  font-size: 15px; font-weight: 600; color: var(--leise); display: flex; align-items: center; gap: 6px;
+  font-size: 0.9375rem; font-weight: 600; color: var(--leise); display: flex; align-items: center; gap: 6px;
   flex: none; white-space: nowrap; position: relative;
 }
 .kopf-reiter-text { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
@@ -141,7 +198,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .kopf-reiter-knopf.aktiv::after {
   content: ''; position: absolute; left: 12px; right: 12px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--akzent);
 }
-.kopf-zahl { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--mulde); color: var(--tinte); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.kopf-zahl { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--mulde); color: var(--tinte); font-size: 0.75rem; font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
 .kopf-symbol {
   width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 10px; color: var(--tinte); text-decoration: none;
 }
@@ -152,33 +209,33 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* Schalter Arbeiten/Lernen: deutlich, die aktive App ist farbig gefüllt */
 .app-schalter { flex: none; display: flex; background: var(--mulde); border-radius: 999px; padding: 3px; margin: 0 4px; }
 .app-schalter a {
-  padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--leise); text-decoration: none; white-space: nowrap;
+  padding: 6px 14px; border-radius: 999px; font-size: 0.875rem; font-weight: 700; color: var(--leise); text-decoration: none; white-space: nowrap;
 }
 .app-schalter a:hover { color: var(--tinte); }
 .app-schalter a.aktiv { background: var(--akzent); color: #fff; box-shadow: 0 1px 3px rgba(31, 34, 39, 0.15); }
 
 .segmente { background: var(--mulde); border-radius: 12px; padding: 4px; display: flex; gap: 2px; }
-.segmente button { padding: 8px 18px; border-radius: 9px; border: none; background: transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
+.segmente button { padding: 8px 18px; border-radius: 9px; border: none; background: transparent; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .segmente button.aktiv { background: var(--flaeche); font-weight: 700; box-shadow: 0 1px 3px rgba(31, 34, 39, 0.1); }
 
-.sync { font-size: 13px; color: var(--leise); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sync { font-size: 0.8125rem; color: var(--leise); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .sync::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--gut); }
 .sync.laeuft::before { background: var(--akzent); }
-.version { font-size: 12px; color: var(--leise); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.version { font-size: 0.75rem; color: var(--leise); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sync.offline::before, .sync.ungesichert::before { background: var(--sehr-leise); }
 .sync.fehler::before { background: var(--stift-wichtig); }
 
 /* ---------- Bausteine ---------- */
 .knopf {
-  height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche);
-  font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; color: inherit;
+  min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche);
+  font-size: 0.875rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; color: inherit;
 }
 .knopf:hover { border-color: var(--linie-stark); }
 .knopf.haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 700; }
 .knopf.haupt:hover { background: var(--akzent-tief); }
 .knopf.still { border-color: transparent; background: transparent; color: var(--akzent-text); }
 .knopf.still:hover { background: var(--mulde-hell); }
-.knopf.klein { height: 32px; padding: 0 10px; font-size: 13px; }
+.knopf.klein { min-height: 32px; padding: 0 10px; font-size: 0.8125rem; }
 /* Zerstörend (Löschen, Verwerfen): rot wie in iOS, die Rückfrage bleibt */
 .knopf.gefahr { color: var(--rot-text); }
 .knopf:disabled { opacity: 0.5; cursor: default; }
@@ -186,26 +243,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .karte { background: var(--flaeche); border-radius: 16px; box-shadow: var(--schatten); }
 .leer { color: var(--leise); padding: 40px 24px; text-align: center; }
-.klein-leise { font-size: 13px; color: var(--leise); }
-.chip { display: inline-flex; align-items: center; gap: 4px; background: var(--mulde-hell); border-radius: 8px; padding: 3px 8px; font-size: 12px; font-weight: 600; color: var(--leise); }
+.klein-leise { font-size: 0.8125rem; color: var(--leise); }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: var(--mulde-hell); border-radius: 8px; padding: 3px 8px; font-size: 0.75rem; font-weight: 600; color: var(--leise); }
 .chip.akzent { background: var(--akzent-weich); color: var(--akzent-dunkel); }
 .chip.rot { background: var(--rot-weich); color: var(--rot-text); }
 /* Demo: kräftig, damit beim Vorführen niemand die Demo für echte Daten hält */
 .chip.demo-schild { background: #2a2622; color: #fff; text-decoration: none; white-space: nowrap; letter-spacing: 0.02em; }
 .chip-wahl { border: none; font-family: inherit; cursor: pointer; max-width: 220px; }
 .eingabe {
-  height: 44px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche); padding: 0 12px; font-size: 15px; width: 100%;
+  height: 44px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche); padding: 0 12px; font-size: 0.9375rem; width: 100%;
 }
 textarea.eingabe { height: auto; padding: 10px 12px; resize: vertical; }
-label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--leise); }
+label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; font-weight: 600; color: var(--leise); }
 .reiter { display: flex; gap: 4px; border-bottom: 1px solid var(--linie); overflow-x: auto; }
-.reiter button { border: none; background: transparent; padding: 12px 14px; font-size: 15px; font-weight: 600; color: var(--leise); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+.reiter button { border: none; background: transparent; padding: 12px 14px; font-size: 0.9375rem; font-weight: 600; color: var(--leise); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .reiter button.aktiv { color: var(--tinte); border-bottom-color: var(--akzent); }
 
 .dialog-huelle { position: fixed; inset: 0; background: rgba(31, 34, 39, 0.28); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .dialog { background: var(--flaeche); border-radius: 18px; box-shadow: var(--schatten-hoch); padding: 22px; width: min(480px, 100%); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
 .dialog.breit { width: min(760px, 100%); }
-.dialog h2 { margin: 0; font-size: 19px; }
+.dialog h2 { margin: 0; font-size: 1.1875rem; }
 .dialog-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* Schwebende Werkzeugleiste (PDF, Blatt) */
@@ -214,30 +271,30 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   background: var(--tinte); border-radius: 16px; padding: 6px; display: flex; gap: 4px; align-items: center; box-shadow: var(--schatten-hoch);
   max-width: calc(100vw - 24px); overflow-x: auto; touch-action: pan-x;
 }
-.werkzeug button { height: 44px; padding: 0 12px; border: none; border-radius: 11px; background: transparent; color: #fff; font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
-.werkzeug button.aktiv { background: #fff; color: var(--tinte); font-weight: 700; }
+.werkzeug button { height: 44px; padding: 0 12px; border: none; border-radius: 11px; background: transparent; color: #fff; font-size: 0.8125rem; display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
+.werkzeug button.aktiv { background: #fff; color: #1f2227; font-weight: 700; }
 .werkzeug button.farbe-aktiv { background: #3a3e46; }
 .werkzeug .trenner { width: 1px; height: 24px; background: #4a4e56; flex: none; }
 .werkzeug .punkt { width: 12px; height: 12px; border-radius: 6px; flex: none; }
-.werkzeug .hinweis { color: #c9ccd2; font-size: 12px; padding: 0 8px; white-space: nowrap; }
+.werkzeug .hinweis { color: #c9ccd2; font-size: 0.75rem; padding: 0 8px; white-space: nowrap; }
 /* Auf dem Tablet hat der Radierer Vorrang vor dem Hinweis, sonst rutscht er aus der Leiste */
 @media (max-width: 1100px) { .werkzeug .hinweis { display: none; } }
 /* Aufliegende Hand: kein Markieren von Text, kein Lupen- oder Kontextmenü */
 .werkzeug, .pdf-seite.zeichnen, .schreib-werkzeug { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 /* ---------- Editor (CodeMirror): Markdown bleibt sichtbar, aber ruhig ---------- */
-.cm-editor { font-size: 17px; line-height: 1.6; background: transparent; }
+.cm-editor { font-size: 1.0625rem; line-height: 1.6; background: transparent; }
 .cm-editor.cm-focused { outline: none; }
 .cm-scroller { font-family: 'Manrope', system-ui, sans-serif !important; }
 .cm-content { padding: 8px 0 120px; caret-color: var(--tinte); }
 .cm-line { padding: 0 2px; }
-.cm-h1 { font-size: 24px; font-weight: 800; }
-.cm-h2 { font-size: 20px; font-weight: 700; }
-.cm-h3 { font-size: 18px; font-weight: 700; }
-.cm-h4, .cm-h5, .cm-h6 { font-size: 17px; font-weight: 700; }
-.cm-zeichen { font-family: var(--mono); font-size: 13px; color: var(--sehr-leise); font-weight: 400; }
+.cm-h1 { font-size: 1.5rem; font-weight: 800; }
+.cm-h2 { font-size: 1.25rem; font-weight: 700; }
+.cm-h3 { font-size: 1.125rem; font-weight: 700; }
+.cm-h4, .cm-h5, .cm-h6 { font-size: 1.0625rem; font-weight: 700; }
+.cm-zeichen { font-family: var(--mono); font-size: 0.8125rem; color: var(--sehr-leise); font-weight: 400; }
 .cm-projekttag { color: var(--akzent-text); }
-.cm-status { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-left: 4px; vertical-align: 2px; background: var(--mulde-hell); color: var(--leise); }
+.cm-status { font-size: 0.75rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-left: 4px; vertical-align: 2px; background: var(--mulde-hell); color: var(--leise); }
 .cm-status-blockiert, .cm-status-wartet { background: var(--rot-weich); color: var(--rot-text); }
 .cm-status-erledigt, .cm-status-gelöst { background: var(--gut-weich); color: var(--gut); }
 .cm-status-wichtig { background: var(--gelb-weich); color: var(--gelb-text); }
@@ -277,22 +334,22 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .cm-callout { background: var(--mulde-hell); border-left: 3px solid var(--linie); padding-left: 12px !important; }
 .cm-klapp { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--linie); border-radius: 999px; background: var(--flaeche); color: var(--leise); font: inherit; font-size: 0.8em; cursor: pointer; vertical-align: 1px; }
 .cm-aufgabe-bilder { display: inline-flex; gap: 3px; vertical-align: middle; margin: 0 2px 0 5px; }
-.cm-aufgabe-bild { display: inline-flex; align-items: center; justify-content: center; width: 2.4em; height: 2.4em; border-radius: 6px; overflow: hidden; background: var(--mulde); border: 1px solid var(--linie); cursor: pointer; font-size: 12px; font-weight: 700; color: var(--leise); }
+.cm-aufgabe-bild { display: inline-flex; align-items: center; justify-content: center; width: 2.4em; height: 2.4em; border-radius: 6px; overflow: hidden; background: var(--mulde); border: 1px solid var(--linie); cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--leise); }
 .cm-aufgabe-bild img { width: 100%; height: 100%; object-fit: cover; }
 .cm-ton { display: inline-flex; vertical-align: middle; margin: 2px 0; max-width: 100%; }
-.cm-ton button { font: inherit; font-size: 13px; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.cm-ton button { font: inherit; font-size: 0.8125rem; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .cm-ton audio { height: 36px; max-width: 100%; }
-.cm-ausschnitt { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 10px; padding: 4px 10px 4px 4px; margin: 2px 0; cursor: pointer; font-size: 13px; color: var(--leise); max-width: 100%; }
+.cm-ausschnitt { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 10px; padding: 4px 10px 4px 4px; margin: 2px 0; cursor: pointer; font-size: 0.8125rem; color: var(--leise); max-width: 100%; }
 .cm-ausschnitt img, .cm-ausschnitt .platz { width: 120px; height: 64px; object-fit: contain; background: #fff; border-radius: 6px; background: var(--mulde); flex: none; }
-.cm-wissen { display: block; background: var(--akzent-weich); border-radius: 10px; padding: 8px 12px; margin: 4px 0; font-size: 15px; color: var(--tinte); white-space: normal; }
+.cm-wissen { display: block; background: var(--akzent-weich); border-radius: 10px; padding: 8px 12px; margin: 4px 0; font-size: 0.9375rem; color: var(--tinte); white-space: normal; }
 .cm-wissen b { color: var(--akzent-dunkel); }
 .cm-tooltip.cm-tooltip-autocomplete { border: none; border-radius: 14px; box-shadow: var(--schatten-hoch); background: var(--flaeche); padding: 6px; overflow: hidden; }
 .cm-tooltip.cm-tooltip-autocomplete > ul { font-family: 'Manrope', system-ui, sans-serif !important; max-height: 28em !important; min-width: 280px; }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 8px 10px !important; border-radius: 9px; line-height: 1.3; }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--akzent-weich); color: var(--akzent-dunkel); }
 .cm-completionLabel { font-weight: 600; }
-.cm-completionDetail { font-style: normal !important; color: var(--leise); font-size: 12px; margin-left: 10px; }
-.cm-completionSection { font-size: 11px !important; font-weight: 800; letter-spacing: 0.06em; color: var(--leise) !important; border: none !important; padding: 10px 10px 4px !important; text-transform: uppercase; }
+.cm-completionDetail { font-style: normal !important; color: var(--leise); font-size: 0.75rem; margin-left: 10px; }
+.cm-completionSection { font-size: 0.6875rem !important; font-weight: 800; letter-spacing: 0.06em; color: var(--leise) !important; border: none !important; padding: 10px 10px 4px !important; text-transform: uppercase; }
 
 /* ---------- PDF und Tinte ---------- */
 .pdf-seiten { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 0 100px; }
@@ -307,7 +364,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
 .marke.wichtig { border-color: var(--stift-wichtig); background: rgba(224, 68, 58, 0.08); }
 .marke.ergaenzung { border-color: var(--stift-ergaenzung); background: rgba(47, 158, 91, 0.08); }
 .marke.gewaehlt { box-shadow: 0 0 0 3px rgba(210, 86, 28, 0.3); }
-.marke .nummer { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--akzent); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.marke .nummer { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--akzent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(106, 79, 196, 0.06); border-radius: 3px; pointer-events: none; }
 .schwebe { position: absolute; z-index: 20; background: var(--flaeche); border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }
 .schwebe .reihe { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -323,7 +380,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 13px; f
   .zurueck-pfeil { width: 30px; margin-left: -6px; }
   .kopf-rechts { flex: none; }
   .app-schalter { margin: 0; }
-  .app-schalter a { padding: 6px 8px; font-size: 13px; }
+  .app-schalter a { padding: 6px 8px; font-size: 0.8125rem; }
   .kopf-rechts { gap: 4px; }
 }
 @media (min-width: 721px) {
@@ -339,7 +396,7 @@ button.marke { padding: 0; }
     border-radius: 22px 22px 0 0; padding: 10px 12px 24px; box-shadow: 0 -8px 30px rgba(31, 34, 39, 0.14);
   }
   .cm-tooltip.cm-tooltip-autocomplete > ul { max-height: min(50vh, calc(var(--sichtbar, 100vh) * 0.45)); min-width: 0; max-width: none !important; }
-  .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 12px 12px !important; font-size: 16px; }
+  .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 12px 12px !important; font-size: 1rem; }
 }
 
 /* ---------- Daumenleiste (Handy): feste Ziele unten (beide Apps) ---------- */
@@ -362,7 +419,7 @@ button.marke { padding: 0; }
 .daumen-zeile { height: 64px; display: flex; align-items: center; justify-content: space-around; padding: 0 4px; }
 .daumen-ziel {
   flex: 1 1 0; min-width: 0; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--leise); text-decoration: none; border-radius: 12px; font-size: 11px; font-weight: 600; touch-action: manipulation;
+  color: var(--leise); text-decoration: none; border-radius: 12px; font-size: 0.6875rem; font-weight: 600; touch-action: manipulation;
 }
 .daumen-ziel:active { background: var(--mulde-hell); }
 .daumen-ziel.aktiv { color: var(--akzent-dunkel); font-weight: 800; }
@@ -371,7 +428,7 @@ button.marke { padding: 0; }
 .daumen-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .daumen-zahl {
   position: absolute; top: -3px; left: 30px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  background: var(--akzent); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+  background: var(--akzent); color: #fff; font-size: 0.6875rem; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
 }
 
 /* Tabellen im Editor (editor/tabelle.ts): jede Zeile ein Raster, die Striche sind unsichtbar */
@@ -386,5 +443,5 @@ button.marke { padding: 0; }
 .cm-tabelle-zeile.kopf .cm-zelle { border-bottom-width: 2px; }
 .cm-line.cm-tabelle-trenner { height: 0; padding: 0 !important; overflow: hidden; line-height: 0; font-size: 0; }
 .cm-tabelle-leiste { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 4px; font-weight: 400; }
-.cm-tabelle-leiste button { font: inherit; font-size: 13px; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; min-height: 34px; cursor: pointer; }
+.cm-tabelle-leiste button { font: inherit; font-size: 0.8125rem; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; min-height: 34px; cursor: pointer; }
 .cm-tabelle-leiste button:disabled { opacity: 0.5; cursor: not-allowed; }

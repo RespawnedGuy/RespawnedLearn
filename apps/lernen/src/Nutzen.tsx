@@ -219,7 +219,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
           {ms && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div className="passt-titel">Aus deiner Mitschrift</div>
-              <a href={ms.link} style={{ fontSize: 14 }}>
+              <a href={ms.link} style={{ fontSize: '0.875rem' }}>
                 {ms.titel}
                 {ms.abschnitt.length ? ` › ${ms.abschnitt.join(' › ')}` : ''}
               </a>
@@ -231,7 +231,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
               {sp.map((s) => (
                 <div key={s.markeId} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <Ausschnitt anhangId={s.quelle.id} seite={s.seite} markeId={s.markeId} breite={280} />
-                  <a href={ortLink('sammeln', s.quelle.id, s.seite)} style={{ fontSize: 14 }}>
+                  <a href={ortLink('sammeln', s.quelle.id, s.seite)} style={{ fontSize: '0.875rem' }}>
                     {s.quelle.titel}, S. {s.seite} · markiert am {kurzDatum(s.datum)}
                     {s.farbe && FARBNAME[s.farbe] ? ` · ${FARBNAME[s.farbe]}` : ''}
                   </a>
@@ -259,7 +259,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
           >
             <div className="passt-titel">Auch gefunden</div>
             {weitere.map((w) => (
-              <a key={w.id} href={ortLink('nutzen', w.id)} style={{ fontSize: 14 }}>
+              <a key={w.id} href={ortLink('nutzen', w.id)} style={{ fontSize: '0.875rem' }}>
                 {w.typ === 'frage' ? 'Lernkarte: ' : ''}
                 {w.titel}
               </a>

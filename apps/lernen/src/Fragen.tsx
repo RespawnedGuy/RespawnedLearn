@@ -114,7 +114,7 @@ export function KapitelFragen() {
     return (
       <div className="lernen-seite">
         <div className="seite-kopf">
-          <h1 style={{ fontSize: 22 }}>Fragen zum Kapitel</h1>
+          <h1 style={{ fontSize: '1.375rem' }}>Fragen zum Kapitel</h1>
           <span style={{ flex: 1 }} />
           <a className="knopf klein" href={ortLink('lernen')}>
             Zur Lernrunde

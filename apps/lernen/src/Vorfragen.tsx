@@ -100,7 +100,7 @@ export function Vorfragen() {
 
   const kopf = (
     <div className="seite-kopf">
-      <h1 style={{ fontSize: 22 }}>Vorfragen</h1>
+      <h1 style={{ fontSize: '1.375rem' }}>Vorfragen</h1>
       <span style={{ flex: 1 }} />
       <a className="knopf klein" href={ortLink('lernen')}>
         Zur Lernrunde

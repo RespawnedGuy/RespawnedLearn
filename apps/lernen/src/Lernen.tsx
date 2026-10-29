@@ -38,7 +38,7 @@ function AlleKarten({ hinweis }: { hinweis?: string }) {
         </div>
       )}
       <div className="seite-kopf">
-        <h1 style={{ fontSize: 22 }}>Alle Lernkarten · {karten.length}</h1>
+        <h1 style={{ fontSize: '1.375rem' }}>Alle Lernkarten · {karten.length}</h1>
         <span style={{ flex: 1 }} />
         {!hinweis && (
           <a className="knopf haupt klein" href={ortLink('lernen')}>
@@ -188,7 +188,7 @@ function ModulFertig({ modulId, titel, geschafft }: { modulId: string; titel: st
     <div className="lernen-seite">
       <div className="karte lern-karte" style={{ gap: 14 }}>
         <span className="art">{titel.toUpperCase()}</span>
-        <div className="frage" style={{ fontSize: 22 }}>
+        <div className="frage" style={{ fontSize: '1.375rem' }}>
           {geschafft ? `Runde geschafft: ${geschafft} ${geschafft === 1 ? 'Karte' : 'Karten'}.` : 'Hier ist heute nichts fällig.'}
         </div>
         <div className="reihe">
