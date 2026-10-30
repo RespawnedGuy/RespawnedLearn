@@ -25,6 +25,8 @@ export interface DarstellungHilfen {
   typ?(id: string): string | null
   /** Aufnahme eines Anhangs (Sprachnotiz), null bei allem, was kein Audio ist */
   ton?(id: string): (() => Promise<string | null>) | null
+  /** Name und Beschreibung eines Fotos; der Name steht in der Kachel statt „Foto“ */
+  fotoInfo?(id: string): { name: string; beschreibung: string } | null
 }
 
 /** Neu zeichnen, ohne dass sich der Text geändert hat (z. B. eine Aufgabe wurde im Popup erledigt) */
@@ -170,11 +172,17 @@ const ZUSTAND_TEXT: Record<string, string> = {
 }
 
 class Bild extends WidgetType {
-  constructor(readonly schluessel: string, readonly titel: string, readonly laden: () => Promise<string | null>, readonly klick: () => void) {
+  constructor(
+    readonly schluessel: string,
+    readonly titel: string,
+    readonly laden: () => Promise<string | null>,
+    readonly klick: () => void,
+    readonly beschreibung = ''
+  ) {
     super()
   }
   eq(o: Bild) {
-    return o.schluessel === this.schluessel && o.titel === this.titel
+    return o.schluessel === this.schluessel && o.titel === this.titel && o.beschreibung === this.beschreibung
   }
   toDOM() {
     const s = document.createElement('span')
@@ -183,7 +191,17 @@ class Bild extends WidgetType {
     platz.className = 'platz'
     s.append(platz)
     const t = document.createElement('span')
-    t.textContent = this.titel
+    t.className = 'text'
+    if (this.beschreibung) {
+      // Benanntes Foto: Name kräftig, die Beschreibung gekürzt darunter, ganz im Tooltip
+      const n = document.createElement('b')
+      n.textContent = this.titel
+      const d = document.createElement('span')
+      d.className = 'beschreibung'
+      d.textContent = this.beschreibung
+      t.append(n, d)
+      s.title = `${this.titel}\n${this.beschreibung}`
+    } else t.textContent = this.titel
     s.append(t)
     // Fehlt das Bild noch auf dem Server, weil das andere Gerät es gerade hochlädt, später noch einmal versuchen
     const lade = (versuch: number) =>
@@ -456,7 +474,14 @@ function verweise(view: EditorView, deko: Range<Decoration>[], zeile: { from: nu
       } else if (l.einbettung && h.ton?.(l.ziel)) {
         w = new Ton(l.ziel, l.anzeige ?? h.titel(l.ziel) ?? 'Aufnahme', h.ton(l.ziel)!)
       } else if (l.einbettung && (!inZelle || !h.typ || h.typ(l.ziel) === 'anhang')) {
-        w = new Bild(`${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`, l.anzeige ?? h.titel(l.ziel) ?? 'Anhang', () => h.bild(l.ziel), () => h.oeffne(l))
+        const f = h.fotoInfo?.(l.ziel)
+        w = new Bild(
+          `${l.ziel}|${h.bildStand?.(l.ziel) ?? ''}`,
+          f?.name || (l.anzeige ?? h.titel(l.ziel) ?? 'Anhang'),
+          () => h.bild(l.ziel),
+          () => h.oeffne(l),
+          f?.beschreibung ?? ''
+        )
       } else {
         const zustand = h.zustand?.(l.ziel) ?? null
         const bilder = zustand ? (h.aufgabeBilder?.(l.ziel) ?? []).map((id) => ({ id, stand: h.bildStand?.(id) ?? '' })) : []

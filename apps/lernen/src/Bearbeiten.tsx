@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ankerParameter, pfade, type Eintrag } from '@rvx/kern'
+import { ankerParameter, fotoInfo, pfade, type Eintrag } from '@rvx/kern'
 import { Editor, ausschnitt, bildMitTinte, geheZu, tintenStand, useDaten, type DarstellungHilfen } from '@rvx/oberflaeche'
 import { WISSEN, aendereEintrag } from './wissen'
 
@@ -31,6 +31,7 @@ export function useHilfen(): DarstellungHilfen {
             .slice(0, 220)
         }
       },
+      fotoInfo: (id) => fotoInfo(ref.current.dokumente.get(id)),
       titel: (id) => ref.current.dokumente.get(id)?.titel ?? null,
       oeffne(l) {
         const p = ankerParameter(l.anker)

@@ -1,6 +1,7 @@
 // Volltextsuche über Journal, Aufgaben und Projekte (die Lupe oben). Rein funktional, damit sie ohne Browser testbar ist.
 // Gesucht wird nach allen Wörtern zugleich, ohne Rücksicht auf Groß/klein und Umlaute („mangel“ findet „Mängel“).
 import type { Bestand } from './bestand'
+import { fotoInfo } from './fotos'
 import { blockText } from './journal'
 
 export type TrefferArt = 'journal' | 'aufgabe' | 'projekt'
@@ -30,10 +31,13 @@ export function normalisiere(s: string): string {
   return s.toLocaleLowerCase('de').replace(/ß/g, 'ss').normalize('NFD').replace(/\p{M}/gu, '')
 }
 
-/** Links lesbar machen: `[[ID|Titel]]` → Titel, Einbettungen fallen weg */
-export function lesbar(text: string): string {
+/**
+ * Links lesbar machen: `[[ID|Titel]]` → Titel. Einbettungen fallen weg, außer ein Foto hat einen Namen oder eine
+ * Beschreibung (`bild` liefert dann den Text), so findet die Suche auch benannte Fotos.
+ */
+export function lesbar(text: string, bild?: (id: string) => string | null): string {
   return text
-    .replace(/!\[\[[^\]\n]*\]\]/g, '')
+    .replace(/!\[\[([^\]|#\n]*)[^\]\n]*\]\]/g, (_, id: string) => (bild && bild(id)) || '')
     .replace(/\[\[([^\]|\n]+)\|([^\]\n]+)\]\]/g, '$2')
     .replace(/\[\[([^\]\n]+)\]\]/g, '$1')
 }
@@ -59,6 +63,11 @@ function ausschnitt(text: string, woerter: string[]): string {
 export function suche(b: Bestand, frage: string, filter: SuchFilter = {}): Treffer[] {
   const woerter = suchWoerter(frage)
   if (!woerter.length) return []
+  const foto = (id: string) => {
+    const f = fotoInfo(b.dokumente.get(id))
+    return f ? ` ${f.name} ${f.beschreibung} ` : null
+  }
+  const lies = (t: string) => lesbar(t, foto)
   const out: Treffer[] = []
   const projektPasst = (k: string | null) => !filter.projekt || k === filter.projekt
   const art = (a: TrefferArt) => !filter.art || filter.art === a
@@ -74,7 +83,7 @@ export function suche(b: Bestand, frage: string, filter: SuchFilter = {}): Treff
     for (const e of b.nachTyp('aufgabe')) {
       const k = b.projektVonAufgabe(e.id)
       if (!projektPasst(k)) continue
-      const rumpf = lesbar(e.rumpf)
+      const rumpf = lies(e.rumpf)
       if (!passt(`${e.titel}\n${rumpf}`, woerter)) continue
       out.push({ art: 'aufgabe', titel: e.titel, text: ausschnitt(rumpf, woerter), projekt: k, pfad: e.pfad, id: e.id })
     }
@@ -85,17 +94,17 @@ export function suche(b: Bestand, frage: string, filter: SuchFilter = {}): Treff
       const zeilen = j.text.split('\n')
       for (const t of j.gliederung.teile) {
         if (!projektPasst(t.kuerzel)) continue
-        const text = lesbar(blockText(j.text, t))
+        const text = lies(blockText(j.text, t))
         if (!passt(text, woerter)) continue
         // Die Zeile mit den meisten Wörtern, damit der Sprung an die richtige Stelle führt
         let zeile = t.von
         let best = -1
         for (let z = t.von; z < t.bis && z < zeilen.length; z++) {
-          const n = normalisiere(lesbar(zeilen[z]))
+          const n = normalisiere(lies(zeilen[z]))
           const zahl = woerter.filter((w) => n.includes(w)).length
           if (zahl > best) (best = zahl), (zeile = z)
         }
-        out.push({ art: 'journal', titel: t.zusatz, text: ausschnitt(lesbar(zeilen[zeile] ?? text), woerter) || ausschnitt(text, woerter), projekt: t.kuerzel, pfad: j.pfad, datum: j.datum, zeile })
+        out.push({ art: 'journal', titel: t.zusatz, text: ausschnitt(lies(zeilen[zeile] ?? text), woerter) || ausschnitt(text, woerter), projekt: t.kuerzel, pfad: j.pfad, datum: j.datum, zeile })
       }
     }
   }

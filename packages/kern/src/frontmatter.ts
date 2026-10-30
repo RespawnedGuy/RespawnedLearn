@@ -94,6 +94,8 @@ function braucht_anfuehrung(s: string): boolean {
     /^[\s\-?:,[\]{}#&*!|>'"%@`]/.test(s) ||
     /:\s|\s#/.test(s) ||
     /\s$/.test(s) ||
+    // Mehrzeiliges (Beschreibung eines Fotos) steht in einer Zeile mit \n, sonst zerfällt der Kopf
+    /[\n\r\t]/.test(s) ||
     /^(true|false|null|~|-?\d+(\.\d+)?)$/.test(s)
   )
 }
