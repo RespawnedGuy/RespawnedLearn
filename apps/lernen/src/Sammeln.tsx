@@ -7,6 +7,7 @@ import { Inhalt } from './Inhalt'
 import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
+import { ErklaerFenster } from './Erklaeren'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -38,7 +39,7 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const [getauscht, setGetauscht] = useState(() => liesSeite('rvx-lernen-blatt-links'))
   const [seiten, setSeiten] = useState(0)
   const [auswahl, setAuswahl] = useState<{ bereich: Bereich; punkt: { x: number; y: number } } | null>(null)
-  const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link'>('wahl')
+  const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link' | 'erklaeren'>('wahl')
   const [titel, setTitel] = useState('')
   // Vorschlag der KI für die Frage einer Lernkarte (null = noch keiner, '' = keiner zu haben)
   const [vorschlag, setVorschlag] = useState<string | null>(null)
@@ -158,6 +159,9 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
                     <button type="button" className="knopf klein" onClick={() => setModus('frage')}>
                       Lernkarte
                     </button>
+                    <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
+                      Erklären
+                    </button>
                     <button type="button" className="knopf still klein" onClick={() => setAuswahl(null)}>
                       ×
                     </button>
@@ -264,6 +268,19 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
             ✕
           </button>
         </div>
+      )}
+      {auswahl && modus === 'erklaeren' && (
+        <ErklaerFenster
+          quelle={quelle}
+          seite={seite}
+          bereich={auswahl.bereich}
+          farbe={FARBE_MARKE[farbe] ?? null}
+          onZu={(behalten) => {
+            // ohne Behalten bleibt die Auswahl stehen, um daraus doch noch eine Karte zu machen
+            if (behalten) setAuswahl(null)
+            setModus('wahl')
+          }}
+        />
       )}
       <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} />
     </div>

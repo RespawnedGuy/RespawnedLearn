@@ -232,3 +232,16 @@ body.vollbild-an .blatt-flaeche { max-width: calc((var(--vollhoehe) - 24px) / 1.
   .fortschritt span { background: #3a3550; }
   .fortschritt span.jetzt { background: #7d6bc4; }
 }
+
+/* Erklären: Chatfenster zu einer markierten Stelle */
+.erklaer-verlauf { display: flex; flex-direction: column; gap: 10px; max-height: min(52vh, 460px); overflow-y: auto; }
+.erklaer-ki { padding: 10px 12px; border-radius: 12px; background: var(--ki-flaeche, #f7f4fd); }
+.erklaer-ki .inhalt { font-size: 1rem; line-height: 1.5; }
+.erklaer-ich { align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: var(--akzent-weich); white-space: pre-wrap; }
+.erklaer-fehler { padding: 8px 12px; border-radius: 12px; border-left: 4px solid #E0443A; background: var(--ki-flaeche, #f7f4fd); }
+.erklaer-eingabe { display: flex; gap: 8px; }
+.erklaer-eingabe .eingabe { flex: 1; min-width: 0; }
+.callout { border-left: 3px solid var(--linie); padding: 2px 0 2px 12px; }
+.callout > summary { cursor: pointer; color: var(--leise, inherit); font-size: 0.875rem; }
+.callout[open] > summary { margin-bottom: 6px; }
+@media (prefers-color-scheme: dark) { .erklaer-ki, .erklaer-fehler { --ki-flaeche: #2a2538; } }

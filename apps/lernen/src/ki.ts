@@ -2,6 +2,7 @@
 // eingerichtete KI kommt einfach nichts zurück, die Karte entsteht trotzdem.
 import type { Bereich, Eintrag } from '@rvx/kern'
 import { ausschnitt, stellenText, type Speicher } from '@rvx/oberflaeche'
+import type { ChatZeile } from './kiBlock'
 
 async function frageServer<T>(aktion: string, daten: unknown, signal?: AbortSignal): Promise<T | null> {
   try {
@@ -74,5 +75,38 @@ export async function schriftBild(huelle: HTMLElement | null): Promise<string | 
     return c.toDataURL('image/png')
   } finally {
     URL.revokeObjectURL(url)
+  }
+}
+
+/** Was zur Erklärung einer Stelle an die KI geht: der markierte Text, der Text der ganzen Seite, bei Scans ein Bild */
+export interface StelleZumErklaeren {
+  buch: string
+  seite: number
+  stelle: string
+  kontext: string
+  bild: string | null
+}
+
+export async function stelleLesen(speicher: Speicher, quelle: Eintrag, seite: number, bereich: Bereich): Promise<StelleZumErklaeren> {
+  const datei = String(quelle.felder.datei ?? '')
+  const stelle = await stellenText(speicher, datei, seite, bereich).catch(() => '')
+  const kontext = await stellenText(speicher, datei, seite, { x: 0, y: 0, b: 1, h: 1 }).catch(() => '')
+  const bild = stelle.length < 40 ? await ausschnitt(speicher, datei, seite, bereich, 900).catch(() => null) : null
+  return { buch: quelle.titel, seite, stelle, kontext, bild }
+}
+
+/**
+ * Erklärung der Stelle oder, mit Verlauf, Antwort auf die letzte Rückfrage. Statt null kommt ein `fehler` zurück,
+ * damit das Chatfenster sagen kann, woran es liegt (kein Netz, KI auf dem Server nicht eingerichtet).
+ */
+export async function erklaere(s: StelleZumErklaeren, verlauf: ChatZeile[], signal?: AbortSignal): Promise<{ antwort: string; begriff: string } | { fehler: string }> {
+  try {
+    const r = await fetch('/api/ki/erklaeren', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...s, verlauf }), signal })
+    const j = (await r.json().catch(() => ({}))) as { antwort?: string; begriff?: string; fehler?: string }
+    if (!r.ok || !j.antwort) return { fehler: j.fehler || 'Die KI hat gerade nicht geantwortet. Später noch einmal versuchen.' }
+    return { antwort: j.antwort, begriff: j.begriff ?? '' }
+  } catch {
+    if (signal?.aborted) return { fehler: '' }
+    return { fehler: 'Keine Verbindung zum Server. Erklären geht nur online.' }
   }
 }

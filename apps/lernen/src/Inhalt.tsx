@@ -86,7 +86,19 @@ export function Inhalt({ text, abrufeZeigen = true }: { text: string; abrufeZeig
   }
   for (let i = 0; i < zeilen.length; i++) {
     const z = zeilen[i]
-    if (z.trim().startsWith('$$')) {
+    const callout = /^>\s*\[!(\w+)\]([+-]?)\s*(.*)$/.exec(z)
+    if (callout) {
+      // Callout wie in Obsidian (z. B. die Erklärung der KI auf einer Wissenskarte): mit „-“ eingeklappt
+      fertig()
+      const innen: string[] = []
+      while (i + 1 < zeilen.length && zeilen[i + 1].startsWith('>')) innen.push(zeilen[++i].replace(/^>\s?/, ''))
+      bloecke.push(
+        <details key={bloecke.length} className={`callout callout-${callout[1].toLowerCase()}`} open={callout[2] !== '-'}>
+          <summary>{callout[3] || callout[1]}</summary>
+          <Inhalt text={innen.join('\n')} abrufeZeigen={abrufeZeigen} />
+        </details>
+      )
+    } else if (z.trim().startsWith('$$')) {
       fertig()
       let f = z.trim().slice(2)
       while (!f.trim().endsWith('$$') && i + 1 < zeilen.length) f += '\n' + zeilen[++i]

@@ -156,7 +156,7 @@ async function aendere(speicher: Speicher, pfad: string, f: (t: string) => strin
 /** Stelle im Skript markieren und daraus eine Karte machen */
 export async function karteAusStelle(
   speicher: Speicher,
-  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link'; titel: string; ziel?: Eintrag; farbe: string | null }
+  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string }
 ): Promise<string> {
   const markeId = kurzId()
   const ausschnitt = stellenLink(p.quelle.id, p.seite, markeId, `${p.quelle.titel}, S. ${p.seite}`)
@@ -173,7 +173,8 @@ export async function karteAusStelle(
       ['titel', p.titel],
       ['quelle', `[[${p.quelle.id}]]`]
     ]
-    const rumpf = p.art === 'wissen' ? `${ausschnitt}\n\nIn eigenen Worten: \n` : `?? ${p.titel}\n:: ${ausschnitt}\n`
+    // Eine Erklärung der KI steht eingeklappt darunter, getrennt vom Text in eigenen Worten (Vertrag 5.5)
+    const rumpf = p.art === 'wissen' ? `${ausschnitt}\n\nIn eigenen Worten: \n${p.ki ? `\n${p.ki}\n` : ''}` : `?? ${p.titel}\n:: ${ausschnitt}\n`
     await speicher.schreibe(pfade.karte(karteId), neuesDokument(kopf, rumpf))
     anzeige = p.titel
   }
