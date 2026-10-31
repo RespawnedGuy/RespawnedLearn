@@ -37,6 +37,8 @@ export interface DemoInfo {
   /** Zeitpunkt des letzten Zurücksetzens (nur in der Demo) */
   stand?: string
   wechsel: string
+  /** Instanz für jemand anderen als Nils (GAST=1): keine Einrichtungshinweise für Nils' Quellen */
+  gast?: boolean
 }
 
 export interface SpeicherOptionen {
