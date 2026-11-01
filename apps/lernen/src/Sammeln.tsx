@@ -8,12 +8,12 @@ import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
-import { AnsichtKopf, Blatt, BlattMenue, Trenner, fotosAufBlatt, legeBildAufBlatt, useAnordnung } from './Blaetter'
+import { AnsichtKopf, Blatt, BildKnoepfe, BlattMenue, Trenner, fotosAufBlatt, legeBildAufBlatt, useAnordnung } from './Blaetter'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
 /** Platz über und unter der Seite im Vollbild: Rand oben, Werkzeugleiste unten */
-const VOLLBILD_RAND = 100
+const VOLLBILD_RAND = 140
 
 /** Sammeln: Startseite mit Modulen und Büchern. Mit Quelle: Skript und leeres Blatt nebeneinander. */
 export function Sammeln({ ort }: { ort: string[] }) {
@@ -322,7 +322,13 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
           }}
         />
       )}
-      <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} />
+      <Werkzeugleiste
+        werkzeug={werkzeug}
+        farbe={farbe}
+        onWerkzeug={setWerkzeug}
+        onFarbe={setFarbe}
+        extra={<BildKnoepfe onDateien={(d) => void fotosAufBlatt(speicher, { anhangId: quelle.id, seite, blatt: ansichten.zielBlatt() }, d)} />}
+      />
     </div>
   )
 }

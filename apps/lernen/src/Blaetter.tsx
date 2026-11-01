@@ -196,12 +196,10 @@ function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntf
   )
 }
 
-/** Ein Zeichenblatt zur Skriptseite: Lineatur, Bilder, Tinte, unten Bild hinzufügen und „Verlängern“ */
+/** Ein Zeichenblatt zur Skriptseite: Lineatur, Bilder, Tinte, unten „Verlängern“ (Bilder kommen über die Werkzeugleiste) */
 export function Blatt({ anhangId, seite, ansicht, werkzeug, farbe }: { anhangId: string; seite: number; ansicht: Ansicht; werkzeug: Werkzeug; farbe: Farbe }) {
   const { speicher } = useDaten()
   const [gewaehlt, setGewaehlt] = useState<string | null>(null)
-  const galerie = useRef<HTMLInputElement>(null)
-  const kamera = useRef<HTMLInputElement>(null)
   const pfad = pfade.blatt(anhangId, seite, ansicht.id)
   const bilderPfad = pfade.blattBilder(anhangId, seite)
   const format = blattFormat(speicher.text(pfad))
@@ -214,8 +212,6 @@ export function Blatt({ anhangId, seite, ansicht, werkzeug, farbe }: { anhangId:
     // Die Striche bleiben, wo sie sind; nur die Seite wird eine A4-Höhe länger
     void speicher.schreibe(pfad, tinteSvg(liesTinte(speicher.text(pfad) ?? ''), SEITE_BREITE * (format + A4)))
   }
-  const ort = { anhangId, seite, blatt: ansicht.id }
-  const fotos = (liste: FileList | null) => void fotosAufBlatt(speicher, ort, Array.from(liste ?? []))
   const aendere = (f: (alle: BlattBild[]) => BlattBild[]) => void speicher.aendere(bilderPfad, (alt) => bilderJson(f(liesBilder(alt))))
   return (
     <>
@@ -239,19 +235,9 @@ export function Blatt({ anhangId, seite, ansicht, werkzeug, farbe }: { anhangId:
         <TintenEbene pfad={pfad} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} />
       </div>
       <div className="blatt-unten">
-        {mitFinger() && (
-          <button type="button" className="knopf still klein" onClick={() => kamera.current?.click()}>
-            Kamera
-          </button>
-        )}
-        <button type="button" className="knopf still klein" onClick={() => galerie.current?.click()} title="Foto, Screenshot oder Bild aufs Blatt legen (am PC auch mit Strg+V)">
-          Bild
-        </button>
         <button type="button" className="knopf still klein" onClick={verlaengern} title="Das Blatt um eine Seite nach unten verlängern">
           + Platz nach unten
         </button>
-        <input ref={galerie} type="file" accept="image/*" multiple hidden onChange={(e) => (fotos(e.target.files), (e.target.value = ''))} />
-        <input ref={kamera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => (fotos(e.target.files), (e.target.value = ''))} />
       </div>
     </>
   )
@@ -427,5 +413,30 @@ export function BlattMenue({ anordnung, onNeu, onOeffne }: { anordnung: Anordnun
         </div>
       )}
     </div>
+  )
+}
+
+/** Kamera und Bild in der Werkzeugleiste: legt Fotos aufs erste offene Blatt der Seite */
+export function BildKnoepfe({ onDateien }: { onDateien: (d: File[]) => void }) {
+  const galerie = useRef<HTMLInputElement>(null)
+  const kamera = useRef<HTMLInputElement>(null)
+  const nimm = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onDateien(Array.from(e.target.files ?? []))
+    e.target.value = ''
+  }
+  return (
+    <>
+      <span className="trenner" />
+      {mitFinger() && (
+        <button type="button" onClick={() => kamera.current?.click()} title="Foto aufnehmen und aufs Blatt legen">
+          Kamera
+        </button>
+      )}
+      <button type="button" onClick={() => galerie.current?.click()} title="Foto, Screenshot oder Bild aufs Blatt legen (am PC auch mit Strg+V)">
+        Bild
+      </button>
+      <input ref={galerie} type="file" accept="image/*" multiple hidden onChange={nimm} />
+      <input ref={kamera} type="file" accept="image/*" capture="environment" hidden onChange={nimm} />
+    </>
   )
 }
