@@ -60,7 +60,7 @@ export function TintenEbene({
   fluechtig?: boolean
   /** auch der Finger zeichnet (Fotos am Handy), statt zu scrollen */
   finger?: boolean
-  /** Strichbreite in Seitenkoordinaten, sonst 3 (Wichtig 4) */
+  /** Strichbreite in Seitenkoordinaten, sonst 2,55 (Wichtig 3,4), 15 % dünner als bis v0.58.2 */
   breite?: number
   /** Zwei Finger auseinander/zusammen: Faktor gegenüber dem bisherigen Zoom. Ohne diese Angabe wird nicht gezoomt. */
   onZoom?: (faktor: number) => void
@@ -182,7 +182,7 @@ export function TintenEbene({
       setRechteck({ x: p[0] / SEITE_BREITE, y: p[1] / hoehe, b: 0, h: 0 })
     } else {
       modus.current = 'zeichnen'
-      const breite = strichBreite ?? (farbe === 'wichtig' ? 4 : 3)
+      const breite = strichBreite ?? (farbe === 'wichtig' ? 3.4 : 2.55)
       setAktiv({ farbe, breite, punkte: [p], d: umriss([p], breite, e.pointerType === 'pen') })
     }
   }
