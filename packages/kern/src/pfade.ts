@@ -25,7 +25,10 @@ export const pfade = {
   kontakte: (quelle: string) => `gemeinsam/kontakte/${quelle}.vcf`,
   marken: (app: App, anhangId: string) => `${app}/markierungen/${anhangId}.md`,
   tinte: (app: App, anhangId: string, seite: number) => `${app}/tinte/${anhangId}/S${drei(seite)}.svg`,
-  blatt: (anhangId: string, seite: number) => `lernen/blaetter/${anhangId}/S${drei(seite)}.svg`,
+  /** Tinte eines Zeichenblatts zur Skriptseite; das erste Blatt („1“) ohne Zusatz wie früher */
+  blatt: (anhangId: string, seite: number, blatt = '1') => `lernen/blaetter/${anhangId}/S${drei(seite)}${blatt === '1' ? '' : `-${blatt}`}.svg`,
+  /** Welche Ansichten (Skript, Blätter) im Übungsplatz nebeneinander stehen */
+  blattAnordnung: (anhangId: string) => `lernen/blaetter/${anhangId}/anordnung.json`,
   karte: (id: string) => `lernen/karten/${id}.md`,
   modul: (id: string) => `lernen/module/${id}.md`,
   /** Lesestand eines Geräts: wo in welchem PDF zuletzt gelesen wurde */

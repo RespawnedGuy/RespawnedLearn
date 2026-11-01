@@ -10,16 +10,31 @@
 .knopf.aus { pointer-events: none; opacity: 0.4; }
 .unsichtbar { position: absolute; left: -9999px; }
 
-/* Sammeln: Skript und Blatt nebeneinander, tauschbar */
-.uebungsplatz { display: flex; gap: 16px; padding: 0 24px 110px; align-items: flex-start; }
-.uebungsplatz.getauscht { flex-direction: row-reverse; }
-.platz-skript { flex: 3 1 0; min-width: 0; }
-.platz-blatt { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.blatt-titel { font-size: 0.75rem; color: var(--leise); }
-.blatt-flaeche { width: 100%; aspect-ratio: 1 / 1.414; background-color: #fff; background-image: linear-gradient(#eeeaf6 1px, transparent 1px), linear-gradient(90deg, #eeeaf6 1px, transparent 1px); background-size: 26px 26px; }
+/* Sammeln: Skript und beliebig viele Blätter nebeneinander, sortierbar, Breite am Trenner ziehen */
+.uebungsplatz { display: flex; padding: 0 24px 110px; align-items: flex-start; }
+.platz-ansicht { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ansicht-kopf { display: flex; align-items: center; gap: 2px; min-height: 32px; }
+.ansicht-name { font-size: 0.75rem; color: var(--leise); }
+.ansicht-kopf .knopf.symbol { min-width: 32px; font-size: 1rem; }
+.ansicht-kopf .knopf:disabled { opacity: 0.3; }
+.lineatur-wahl { font: inherit; font-size: 0.75rem; color: var(--leise); background: transparent; border: none; padding: 4px 2px; cursor: pointer; }
+.ansicht-trenner { flex: none; align-self: stretch; width: 16px; cursor: col-resize; touch-action: none; position: relative; }
+.ansicht-trenner::after { content: ''; position: absolute; top: 40px; bottom: 0; left: 7px; width: 2px; border-radius: 1px; background: transparent; transition: background 0.15s; }
+.ansicht-trenner:hover::after, .ansicht-trenner:active::after { background: var(--akzent-weich, #cfc3ef); }
+.blatt-flaeche { width: 100%; background-color: #fff; }
+.blatt-flaeche .lineatur { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.blatt-verlaengern { align-self: center; }
+.blatt-menue-huelle { position: relative; }
+.blatt-menue { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 300px; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--flaeche, #fff); border-radius: 14px; box-shadow: var(--schatten-hoch); }
+.lineatur-knoepfe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.lineatur-knopf { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--linie, #e5e1ee); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.lineatur-knopf:hover { border-color: var(--akzent); }
+.lineatur-probe { position: relative; width: 100%; aspect-ratio: 2 / 1; background: #fff; border-radius: 4px; overflow: hidden; }
+.lineatur-probe .lineatur { position: absolute; inset: 0; width: 100%; height: 100%; }
 @media (max-width: 900px) {
-  .uebungsplatz, .uebungsplatz.getauscht { flex-direction: column; padding: 0 8px 110px; }
-  .platz-skript, .platz-blatt { width: 100%; flex: none; }
+  .uebungsplatz { flex-direction: column; gap: 12px; padding: 0 8px 110px; }
+  .platz-ansicht { width: 100%; flex: none !important; }
+  .ansicht-trenner { display: none; }
 }
 
 /* Lernen */
@@ -114,6 +129,7 @@ body.vollbild-an .uebungsplatz { padding-top: 12px; }
 body.vollbild-an .platz-skript .pdf-seiten { padding: 0; }
 body.vollbild-an .platz-blatt { align-items: center; }
 body.vollbild-an .blatt-flaeche { max-width: calc((var(--vollhoehe) - 24px) / 1.414); }
+body.vollbild-an .ansicht-kopf { width: 100%; }
 .vollbild-steuer {
   position: fixed; top: 10px; right: 10px; z-index: 45; display: flex; align-items: center; gap: 2px; padding: 4px;
   background: rgba(31, 34, 40, 0.82); color: #fff; border-radius: 14px; box-shadow: var(--schatten-hoch); font-size: 0.8125rem;

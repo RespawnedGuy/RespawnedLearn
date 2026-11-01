@@ -1,6 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
-import { PdfAnsicht, TintenEbene, Werkzeugleiste, ZurueckPfeil, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
+import { PdfAnsicht, Werkzeugleiste, ZurueckPfeil, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -8,19 +8,12 @@ import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
+import { AnsichtKopf, Blatt, BlattMenue, Trenner, useAnordnung } from './Blaetter'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
 /** Platz über und unter der Seite im Vollbild: Rand oben, Werkzeugleiste unten */
 const VOLLBILD_RAND = 100
-
-function liesSeite(schluessel: string): boolean {
-  try {
-    return localStorage.getItem(schluessel) === '1'
-  } catch {
-    return false
-  }
-}
 
 /** Sammeln: Startseite mit Modulen und Büchern. Mit Quelle: Skript und leeres Blatt nebeneinander. */
 export function Sammeln({ ort }: { ort: string[] }) {
@@ -36,7 +29,9 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const { speicher, bestand } = useDaten()
   const [werkzeug, setWerkzeug] = useState<Werkzeug>('stift')
   const [farbe, setFarbe] = useState<Farbe>('alltag')
-  const [getauscht, setGetauscht] = useState(() => liesSeite('rvx-lernen-blatt-links'))
+  const ansichten = useAnordnung(quelle.id)
+  // Breiten während des Ziehens am Trenner, gespeichert erst beim Loslassen
+  const [entwurf, setEntwurf] = useState<Record<string, number>>({})
   const [seiten, setSeiten] = useState(0)
   const [auswahl, setAuswahl] = useState<{ bereich: Bereich; punkt: { x: number; y: number } } | null>(null)
   const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link' | 'erklaeren'>('wahl')
@@ -90,15 +85,6 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
     void document.documentElement.requestFullscreen?.().catch(() => {})
   }
 
-  const tauschen = () => {
-    setGetauscht(!getauscht)
-    try {
-      localStorage.setItem('rvx-lernen-blatt-links', getauscht ? '0' : '1')
-    } catch {
-      /* nur für diese Sitzung */
-    }
-  }
-
   // Lernkarte: sobald die Frage gefragt ist, schlägt die KI eine vor (im Hintergrund, Tippen geht weiter)
   const bereich = auswahl?.bereich
   useEffect(() => {
@@ -124,7 +110,6 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   }
 
   const skript = (
-    <section className="platz-skript" aria-label="Skript">
       <PdfAnsicht
         app="lernen"
         anhangId={quelle.id}
@@ -203,16 +188,8 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
           )
         }
       />
-    </section>
   )
-  const blatt = (
-    <section className="platz-blatt" aria-label="Blatt">
-      <div className="blatt-titel">Blatt · zu S. {seite}</div>
-      <div className="blatt-flaeche pdf-seite zeichnen">
-        <TintenEbene pfad={pfade.blatt(quelle.id, seite)} format={1.414} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} />
-      </div>
-    </section>
-  )
+  const offen = ansichten.anordnung.ansichten.filter((v) => !v.zu)
 
   return (
     <div>
@@ -230,16 +207,40 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
         <a className="knopf klein symbol" href={ortLink('sammeln', quelle.id, seiten ? Math.min(seiten, seite + 1) : seite + 1)} aria-label="Seite vor">
           ›
         </a>
-        <button type="button" className="knopf klein" onClick={tauschen}>
-          Blatt {getauscht ? 'rechts' : 'links'} ⇄
-        </button>
+        <BlattMenue anordnung={ansichten.anordnung} onNeu={ansichten.neuesBlatt} onOeffne={ansichten.oeffne} />
         <button type="button" className="knopf klein" onClick={vollbildUmschalten} title="Kopf ausblenden, ganze Seite zeigen">
           ⤢ Vollbild
         </button>
       </div>
-      <div className={`uebungsplatz${getauscht ? ' getauscht' : ''}`} style={vollbild ? ({ '--vollhoehe': `${hoehe - VOLLBILD_RAND}px` } as CSSProperties) : undefined}>
-        {skript}
-        {blatt}
+      <div className="uebungsplatz" style={vollbild ? ({ '--vollhoehe': `${hoehe - VOLLBILD_RAND}px` } as CSSProperties) : undefined}>
+        {offen.map((v, i) => (
+          <Fragment key={v.id}>
+            {i > 0 && (
+              <Trenner
+                links={{ ...offen[i - 1], breite: entwurf[offen[i - 1].id] ?? offen[i - 1].breite }}
+                rechts={{ ...v, breite: entwurf[v.id] ?? v.breite }}
+                onZiehen={setEntwurf}
+                onFertig={(b) => {
+                  ansichten.breiten(b)
+                  setEntwurf({})
+                }}
+              />
+            )}
+            <section className={`platz-ansicht ${v.art === 'pdf' ? 'platz-skript' : 'platz-blatt'}`} style={{ flexGrow: entwurf[v.id] ?? v.breite }} aria-label={v.art === 'pdf' ? 'Skript' : 'Blatt'}>
+              <AnsichtKopf
+                ansicht={v}
+                name="Skript"
+                erste={i === 0}
+                letzte={i === offen.length - 1}
+                allein={offen.length === 1}
+                onLineatur={(l) => ansichten.lineatur(v.id, l)}
+                onVerschiebe={(r) => ansichten.verschiebe(v.id, r)}
+                onSchliesse={() => ansichten.schliesse(v.id)}
+              />
+              {v.art === 'pdf' ? skript : <Blatt anhangId={quelle.id} seite={seite} ansicht={v} werkzeug={werkzeug} farbe={farbe} />}
+            </section>
+          </Fragment>
+        ))}
       </div>
       {vollbild && (
         <ZurueckPfeil
