@@ -27,6 +27,8 @@ export const pfade = {
   tinte: (app: App, anhangId: string, seite: number) => `${app}/tinte/${anhangId}/S${drei(seite)}.svg`,
   /** Tinte eines Zeichenblatts zur Skriptseite; das erste Blatt („1“) ohne Zusatz wie früher */
   blatt: (anhangId: string, seite: number, blatt = '1') => `lernen/blaetter/${anhangId}/S${drei(seite)}${blatt === '1' ? '' : `-${blatt}`}.svg`,
+  /** Bilder (Fotos, PDF-Ausschnitte) auf den Blättern einer Skriptseite */
+  blattBilder: (anhangId: string, seite: number) => `lernen/blaetter/${anhangId}/S${drei(seite)}-bilder.json`,
   /** Welche Ansichten (Skript, Blätter) im Übungsplatz nebeneinander stehen */
   blattAnordnung: (anhangId: string) => `lernen/blaetter/${anhangId}/anordnung.json`,
   karte: (id: string) => `lernen/karten/${id}.md`,

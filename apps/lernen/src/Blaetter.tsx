@@ -6,8 +6,12 @@ import {
   A4,
   LINEATUREN,
   anordnungJson,
+  bilderJson,
   blattFormat,
   liesAnordnung,
+  liesBilder,
+  platzFuerBild,
+  rueckeBild,
   liesTinte,
   lineaturName,
   lineaturSchichten,
@@ -24,10 +28,11 @@ import {
   SEITE_BREITE,
   type Anordnung,
   type Ansicht,
+  type BlattBild,
   type Farbe,
   type Lineatur
 } from '@rvx/kern'
-import { TintenEbene, useDaten, type Werkzeug } from '@rvx/oberflaeche'
+import { TintenEbene, ausschnitt, bildUrl, melde, mitFinger, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rvx/oberflaeche'
 
 /** Strichstärke der Lineatur in Bildschirmpixeln, unabhängig von der Größe des Blatts */
 const STAERKE = { fein: 0.5, mittel: 0.8, kraeftig: 1.1, punkt: 2.4 } as const
@@ -66,28 +71,188 @@ export function useAnordnung(anhangId: string) {
     breiten: (b: Record<string, number>) => sichere(setzeBreiten(anordnung, b)),
     lineatur: (id: string, l: Lineatur) => sichere(setzeLineatur(anordnung, id, l)),
     schliesse: (id: string) => sichere(schliesseAnsicht(anordnung, id, id !== 'pdf' && blattHatTinte(speicher.pfade(), (p) => speicher.text(p), anhangId, id))),
-    oeffne: (id: string) => sichere(oeffneAnsicht(anordnung, id))
+    oeffne: (id: string) => sichere(oeffneAnsicht(anordnung, id)),
+    /** Ziel für ein Bild: das erste offene Blatt; sonst ein ausgeblendetes wieder öffnen oder ein neues anlegen */
+    zielBlatt: (): string => {
+      const offen = anordnung.ansichten.find((v) => v.art === 'blatt' && !v.zu)
+      if (offen) return offen.id
+      const zu = anordnung.ansichten.find((v) => v.art === 'blatt')
+      if (zu) {
+        sichere(oeffneAnsicht(anordnung, zu.id))
+        return zu.id
+      }
+      const id = neueBlattId(anordnung, ulid())
+      sichere(neuesBlatt(anordnung, id, 'kariert'))
+      return id
+    }
   }
 }
 
-/** Ein Zeichenblatt zur Skriptseite: Lineatur, Tinte, unten „Verlängern“ */
+/** Seitenverhältnis (Höhe/Breite) eines Bilds, sobald es geladen ist */
+async function verhaeltnisVon(src: string): Promise<number> {
+  const i = new Image()
+  i.src = src
+  await i.decode().catch(() => {})
+  return i.naturalWidth ? i.naturalHeight / i.naturalWidth : 0.75
+}
+
+/**
+ * Bild auf ein Blatt der Seite legen (unter das unterste Bild, das Blatt wächst bei Bedarf). `src` dient nur dazu,
+ * das Seitenverhältnis zu bestimmen; gespeichert wird der Verweis auf den Anhang bzw. den Ausschnitt.
+ */
+export async function legeBildAufBlatt(
+  speicher: Speicher,
+  ort: { anhangId: string; seite: number; blatt: string },
+  bild: Pick<BlattBild, 'anhang' | 'seite' | 'bereich'>,
+  src: string
+): Promise<void> {
+  const verhaeltnis = await verhaeltnisVon(src)
+  const bilderPfad = pfade.blattBilder(ort.anhangId, ort.seite)
+  const tintePfad = pfade.blatt(ort.anhangId, ort.seite, ort.blatt)
+  const bilder = liesBilder(speicher.text(bilderPfad))
+  const format = blattFormat(speicher.text(tintePfad))
+  const platz = platzFuerBild(bilder, ort.blatt, verhaeltnis, format)
+  if (platz.format > format) await speicher.schreibe(tintePfad, tinteSvg(liesTinte(speicher.text(tintePfad) ?? ''), SEITE_BREITE * platz.format))
+  const { format: _f, ...lage } = platz
+  await speicher.aendere(bilderPfad, (alt) => bilderJson([...liesBilder(alt), { id: ulid().slice(-8).toLowerCase(), blatt: ort.blatt, ...bild, ...lage }]))
+  melde('Bild liegt auf dem Blatt. Mit „Lesen“ verschieben, vergrößern oder entfernen.')
+}
+
+/** Fotos aus Kamera, Galerie oder Zwischenablage ablegen und aufs Blatt legen */
+export async function fotosAufBlatt(speicher: Speicher, ort: { anhangId: string; seite: number; blatt: string }, dateien: Iterable<File>) {
+  for (const f of dateien) {
+    if (!f.type.startsWith('image/')) continue
+    const id = await neuerAnhang(speicher, f.name ? f : new File([f], `Bild ${new Date().toLocaleString('de-DE')}.png`, { type: f.type }))
+    const url = URL.createObjectURL(f)
+    try {
+      await legeBildAufBlatt(speicher, ort, { anhang: id }, url)
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+}
+
+/** Ein Bild auf dem Blatt; mit „Lesen“ antippen, dann ziehen, an der Ecke vergrößern oder entfernen */
+function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntfernen }: { bild: BlattBild; format: number; aktiv: boolean; gewaehlt: boolean; onWahl: () => void; onAendern: (b: BlattBild) => void; onEntfernen: () => void }) {
+  const { speicher, bestand } = useDaten()
+  const [src, setSrc] = useState<string | null>(null)
+  const [lage, setLage] = useState<BlattBild | null>(null)
+  const zug = useRef<{ art: 'ziehen' | 'groesse'; x: number; y: number; proPx: number; start: BlattBild } | null>(null)
+  const quelle = bestand.dokumente.get(bild.anhang)
+  const datei = typeof quelle?.felder.datei === 'string' ? quelle.felder.datei : ''
+  const { seite, bereich } = bild
+  useEffect(() => {
+    let weg = false
+    const p = seite && bereich ? (datei ? ausschnitt(speicher, datei, seite, bereich, 1400) : Promise.resolve(null)) : bildUrl(speicher, bestand, bild.anhang)
+    void p.then((s) => !weg && setSrc(s))
+    return () => {
+      weg = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speicher, bild.anhang, datei, seite, bereich?.x, bereich?.y, bereich?.b, bereich?.h, !!quelle])
+  const b = lage ?? bild
+  const hoehe = SEITE_BREITE * format
+  const runter = (art: 'ziehen' | 'groesse') => (e: React.PointerEvent<HTMLElement>) => {
+    if (!aktiv) return
+    e.stopPropagation()
+    if (!gewaehlt) return onWahl()
+    const flaeche = e.currentTarget.closest('.blatt-flaeche')?.getBoundingClientRect()
+    if (!flaeche) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    zug.current = { art, x: e.clientX, y: e.clientY, proPx: SEITE_BREITE / flaeche.width, start: bild }
+  }
+  const bewegen = (e: React.PointerEvent) => {
+    const z = zug.current
+    if (!z) return
+    const dx = (e.clientX - z.x) * z.proPx
+    const dy = (e.clientY - z.y) * z.proPx
+    setLage(z.art === 'ziehen' ? rueckeBild(z.start, z.start.x + dx, z.start.y + dy, z.start.b, format) : rueckeBild(z.start, z.start.x, z.start.y, z.start.b + dx, format))
+  }
+  const hoch = () => {
+    if (zug.current && lage) onAendern(lage)
+    zug.current = null
+    setLage(null)
+  }
+  return (
+    <div
+      className={`blatt-bild${aktiv ? ' beweglich' : ''}${gewaehlt ? ' gewaehlt' : ''}`}
+      style={{ left: `${(b.x / SEITE_BREITE) * 100}%`, top: `${(b.y / hoehe) * 100}%`, width: `${(b.b / SEITE_BREITE) * 100}%`, height: `${(b.h / hoehe) * 100}%` }}
+      onPointerDown={runter('ziehen')}
+      onPointerMove={bewegen}
+      onPointerUp={hoch}
+      onPointerCancel={hoch}
+    >
+      {src ? <img src={src} alt={quelle?.titel ?? 'Bild'} draggable={false} /> : <span className="klein-leise">{quelle ? 'lädt …' : 'Bild fehlt noch'}</span>}
+      {gewaehlt && aktiv && (
+        <>
+          <button type="button" className="blatt-bild-weg" onPointerDown={(e) => e.stopPropagation()} onClick={onEntfernen} aria-label="Bild vom Blatt nehmen" title="Vom Blatt nehmen (das Bild selbst bleibt erhalten)">
+            ×
+          </button>
+          <span className="blatt-bild-ecke" onPointerDown={runter('groesse')} onPointerMove={bewegen} onPointerUp={hoch} onPointerCancel={hoch} aria-hidden="true" />
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Ein Zeichenblatt zur Skriptseite: Lineatur, Bilder, Tinte, unten Bild hinzufügen und „Verlängern“ */
 export function Blatt({ anhangId, seite, ansicht, werkzeug, farbe }: { anhangId: string; seite: number; ansicht: Ansicht; werkzeug: Werkzeug; farbe: Farbe }) {
   const { speicher } = useDaten()
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null)
+  const galerie = useRef<HTMLInputElement>(null)
+  const kamera = useRef<HTMLInputElement>(null)
   const pfad = pfade.blatt(anhangId, seite, ansicht.id)
+  const bilderPfad = pfade.blattBilder(anhangId, seite)
   const format = blattFormat(speicher.text(pfad))
+  const bilder = liesBilder(speicher.text(bilderPfad)).filter((b) => b.blatt === ansicht.id)
+  const lesen = werkzeug === 'lesen'
+  useEffect(() => {
+    if (!lesen) setGewaehlt(null)
+  }, [lesen])
   const verlaengern = () => {
     // Die Striche bleiben, wo sie sind; nur die Seite wird eine A4-Höhe länger
     void speicher.schreibe(pfad, tinteSvg(liesTinte(speicher.text(pfad) ?? ''), SEITE_BREITE * (format + A4)))
   }
+  const ort = { anhangId, seite, blatt: ansicht.id }
+  const fotos = (liste: FileList | null) => void fotosAufBlatt(speicher, ort, Array.from(liste ?? []))
+  const aendere = (f: (alle: BlattBild[]) => BlattBild[]) => void speicher.aendere(bilderPfad, (alt) => bilderJson(f(liesBilder(alt))))
   return (
     <>
-      <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }}>
+      <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} onPointerDown={() => setGewaehlt(null)}>
         <LineaturBild art={ansicht.lineatur ?? 'kariert'} format={format} />
+        {bilder.map((b) => (
+          <BildAufBlatt
+            key={b.id}
+            bild={b}
+            format={format}
+            aktiv={lesen}
+            gewaehlt={gewaehlt === b.id}
+            onWahl={() => setGewaehlt(b.id)}
+            onAendern={(neu) => aendere((alle) => alle.map((x) => (x.id === neu.id ? neu : x)))}
+            onEntfernen={() => {
+              setGewaehlt(null)
+              aendere((alle) => alle.filter((x) => x.id !== b.id))
+            }}
+          />
+        ))}
         <TintenEbene pfad={pfad} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} />
       </div>
-      <button type="button" className="knopf still klein blatt-verlaengern" onClick={verlaengern} title="Das Blatt um eine Seite nach unten verlängern">
-        + Platz nach unten
-      </button>
+      <div className="blatt-unten">
+        {mitFinger() && (
+          <button type="button" className="knopf still klein" onClick={() => kamera.current?.click()}>
+            Kamera
+          </button>
+        )}
+        <button type="button" className="knopf still klein" onClick={() => galerie.current?.click()} title="Foto, Screenshot oder Bild aufs Blatt legen (am PC auch mit Strg+V)">
+          Bild
+        </button>
+        <button type="button" className="knopf still klein" onClick={verlaengern} title="Das Blatt um eine Seite nach unten verlängern">
+          + Platz nach unten
+        </button>
+        <input ref={galerie} type="file" accept="image/*" multiple hidden onChange={(e) => (fotos(e.target.files), (e.target.value = ''))} />
+        <input ref={kamera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => (fotos(e.target.files), (e.target.value = ''))} />
+      </div>
     </>
   )
 }

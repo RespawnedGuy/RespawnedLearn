@@ -2,6 +2,7 @@
 // Reihenfolge und Breite, und welche Lineatur ein Blatt hat. Die Tinte liegt pro Seite und Blatt als SVG daneben.
 
 import { SEITE_BREITE } from './tinte'
+import type { Bereich } from './marken'
 
 /** Seitenverhältnis A4 (Höhe/Breite); ein Blatt wächst beim Verlängern um genau diese Höhe */
 export const A4 = Math.SQRT2
@@ -216,4 +217,161 @@ export function lineaturSchichten(art: Lineatur, format: number): LineaturSchich
     return [{ d: waagerecht(ys, 12 * MM, SEITE_BREITE - 12 * MM), staerke: 'mittel' }]
   }
   return []
+}
+
+/** A4 in PDF-Punkten (1/72 Zoll) */
+const PDF_B = 595.28
+const PDF_H = 841.89
+const PDF_TON = { fein: '0.82 0.79 0.9', mittel: '0.7 0.66 0.83', kraeftig: '0.58 0.53 0.75', punkt: '0.66 0.62 0.8' } as const
+const PDF_STAERKE = { fein: 0.3, mittel: 0.45, kraeftig: 0.7, punkt: 1.1 } as const
+
+/** Pfad der Lineatur (M, H, V, h0) in PDF-Zeichenbefehle; y läuft im PDF von unten nach oben */
+function pdfLinien(d: string): string {
+  const k = PDF_B / SEITE_BREITE
+  const p = (n: number) => String(Math.round(n * k * 100) / 100)
+  const y = (n: number) => String(Math.round((PDF_H - n * k) * 100) / 100)
+  let out = ''
+  for (const m of d.matchAll(/M([\d.]+) ([\d.]+)(H|V|h)([\d.]+)/g)) {
+    const x0 = Number(m[1])
+    const y0 = Number(m[2])
+    const w = Number(m[4])
+    const [x1, y1] = m[3] === 'H' ? [w, y0] : m[3] === 'V' ? [x0, w] : [x0 + w, y0]
+    out += `${p(x0)} ${y(y0)} m ${p(x1)} ${y(y1)} l\n`
+  }
+  return out
+}
+
+/** PDF-Textzeichenkette in UTF-16 als Hex, damit Umlaute im Titel ankommen und die Datei reines ASCII bleibt */
+function pdfText(s: string): string {
+  let hex = 'FEFF'
+  for (let i = 0; i < s.length; i++) hex += s.charCodeAt(i).toString(16).padStart(4, '0').toUpperCase()
+  return `<${hex}>`
+}
+
+/**
+ * Leeres PDF (A4 hoch) mit Lineatur auf jeder Seite, als ASCII-Text. Alle Seiten teilen sich denselben Inhalt,
+ * deshalb bleiben auch 100 Seiten wenige Kilobyte groß. Grundlage für ein Heft ohne eigenes PDF (Buch auf Papier).
+ */
+export function leeresPdf(seiten: number, lineatur: Lineatur, titel = ''): string {
+  const n = Math.max(1, Math.min(500, Math.round(seiten)))
+  const inhalt =
+    lineaturSchichten(lineatur, A4)
+      .map((s) => `${PDF_TON[s.staerke]} RG ${PDF_STAERKE[s.staerke]} w ${s.staerke === 'punkt' ? 1 : 0} J\n${pdfLinien(s.d)}S\n`)
+      .join('') || '% leer\n'
+  const objekte: string[] = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '', // Seitenbaum, unten gefüllt
+    `<< /Length ${inhalt.length} >>\nstream\n${inhalt}endstream`,
+    `<< /Title ${pdfText(titel)} /Producer (RespawnedNotes) >>`
+  ]
+  const kinder: string[] = []
+  for (let i = 0; i < n; i++) {
+    objekte.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_B} ${PDF_H}] /Contents 3 0 R /Resources << >> >>`)
+    kinder.push(`${objekte.length} 0 R`)
+  }
+  objekte[1] = `<< /Type /Pages /Kids [${kinder.join(' ')}] /Count ${n} >>`
+  let out = '%PDF-1.4\n'
+  const versatz: number[] = []
+  objekte.forEach((o, i) => {
+    versatz.push(out.length)
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`
+  })
+  const xref = out.length
+  out += `xref\n0 ${objekte.length + 1}\n0000000000 65535 f \n${versatz.map((v) => `${String(v).padStart(10, '0')} 00000 n \n`).join('')}`
+  out += `trailer\n<< /Size ${objekte.length + 1} /Root 1 0 R /Info 4 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return out
+}
+
+/**
+ * Bild auf einem Blatt: ein Foto (Kamera, Galerie, Einfügen) oder ein Ausschnitt aus einem PDF. Gespeichert wird nur
+ * der Verweis, das Foto bzw. PDF bleibt unverändert in anhaenge/. Lage und Größe in Seitenkoordinaten (Breite 1000).
+ */
+export interface BlattBild {
+  id: string
+  /** auf welchem Blatt der Seite */
+  blatt: string
+  /** Sidecar-ID des Fotos oder PDFs */
+  anhang: string
+  /** nur bei PDFs: Seite und Bereich (Anteile der Seite) des Ausschnitts */
+  seite?: number
+  bereich?: Bereich
+  x: number
+  y: number
+  b: number
+  h: number
+}
+
+const zahl = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
+const anteil = (n: unknown) => zahl(n) && n >= 0 && n <= 1
+
+export function liesBilder(text: string | null | undefined): BlattBild[] {
+  let roh: unknown
+  try {
+    roh = text ? JSON.parse(text) : null
+  } catch {
+    return []
+  }
+  const liste = roh && typeof roh === 'object' && Array.isArray((roh as { bilder?: unknown }).bilder) ? (roh as { bilder: Partial<BlattBild>[] }).bilder : []
+  const out: BlattBild[] = []
+  for (const b of liste) {
+    if (!b || typeof b.id !== 'string' || typeof b.blatt !== 'string' || typeof b.anhang !== 'string') continue
+    if (![b.x, b.y, b.b, b.h].every(zahl) || b.b! <= 0 || b.h! <= 0) continue
+    const bild: BlattBild = { id: b.id, blatt: b.blatt, anhang: b.anhang, x: b.x!, y: b.y!, b: b.b!, h: b.h! }
+    if (b.seite !== undefined || b.bereich !== undefined) {
+      const r = b.bereich
+      if (!zahl(b.seite) || b.seite < 1 || !r || ![r.x, r.y, r.b, r.h].every(anteil)) continue
+      bild.seite = b.seite
+      bild.bereich = { x: r.x, y: r.y, b: r.b, h: r.h }
+    }
+    out.push(bild)
+  }
+  return out
+}
+
+export function bilderJson(bilder: BlattBild[]): string {
+  const r = (n: number) => Math.round(n * 10) / 10
+  const k = (n: number) => Math.round(n * 10000) / 10000
+  return (
+    JSON.stringify({
+      bilder: bilder.map((b) => ({
+        ...b,
+        x: r(b.x),
+        y: r(b.y),
+        b: r(b.b),
+        h: r(b.h),
+        ...(b.bereich ? { bereich: { x: k(b.bereich.x), y: k(b.bereich.y), b: k(b.bereich.b), h: k(b.bereich.h) } } : {})
+      }))
+    }) + '\n'
+  )
+}
+
+/** Rand links/oben und Abstand zwischen Bildern, in Seitenkoordinaten (etwa 10 mm) */
+const BILD_RAND = 48
+
+/**
+ * Platz für ein neues Bild auf einem Blatt: unter dem untersten Bild dieses Blatts, sonst oben. Breit wie 70 % des
+ * Blatts, bei hohen Bildern schmaler (höchstens eine A4-Höhe). Liefert auch das Format, das das Blatt dafür braucht.
+ */
+export function platzFuerBild(bilder: BlattBild[], blatt: string, verhaeltnis: number, format: number): { x: number; y: number; b: number; h: number; format: number } {
+  const v = zahl(verhaeltnis) && verhaeltnis > 0 ? verhaeltnis : 0.75
+  let b = 700
+  let h = b * v
+  const maxH = SEITE_BREITE * A4 - 2 * BILD_RAND
+  if (h > maxH) {
+    h = maxH
+    b = h / v
+  }
+  const unten = Math.max(0, ...bilder.filter((x) => x.blatt === blatt).map((x) => x.y + x.h))
+  const y = unten ? unten + BILD_RAND / 2 : BILD_RAND
+  let f = format
+  while (SEITE_BREITE * f < y + h + BILD_RAND / 2) f += A4
+  return { x: BILD_RAND, y, b, h, format: f }
+}
+
+/** Bild verschieben oder vergrößern, ohne dass es das Blatt verlässt; das Seitenverhältnis bleibt */
+export function rueckeBild(bild: BlattBild, x: number, y: number, b: number, format: number): BlattBild {
+  const breite = Math.min(SEITE_BREITE, Math.max(60, b))
+  const h = (bild.h / bild.b) * breite
+  const hoehe = SEITE_BREITE * format
+  return { ...bild, b: breite, h, x: Math.min(SEITE_BREITE - breite, Math.max(0, x)), y: Math.min(Math.max(0, hoehe - h), Math.max(0, y)) }
 }

@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { gliederung, linkZiel, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
+import { LINEATUREN, anordnungJson, leeresPdf, type Lineatur, gliederung, linkZiel, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rvx/kern'
 import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rvx/oberflaeche'
 import { KapitelUebersicht, kapitelKurz } from './Kapitel'
 import { faelligZahl, kartenFuer, kartenImModul } from './modulkarten'
+import { LineaturBild } from './Blaetter'
 import { neueMitschrift, neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
@@ -39,6 +40,7 @@ export function Start() {
   const { speicher, bestand } = useDaten()
   const eingabe = useRef<HTMLInputElement>(null)
   const [neu, setNeu] = useState(false)
+  const [heft, setHeft] = useState(false)
   const [suche, setSuche] = useState('')
   const alle = lernziele(bestand)
   const w = suche.trim().toLowerCase()
@@ -52,6 +54,9 @@ export function Start() {
         <span style={{ flex: 1 }} />
         <button type="button" className="knopf" onClick={() => setNeu(true)}>
           Neues Modul
+        </button>
+        <button type="button" className="knopf" onClick={() => setHeft(true)} title="Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern">
+          Buch ohne PDF
         </button>
         <button type="button" className="knopf haupt" onClick={() => eingabe.current?.click()}>
           Buch hinzufügen
@@ -89,6 +94,7 @@ export function Start() {
       {!leer && w && !gruppen.favoriten.length && !gruppen.kuerzlich.length && !gruppen.weitere.length && !gruppen.abgeschlossen.length && (
         <div className="leer">Nichts gefunden.</div>
       )}
+      {heft && <NeuesHeft onZu={() => setHeft(false)} />}
       {neu && (
         <NeuesModul
           onZu={() => setNeu(false)}
@@ -175,6 +181,66 @@ export function FavoritStern({ an, onKlick }: { an: boolean; onKlick: () => void
 /** PDFs, die noch in keinem Modul stecken */
 function losePdfs(ziele: Lernziel[]): Eintrag[] {
   return ziele.filter((z) => !z.modul).flatMap((z) => z.quellen)
+}
+
+/** Seiten eines leeren Hefts; jede Seite hat ihre eigenen Blätter und Bilder */
+const HEFT_SEITEN = 60
+
+/**
+ * Buch auf Papier: ein leeres PDF (Heft) mit Lineatur als Quelle, damit Seiten, Lesestand und Module wie bei
+ * jedem Buch funktionieren. Der Übungsplatz zeigt statt des PDFs ein großes Blatt für Fotos, Ausschnitte und Tinte.
+ */
+function NeuesHeft({ onZu }: { onZu: () => void }) {
+  const { speicher } = useDaten()
+  const [titel, setTitel] = useState('')
+  const [lineatur, setLineatur] = useState<Lineatur>('kariert')
+  const [laeuft, setLaeuft] = useState(false)
+  const anlegen = async () => {
+    const t = titel.trim()
+    if (!t || laeuft) return
+    setLaeuft(true)
+    const datei = new File([leeresPdf(HEFT_SEITEN, lineatur, t)], `${t}.pdf`, { type: 'application/pdf' })
+    const id = await neuerAnhang(speicher, datei, [['art', 'skript'], ['heft', lineatur]], t)
+    await speicher.schreibe(
+      pfade.blattAnordnung(id),
+      anordnungJson({ ansichten: [{ art: 'pdf', id: 'pdf', breite: 3, zu: true }, { art: 'blatt', id: '1', lineatur, breite: 2 }] })
+    )
+    await neuesModul(speicher, { titel: t, quellen: [id] })
+    onZu()
+    geheZu('sammeln', id, 1)
+  }
+  return (
+    <Dialog titel="Buch ohne PDF" onZu={onZu}>
+      <p className="klein-leise" style={{ margin: 0 }}>
+        Ein leeres Heft mit {HEFT_SEITEN} Seiten. Auf jeder Seite schreibst du auf einem großen Blatt, legst Fotos aus dem Buch darauf und nimmst bei Bedarf weitere Blätter dazu.
+      </p>
+      <label className="feld">
+        Name
+        <input className="eingabe" autoFocus placeholder="z. B. Mathematik Klasse 10" value={titel} onChange={(e) => setTitel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void anlegen()} />
+      </label>
+      <div className="feld">
+        Papier
+        <div className="lineatur-knoepfe">
+          {LINEATUREN.map((l) => (
+            <button key={l.art} type="button" className={`lineatur-knopf${lineatur === l.art ? ' gewaehlt' : ''}`} aria-pressed={lineatur === l.art} onClick={() => setLineatur(l.art)}>
+              <span className="lineatur-probe">
+                <LineaturBild art={l.art} format={0.5} breite={300} />
+              </span>
+              {l.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="dialog-knoepfe">
+        <button type="button" className="knopf still" onClick={onZu}>
+          Abbrechen
+        </button>
+        <button type="button" className="knopf haupt" disabled={!titel.trim() || laeuft} onClick={() => void anlegen()}>
+          Anlegen
+        </button>
+      </div>
+    </Dialog>
+  )
 }
 
 function NeuesModul({ onZu, onFertig }: { onZu: () => void; onFertig: (id: string) => void }) {

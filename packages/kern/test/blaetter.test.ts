@@ -4,6 +4,12 @@ import {
   MM,
   anordnungJson,
   blattFormat,
+  bilderJson,
+  leeresPdf,
+  liesBilder,
+  platzFuerBild,
+  rueckeBild,
+  type BlattBild,
   lineaturSchichten,
   liesAnordnung,
   neueBlattId,
@@ -134,5 +140,71 @@ describe('Lineaturen', () => {
     const linien = lineaturSchichten('liniert', A4)[0].d
     expect(linien.startsWith(`M0 ${Math.round(16 * MM * 10) / 10}H1000`)).toBe(true)
     expect(lineaturSchichten('leer', A4)).toEqual([])
+  })
+})
+
+describe('Leeres PDF (Heft)', () => {
+  it('ist reines ASCII mit stimmender Querverweistabelle', () => {
+    const pdf = leeresPdf(3, 'kariert', 'Mathe Klasse 10 – Übungen')
+    expect(/^[\x00-\x7f]*$/.test(pdf)).toBe(true)
+    const start = Number(/startxref\n(\d+)/.exec(pdf)![1])
+    expect(pdf.slice(start, start + 4)).toBe('xref')
+    const eintraege = pdf.slice(start).split('\n').slice(3).filter((z) => / 00000 n $/.test(z))
+    eintraege.forEach((z, i) => expect(pdf.slice(Number(z.slice(0, 10))).startsWith(`${i + 1} 0 obj`)).toBe(true))
+    const laenge = Number(/\/Length (\d+) >>\nstream\n/.exec(pdf)![1])
+    const ab = pdf.indexOf('stream\n') + 7
+    expect(pdf.slice(ab + laenge, ab + laenge + 9)).toBe('endstream')
+  })
+
+  it('pdf.js liest Seitenzahl, A4-Format und Titel', async () => {
+    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    const daten = new TextEncoder().encode(leeresPdf(40, 'millimeter', 'Physik – Heft'))
+    const doc = await getDocument({ data: daten, isEvalSupported: false }).promise
+    expect(doc.numPages).toBe(40)
+    const v = (await doc.getPage(40)).getViewport({ scale: 1 })
+    expect(v.height / v.width).toBeCloseTo(A4, 2)
+    expect(((await doc.getMetadata()).info as { Title?: string }).Title).toBe('Physik – Heft')
+    // 40 Seiten Millimeterpapier teilen sich einen Inhalt: klein genug zum schnellen Sync
+    expect(daten.length).toBeLessThan(60_000)
+  })
+})
+
+describe('Bilder auf Blättern', () => {
+  const foto: BlattBild = { id: 'f1', blatt: '1', anhang: '01JFOTO', x: 48, y: 48, b: 700, h: 525 }
+
+  it('Pfad, Lesen und Schreiben, Kaputtes fällt weg', () => {
+    expect(pfade.blattBilder('A1', 2)).toBe('lernen/blaetter/A1/S002-bilder.json')
+    const aus: BlattBild = { id: 'a1', blatt: 'k7x2m9', anhang: '01JSKRIPT', seite: 3, bereich: { x: 0.1, y: 0.2, b: 0.5, h: 0.25 }, x: 10, y: 600, b: 500, h: 177.3 }
+    const text = bilderJson([foto, aus])
+    expect(liesBilder(text)).toEqual([foto, aus])
+    expect(liesBilder('{"bilder":[{"id":"x","blatt":"1","anhang":"a","x":0,"y":0,"b":0,"h":5},{"id":"y","blatt":"1","anhang":"a","x":0,"y":0,"b":5,"h":5,"seite":2,"bereich":{"x":2,"y":0,"b":1,"h":1}}]}')).toEqual([])
+    expect(liesBilder('kaputt')).toEqual([])
+  })
+
+  it('neues Bild kommt unter das unterste dieses Blatts, das Blatt wächst bei Bedarf', () => {
+    const erstes = platzFuerBild([], '1', 0.75, A4)
+    expect(erstes).toMatchObject({ x: 48, y: 48, b: 700, h: 525, format: A4 })
+    const zweites = platzFuerBild([foto], '1', 0.75, A4)
+    expect(zweites.y).toBe(48 + 525 + 24)
+    expect(zweites.format).toBe(A4)
+    const drittes = platzFuerBild([foto, { ...foto, id: 'f2', y: 597 }], '1', 0.75, A4)
+    expect(drittes.format).toBeCloseTo(2 * A4, 5)
+    // Bilder auf anderen Blättern zählen nicht
+    expect(platzFuerBild([foto], 'b2', 0.75, A4).y).toBe(48)
+  })
+
+  it('hohe Bilder werden schmaler statt länger als eine Seite', () => {
+    const p = platzFuerBild([], '1', 3, A4)
+    expect(p.h).toBeCloseTo(1000 * A4 - 96, 5)
+    expect(p.b).toBeCloseTo(p.h / 3, 5)
+  })
+
+  it('verschieben und vergrößern bleibt auf dem Blatt, Seitenverhältnis bleibt', () => {
+    const r = rueckeBild(foto, 900, -50, 2000, A4)
+    expect(r.b).toBe(1000)
+    expect(r.h).toBe(750)
+    expect([r.x, r.y]).toEqual([0, 0])
+    const u = rueckeBild(foto, 100, 5000, 400, A4)
+    expect(u.y + u.h).toBeCloseTo(1000 * A4, 5)
   })
 })

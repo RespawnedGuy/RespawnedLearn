@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rvx/kern'
-import { PdfAnsicht, Werkzeugleiste, ZurueckPfeil, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
+import { PdfAnsicht, Werkzeugleiste, ausschnitt, ladePdf, ZurueckPfeil, geheZu, ortLink, useDaten, type Werkzeug } from '@rvx/oberflaeche'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -8,7 +8,7 @@ import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
-import { AnsichtKopf, Blatt, BlattMenue, Trenner, useAnordnung } from './Blaetter'
+import { AnsichtKopf, Blatt, BlattMenue, Trenner, fotosAufBlatt, legeBildAufBlatt, useAnordnung } from './Blaetter'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -42,6 +42,18 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   const [hoehe, setHoehe] = useState(() => innerHeight)
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
   const modul = modulVon(bestand, quelle.id)
+
+  // Skript ausgeblendet (z. B. Heft für ein Buch auf Papier): Seitenzahl trotzdem kennen, fürs Blättern
+  const datei = String(quelle.felder.datei ?? '')
+  const skriptZu = ansichten.anordnung.ansichten.some((v) => v.art === 'pdf' && v.zu)
+  useEffect(() => {
+    if (!skriptZu || !datei) return
+    let weg = false
+    void ladePdf(speicher, datei).then((d) => !weg && d && setSeiten(d.numPages))
+    return () => {
+      weg = true
+    }
+  }, [skriptZu, datei, speicher])
 
   // Stelle merken, damit die Startseite genau hier weitermacht
   useEffect(() => {
@@ -95,6 +107,30 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
     return () => ab.abort()
   }, [modus, bereich, speicher, quelle, seite])
 
+  // Ausschnitt der Seite als Bild aufs Blatt, z. B. eine Aufgabe, um sie dort zu lösen (das PDF darf dann klein werden)
+  const insBlatt = async () => {
+    if (!auswahl) return
+    const datei = String(quelle.felder.datei ?? '')
+    const src = await ausschnitt(speicher, datei, seite, auswahl.bereich, 1400)
+    if (!src) return
+    await legeBildAufBlatt(speicher, { anhangId: quelle.id, seite, blatt: ansichten.zielBlatt() }, { anhang: quelle.id, seite, bereich: auswahl.bereich }, src)
+    setAuswahl(null)
+    setModus('wahl')
+  }
+
+  // Bild aus der Zwischenablage (Screenshot, Strg+V) aufs erste offene Blatt
+  useEffect(() => {
+    const einfuegen = (e: ClipboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement | null)?.isContentEditable) return
+      const bilder = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
+      if (!bilder.length) return
+      e.preventDefault()
+      void fotosAufBlatt(speicher, { anhangId: quelle.id, seite, blatt: ansichten.zielBlatt() }, bilder)
+    }
+    addEventListener('paste', einfuegen)
+    return () => removeEventListener('paste', einfuegen)
+  })
+
   const fertig = async (art: 'wissen' | 'frage' | 'link', ziel?: Eintrag) => {
     if (!auswahl) return
     const eigen = titel.trim()
@@ -146,6 +182,9 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
                     </button>
                     <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
                       Erklären
+                    </button>
+                    <button type="button" className="knopf klein" onClick={() => void insBlatt()} title="Die Stelle als Bild aufs Blatt legen, um dort daran zu arbeiten">
+                      Ins Blatt
                     </button>
                     <button type="button" className="knopf still klein" onClick={() => setAuswahl(null)}>
                       ×
