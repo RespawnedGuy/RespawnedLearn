@@ -1,4 +1,4 @@
-import { Daumenleiste, Kopf, Meldungen, ortLink, useDaten, useOrt, type LeistenZiel } from '@rvx/oberflaeche'
+import { Daumenleiste, Fehlergrenze, Kopf, Meldungen, ortLink, useDaten, useOrt, type LeistenZiel } from '@rvx/oberflaeche'
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
@@ -43,7 +43,10 @@ export function App() {
   return (
     <>
       <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
-      {bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+      {/* Stürzt eine Ansicht ab, bleiben Kopf und Leiste bedienbar */}
+      <Fehlergrenze ort={ort.join('/')}>
+        {bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+      </Fehlergrenze>
       <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
       <Meldungen />
     </>

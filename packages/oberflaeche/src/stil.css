@@ -243,6 +243,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .karte { background: var(--flaeche); border-radius: 16px; box-shadow: var(--schatten); }
 .leer { color: var(--leise); padding: 40px 24px; text-align: center; }
+/* Fehlergrenze (Fehlergrenze.tsx): ruhig, nicht rot. Es ist nur die Anzeige, nicht die Daten */
+.fehlergrenze { max-width: 560px; margin: 0 auto; padding: 48px 24px; text-align: center; }
+.fehlergrenze h2 { margin: 0 0 8px; font-size: 1.125rem; font-weight: 700; }
+.fehlergrenze p { margin: 0 0 20px; color: var(--leise); }
+.fehlergrenze-knoepfe { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.fehlergrenze details { margin-top: 28px; font-size: 0.8125rem; color: var(--leise); }
+.fehlergrenze code { display: block; margin-top: 6px; overflow-wrap: anywhere; user-select: text; }
 .klein-leise { font-size: 0.8125rem; color: var(--leise); }
 .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--mulde-hell); border-radius: 8px; padding: 3px 8px; font-size: 0.75rem; font-weight: 600; color: var(--leise); }
 .chip.akzent { background: var(--akzent-weich); color: var(--akzent-dunkel); }
