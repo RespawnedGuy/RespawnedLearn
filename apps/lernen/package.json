@@ -10,12 +10,12 @@
   "dependencies": {
     "@rvx/kern": "*",
     "@rvx/oberflaeche": "*",
-    "katex": "^0.19.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "ts-fsrs": "^5.4.2"
+    "katex": "0.19.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "ts-fsrs": "5.4.2"
   },
   "devDependencies": {
-    "vite-plugin-pwa": "^2.0.0"
+    "vite-plugin-pwa": "2.0.0"
   }
 }
