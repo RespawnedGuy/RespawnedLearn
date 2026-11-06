@@ -16,24 +16,22 @@ export function scroller(el: Element | null, achse: 'x' | 'y'): Element {
   return document.scrollingElement ?? document.documentElement
 }
 
-/** Während der Geste nur skalieren (flüssig), am Ende einmal neu zeichnen lassen; die Stelle unter den Fingern bleibt dort */
+/**
+ * Während der Geste nur skalieren (flüssig), am Ende einmal neu zeichnen lassen; die Stelle unter den Fingern bleibt dort.
+ * Gerechnet wird über die Lage von `el` vor und nach dem Neuzeichnen, nicht über Scrollstände: Ist der Inhalt kleiner
+ * als sein Rahmen und darum zentriert (Foto-Fenster), verschiebt er sich beim Wachsen zusätzlich, das fängt das ab.
+ */
 export function zoomeUm(el: Element | null, faktor: number, mitte: Punkt, onZoom: (faktor: number) => void) {
-  // Welcher Vorfahr danach scrollt, steht erst nach dem Neuzeichnen fest, deshalb vorher alle Stände merken
-  const vorher = new Map<Element, { x: number; y: number; l: number; t: number }>()
-  const seite = document.scrollingElement ?? document.documentElement
-  for (let p: Element | null = el?.parentElement ?? null; p; p = p.parentElement) {
-    const r = p === seite ? { left: 0, top: 0 } : p.getBoundingClientRect()
-    vorher.set(p, { x: p.scrollLeft, y: p.scrollTop, l: r.left, t: r.top })
-  }
+  const r = el?.getBoundingClientRect()
+  const u = r && r.width ? (mitte.x - r.left) / r.width : 0
+  const v = r && r.height ? (mitte.y - r.top) / r.height : 0
   onZoom(faktor)
+  if (!el || !r) return
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
-      const nx = scroller(el, 'x')
-      const ny = scroller(el, 'y')
-      const ax = vorher.get(nx)
-      const ay = vorher.get(ny)
-      if (ax) nx.scrollLeft = (ax.x + mitte.x - ax.l) * faktor - (mitte.x - ax.l)
-      if (ay) ny.scrollTop = (ay.y + mitte.y - ay.t) * faktor - (mitte.y - ay.t)
+      const n = el.getBoundingClientRect()
+      scroller(el, 'x').scrollLeft += n.left + u * n.width - mitte.x
+      scroller(el, 'y').scrollTop += n.top + v * n.height - mitte.y
     })
   )
 }
