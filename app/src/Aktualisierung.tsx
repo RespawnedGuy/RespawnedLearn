@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { VERTRAG } from '@rl/kern'
 import { inTauri, ortLink } from '@rl/oberflaeche'
-import { eigeneVersion, hole, pruefenBeimStart, setzePruefenBeimStart, spaeter, suche, sucheBeimStart, useAktualisierung } from './aktualisierung'
+import { eigeneVersion, hole, pruefenBeimStart, setzePruefenBeimStart, spaeter, suche, sucheBeimStart, useAktualisierung } from './aktualisierungStand'
 
 /** Über dem Inhalt: neue Version (beim Start gefunden) und Warnung, wenn der Datenordner neuer ist als die App */
 export function AppHinweise({ neuererVertrag, inEinstellungen }: { neuererVertrag: string | null; inEinstellungen: boolean }) {
