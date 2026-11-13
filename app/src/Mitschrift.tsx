@@ -136,7 +136,7 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
         )}
       </div>
       <div className="klein-leise mitschrift-unter">
-        {modul ? <a href={ortLink('sammeln', 'modul', modul.id)}>{modul.titel}</a> : 'Ohne Modul'}
+        {modul ? <a className="ziel-gross" href={ortLink('sammeln', 'modul', modul.id)}>{modul.titel}</a> : 'Ohne Modul'}
         {karten.length > 0 && ` · ${karten.length} ${karten.length === 1 ? 'Lernkarte' : 'Lernkarten'}`}
         <span className="nur-breit"> · Text markieren → „Lernkarte“, „/“ fügt ein</span>
       </div>

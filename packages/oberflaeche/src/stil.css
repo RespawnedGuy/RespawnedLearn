@@ -167,6 +167,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .segmente.klein button::after { inset: -7px 0; }
   button.chip-wahl::after { inset: -8px -2px; }
   select.chip-wahl { min-height: 44px; }
+  /* Übrige kleine Ziele aus der Prüfung vom 13.11.: Konflikt-Chip, Lineatur, Zahnrad, Modul-Link der Mitschrift */
+  :where(.kopf .chip.rot, .ziel-gross) { position: relative; }
+  .kopf .chip.rot::after, .lineatur-wahl::after, .kopf-zahnrad::after, .ziel-gross::after { content: ''; position: absolute; inset: -12px -2px; }
+  .kopf-zahnrad::after { inset: -2px; }
+  .ziel-gross::after { inset: -14px -2px; }
 }
 
 /* ---------- Kopf: ein Menü oben, überall gleich, ausklappbar und fixierbar ---------- */
@@ -265,7 +270,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* Demo: kräftig, damit beim Vorführen niemand die Demo für echte Daten hält */
 .chip-wahl { border: none; font-family: inherit; cursor: pointer; max-width: 220px; }
 .eingabe {
-  height: 44px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche); padding: 0 12px; font-size: 0.9375rem; width: 100%;
+  height: 44px; border-radius: 10px; border: 1px solid var(--rand-stark); background: var(--flaeche); padding: 0 12px; font-size: 0.9375rem; width: 100%;
 }
 textarea.eingabe { height: auto; padding: 10px 12px; resize: vertical; }
 label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; font-weight: 600; color: var(--leise); }
