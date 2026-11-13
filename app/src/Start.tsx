@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { LINEATUREN, anordnungJson, leeresPdf, type Lineatur, gliederung, linkZiel, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rl/kern'
+import { LINEATUREN, type Lineatur, gliederung, linkZiel, obersteEbene, inhaltVon, kapitelBei, kartenAus, kurzDatum, lernziele, mitschriftenVon, lesestand, liesMarken, ordneLernziele, pfade, type Bestand, type Eintrag, type Lernziel, type Lesestelle, type Modul } from '@rl/kern'
 import { Dialog, geheZu, neuerAnhang, ortLink, useDaten } from '@rl/oberflaeche'
 import { KapitelUebersicht, kapitelKurz } from './Kapitel'
 import { faelligZahl, kartenFuer, kartenImModul } from './modulkarten'
 import { LineaturBild } from './Blaetter'
+import { modulVonBuch, neuesBuch, notizbuecher, seitenText, seitenVon } from './Buch'
 import { neueMitschrift, neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
@@ -57,7 +58,7 @@ export function Start() {
         <button type="button" className="knopf nur-breit" onClick={() => setNeu(true)}>
           Neues Modul
         </button>
-        <button type="button" className="knopf nur-breit" onClick={() => setHeft(true)} title="Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern">
+        <button type="button" className="knopf nur-breit" onClick={() => setHeft(true)} title="Für ein Buch auf Papier: ein Notizbuch, in das du schreibst und Fotos aus dem Buch legst">
           Buch ohne PDF
         </button>
         <button type="button" className="knopf haupt nur-breit" onClick={() => eingabe.current?.click()}>
@@ -95,6 +96,7 @@ export function Start() {
       {gruppen.kuerzlich.length > 0 && <Gruppe titel="Zuletzt bearbeitet" ziele={gruppen.kuerzlich} />}
       {gruppen.weitere.length > 0 && <Gruppe titel={gruppen.favoriten.length || gruppen.kuerzlich.length ? 'Weitere' : undefined} ziele={gruppen.weitere} />}
       {gruppen.abgeschlossen.length > 0 && <Gruppe titel="Abgeschlossen" ziele={gruppen.abgeschlossen} />}
+      <Notizbuecher modul={null} />
       {leer && <div className="leer">Noch nichts zum Lernen. Füge ein Buch (PDF) hinzu oder lege ein Modul an.</div>}
       {!leer && w && !gruppen.favoriten.length && !gruppen.kuerzlich.length && !gruppen.weitere.length && !gruppen.abgeschlossen.length && (
         <div className="leer">Nichts gefunden.</div>
@@ -107,7 +109,7 @@ export function Start() {
               [
                 ['Buch hinzufügen', 'Ein PDF, das du durcharbeitest, z. B. ein Skript oder Fachbuch.', () => eingabe.current?.click()],
                 ['Neues Modul', 'Mehrere PDFs und Mitschriften zu einem Ziel, z. B. ein Lehrgang.', () => setNeu(true)],
-                ['Buch ohne PDF', 'Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern.', () => setHeft(true)]
+                ['Buch ohne PDF', 'Für ein Buch auf Papier: ein Notizbuch, in das du schreibst und Fotos aus dem Buch legst.', () => setHeft(true)]
               ] as const
             ).map(([titel, text, tu]) => (
               <button
@@ -195,7 +197,9 @@ function weiterLink(z: Lernziel, b: Bestand): string | null {
   const zeit = (e: Eintrag) => String(e.felder.geaendert ?? e.felder.erstellt ?? '')
   const neueste = [...m].sort((x, y) => zeit(y).localeCompare(zeit(x)))[0]
   const pdf = z.quellen.length ? zielLink(z) : null
-  if (!neueste) return pdf
+  // Modul ohne PDF und ohne Mitschrift (z. B. Buch auf Papier): ins Notizbuch des Moduls
+  const buch = z.modul ? notizbuecher(b.dokumente.values()).find((x) => modulVonBuch(x) === z.modul!.id) : undefined
+  if (!neueste) return pdf ?? (buch ? ortLink('sammeln', 'buch', buch.id) : null)
   if (!pdf) return ortLink('sammeln', 'mitschrift', neueste.id)
   const pdfZeit = z.zuletzt ? new Date(z.zuletzt.am).getTime() : 0
   return new Date(zeit(neueste)).getTime() > pdfZeit ? ortLink('sammeln', 'mitschrift', neueste.id) : pdf
@@ -216,12 +220,9 @@ function losePdfs(ziele: Lernziel[]): Eintrag[] {
   return ziele.filter((z) => !z.modul).flatMap((z) => z.quellen)
 }
 
-/** Seiten eines leeren Hefts; jede Seite hat ihre eigenen Blätter und Bilder */
-const HEFT_SEITEN = 60
-
 /**
- * Buch auf Papier: ein leeres PDF (Heft) mit Lineatur als Quelle, damit Seiten, Lesestand und Module wie bei
- * jedem Buch funktionieren. Der Übungsplatz zeigt statt des PDFs ein großes Blatt für Fotos, Ausschnitte und Tinte.
+ * Buch auf Papier (Vertrag Lernen 1.3): ein Modul ohne PDF und darin ein Notizbuch mit Lineatur. Seiten kommen beim
+ * Schreiben von selbst dazu; Fotos aus dem Buch legt man über Kamera oder Bild hinein.
  */
 function NeuesHeft({ onZu }: { onZu: () => void }) {
   const { speicher } = useDaten()
@@ -232,20 +233,15 @@ function NeuesHeft({ onZu }: { onZu: () => void }) {
     const t = titel.trim()
     if (!t || laeuft) return
     setLaeuft(true)
-    const datei = new File([leeresPdf(HEFT_SEITEN, lineatur, t)], `${t}.pdf`, { type: 'application/pdf' })
-    const id = await neuerAnhang(speicher, datei, [['art', 'skript'], ['heft', lineatur]], t)
-    await speicher.schreibe(
-      pfade.blattAnordnung(id),
-      anordnungJson({ ansichten: [{ art: 'pdf', id: 'pdf', breite: 3, zu: true }, { art: 'blatt', id: '1', lineatur, breite: 2 }] })
-    )
-    await neuesModul(speicher, { titel: t, quellen: [id] })
+    const modul = await neuesModul(speicher, { titel: t, quellen: [] })
+    const id = await neuesBuch(speicher, { titel: t, lineatur, modul })
     onZu()
-    geheZu('sammeln', id, 1)
+    geheZu('sammeln', 'buch', id)
   }
   return (
     <Dialog titel="Buch ohne PDF" onZu={onZu}>
       <p className="klein-leise" style={{ margin: 0 }}>
-        Ein leeres Heft mit {HEFT_SEITEN} Seiten. Auf jeder Seite schreibst du auf einem großen Blatt, legst Fotos aus dem Buch darauf und nimmst bei Bedarf weitere Blätter dazu.
+        Ein Notizbuch für ein Buch auf Papier. Du schreibst darin wie in einem Heft, legst Fotos aus dem Buch hinein, und neue Seiten kommen von selbst dazu.
       </p>
       <label className="feld">
         Name
@@ -381,6 +377,7 @@ export function ModulSeite({ id }: { id: string }) {
       </label>
 
       <Mitschriften modulId={m.id} />
+      <Notizbuecher modul={m.id} />
 
       <h2 className="lern-gruppe-titel" style={{ marginTop: 24 }}>
         {z.quellen.length === 1 ? 'PDF' : 'PDFs'}
@@ -462,6 +459,31 @@ function ModulLernen({ modulId, haupt }: { modulId: string; haupt: boolean }) {
 }
 
 /** Mitschriften des Moduls mit ihrer Gliederung; ein Tipp auf eine Überschrift öffnet die Mitschrift dort */
+/** Notizbücher eines Moduls (oder ohne Modul die freien) als Liste; Klick öffnet das Buch für sich */
+function Notizbuecher({ modul }: { modul: string | null }) {
+  const { speicher, bestand } = useDaten()
+  const liste = notizbuecher(bestand.dokumente.values()).filter((b) => modulVonBuch(b) === modul)
+  if (!liste.length) return null
+  return (
+    <>
+      <h2 className="lern-gruppe-titel" style={{ marginTop: 24 }}>
+        {liste.length === 1 ? 'Notizbuch' : 'Notizbücher'}
+      </h2>
+      <div className="modul-mitschriften">
+        {liste.map((b) => (
+          <a key={b.id} className="buch-zeile" href={ortLink('sammeln', 'buch', b.id)}>
+            <span className="buch-ruecken" aria-hidden="true" />
+            <span>
+              {b.titel}
+              <small>{seitenText(seitenVon(speicher, b.id).length - 1)}</small>
+            </span>
+          </a>
+        ))}
+      </div>
+    </>
+  )
+}
+
 function Mitschriften({ modulId }: { modulId: string }) {
   const { speicher, bestand } = useDaten()
   const liste = mitschriftenVon(bestand, modulId)

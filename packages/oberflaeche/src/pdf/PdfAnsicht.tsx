@@ -90,6 +90,8 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   const onSeite = useRef(p.onSeite)
   onSeite.current = p.onSeite
   const melden = !!p.onSeite && !p.nurSeite
+  // Erst melden, wenn der erste Sprung (z. B. zum Lesestand) erledigt ist; sonst gewinnt kurz Seite 1
+  const gesprungen = useRef(false)
   useEffect(() => {
     if (!melden || !quelle || !breite) return
     const flaeche = p.scrollFlaeche ?? null
@@ -97,6 +99,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
     let zuletzt = 0
     const pruefen = () => {
       frame = 0
+      if (!gesprungen.current) return
       const r = flaeche?.getBoundingClientRect()
       const oben = r ? Math.max(0, r.top) : 0
       const unten = r ? Math.min(innerHeight, r.bottom) : innerHeight
@@ -127,8 +130,13 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   // Sprung zu einer Seite (Lesestand, Inhaltsverzeichnis, Tasten)
   const sprung = p.springeZu
   useEffect(() => {
-    if (!sprung || !formateFertig || !breite) return
-    seitenEl.current.get(sprung.seite)?.scrollIntoView({ block: 'start', behavior: sprung.sanft ? 'smooth' : 'auto' })
+    if (!formateFertig || !breite) return
+    if (sprung) seitenEl.current.get(sprung.seite)?.scrollIntoView({ block: 'start', behavior: sprung.sanft ? 'smooth' : 'auto' })
+    if (!gesprungen.current) {
+      // nach dem ersten Sprung einmal nachmessen
+      gesprungen.current = true
+      ;(p.scrollFlaeche ?? window).dispatchEvent(new Event('scroll'))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprung?.seite, sprung?.mal, formateFertig, breite > 0])
 

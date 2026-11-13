@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { liesMarken, lineaturName, modulVon, naechsteSeite, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
-import { PdfAnsicht, Werkzeugleiste, ausschnitt, ladePdf, ZurueckPfeil, ersetzeOrt, geheZu, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
+import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
+import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, geheZu, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
+import { naechsteSeite } from '@rl/kern'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -8,7 +9,11 @@ import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
-import { AnsichtKopf, Blatt, BildKnoepfe, BlattMenue, Trenner, fotosAufBlatt, legeBildAufBlatt, useAnordnung } from './Blaetter'
+import { AnsichtKopf, BildKnoepfe, Trenner, useAnordnung } from './Blaetter'
+import { BuchAnsicht, bildInsBuch, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
+import { BuchWahl } from './BuchWahl'
+import { BuchAlleinSeite } from './BuchAllein'
+import { hebeAn } from './anheben'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -31,9 +36,29 @@ export function Sammeln({ ort }: { ort: string[] }) {
   const { bestand } = useDaten()
   if (ort[1] === 'modul' && ort[2]) return <ModulSeite key={ort[2]} id={ort[2]} />
   if (ort[1] === 'mitschrift' && ort[2]) return <Mitschrift key={ort[2]} id={ort[2]} anker={ort[3]} />
+  if (ort[1] === 'buch' && ort[2]) return <BuchAlleinSeite key={ort[2]} id={ort[2]} />
   const quelle = ort[1] ? bestand.dokumente.get(ort[1]) : undefined
-  if (quelle) return <Uebungsplatz quelle={quelle} seite={ort[2] ? Number(ort[2]) || 1 : 1} />
+  if (quelle) return <Angehoben key={quelle.id} quelle={quelle} seite={ort[2] ? Number(ort[2]) || 1 : 1} />
   return <Start />
+}
+
+/** Erst alte Zeichenblätter zu Notizbüchern anheben (Vertrag Lernen 1.3), dann den Übungsplatz zeigen */
+function Angehoben({ quelle, seite }: { quelle: Eintrag; seite: number }) {
+  const { speicher, bestand } = useDaten()
+  const [fertig, setFertig] = useState(false)
+  useEffect(() => {
+    let weg = false
+    void hebeAn(speicher, bestand, quelle)
+      .then((n) => n && melde(n === 1 ? 'Die Blätter dieses Skripts stehen jetzt in einem Notizbuch.' : `Die Blätter dieses Skripts stehen jetzt in ${n} Notizbüchern.`))
+      .catch(() => melde('Die alten Blätter ließen sich nicht übernehmen. Sie bleiben unverändert im Ordner.'))
+      .finally(() => !weg && setFertig(true))
+    return () => {
+      weg = true
+    }
+    // nur einmal je Skript; spätere Änderungen sind schon im neuen Format
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return fertig ? <Uebungsplatz quelle={quelle} seite={seite} /> : <div className="leer">Wird geöffnet …</div>
 }
 
 function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: number }) {
@@ -64,17 +89,8 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
   const modul = modulVon(bestand, quelle.id)
 
-  // Skript ausgeblendet (z. B. Heft für ein Buch auf Papier): Seitenzahl trotzdem kennen, fürs Blättern
-  const datei = String(quelle.felder.datei ?? '')
+  // Skript ausgeblendet (z. B. altes Heft für ein Buch auf Papier): dann keine Seitenzahl, dafür „Skript zeigen“
   const skriptZu = ansichten.anordnung.ansichten.some((v) => v.art === 'pdf' && v.zu)
-  useEffect(() => {
-    if (!skriptZu || !datei) return
-    let weg = false
-    void ladePdf(speicher, datei).then((d) => !weg && d && setSeiten(d.numPages))
-    return () => {
-      weg = true
-    }
-  }, [skriptZu, datei, speicher])
 
   // Sprung von außen (Inhalt, Link, Zurück im Verlauf): dorthin scrollen. Die eigene Adresse beim Scrollen ändert
   // `sprungSeite` nur auf die schon sichtbare Seite, das springt nicht.
@@ -163,13 +179,22 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return () => ab.abort()
   }, [modus, bereich, speicher, quelle, auswahlSeite])
 
-  // Ausschnitt der Seite als Bild aufs Blatt, z. B. eine Aufgabe, um sie dort zu lösen (das PDF darf dann klein werden)
-  const insBlatt = async () => {
+  // Wohin Bilder gehen: ins erste offene Notizbuch; gibt es keins, entsteht eins zu diesem Skript
+  const buchFuerBild = async (): Promise<string> => {
+    const da = ansichten.zielBuch()
+    if (da) return da
+    const id = await neuesBuch(speicher, { titel: `Notizen ${quelle.titel}`, lineatur: 'kariert', modul: modul?.id ?? null })
+    ansichten.zeigeBuch(id)
+    return id
+  }
+
+  // Ausschnitt der Seite als Bild ins Buch, z. B. eine Aufgabe, um sie dort zu lösen
+  const insBuch = async () => {
     if (!auswahl) return
     const datei = String(quelle.felder.datei ?? '')
     const src = await ausschnitt(speicher, datei, auswahl.seite, auswahl.bereich, 1400)
     if (!src) return
-    await legeBildAufBlatt(speicher, { anhangId: quelle.id, seite: auswahl.seite, blatt: ansichten.zielBlatt() }, { anhang: quelle.id, seite: auswahl.seite, bereich: auswahl.bereich }, src)
+    await bildInsBuch(speicher, await buchFuerBild(), { anhang: quelle.id, seite: auswahl.seite, bereich: auswahl.bereich }, src)
     setAuswahl(null)
     setModus('wahl')
   }
@@ -181,7 +206,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
       const bilder = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
       if (!bilder.length) return
       e.preventDefault()
-      void fotosAufBlatt(speicher, { anhangId: quelle.id, seite, blatt: ansichten.zielBlatt() }, bilder)
+      void buchFuerBild().then((id) => fotosInsBuch(speicher, id, bilder))
     }
     addEventListener('paste', einfuegen)
     return () => removeEventListener('paste', einfuegen)
@@ -240,8 +265,8 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                     <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
                       Erklären
                     </button>
-                    <button type="button" className="knopf klein" onClick={() => void insBlatt()} title="Die Stelle als Bild aufs Blatt legen, um dort daran zu arbeiten">
-                      Ins Blatt
+                    <button type="button" className="knopf klein" onClick={() => void insBuch()} title="Die Stelle als Bild ins Notizbuch legen, um dort daran zu arbeiten">
+                      Ins Buch
                     </button>
                     <button type="button" className="knopf still klein" onClick={() => setAuswahl(null)}>
                       ×
@@ -295,22 +320,17 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         <h1 className="plan-titel">{quelle.titel}</h1>
         <InhaltKnopf quelle={quelle} seite={seite} />
         <span style={{ flex: 1 }} />
-        {/* Ohne Skript (Heft) scrollt nichts, dort bleibt das Blättern, bis Hefte Notizbücher werden */}
-        {skriptZu && (
-          <a className={`knopf klein symbol${seite <= 1 ? ' aus' : ''}`} href={ortLink('sammeln', quelle.id, Math.max(1, seite - 1))} aria-label="Seite zurück">
-            ‹
-          </a>
+        {skriptZu ? (
+          <button type="button" className="knopf klein" onClick={() => ansichten.oeffne('pdf')}>
+            Skript zeigen
+          </button>
+        ) : (
+          <span className="klein-leise" aria-live="polite">
+            S. {seite}
+            {seiten ? ` / ${seiten}` : ''}
+          </span>
         )}
-        <span className="klein-leise" aria-live="polite">
-          S. {seite}
-          {seiten ? ` / ${seiten}` : ''}
-        </span>
-        {skriptZu && (
-          <a className="knopf klein symbol" href={ortLink('sammeln', quelle.id, naechsteSeite(seite, 1, seiten))} aria-label="Seite vor">
-            ›
-          </a>
-        )}
-        <BlattMenue anordnung={ansichten.anordnung} onNeu={ansichten.neuesBlatt} onOeffne={ansichten.oeffne} />
+        <BuchWahl quelle={quelle} modul={modul?.id ?? null} offen={alleOffen.filter((v) => v.art === 'buch').map((v) => v.id)} onWahl={ansichten.zeigeBuch} />
         <button type="button" className="knopf klein" onClick={vollbildUmschalten} title="Kopf ausblenden, ganze Seite zeigen">
           ⤢ Vollbild
         </button>
@@ -318,8 +338,13 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
       {!breit && alleOffen.length > 1 && (
         <div className="segmente klein handy-ansichten" role="tablist" aria-label="Ansicht">
           {alleOffen.map((v) => (
-            <button key={v.id} type="button" role="tab" aria-selected={v === handy} className={v === handy ? 'aktiv' : ''} onClick={() => setHandyWahl(v.id)}>
-              {v.art === 'pdf' ? 'Skript' : lineaturName(v.lineatur ?? 'kariert')}
+            <button key={v.id} type="button" role="tab" aria-selected={v === handy} className={v === handy ? 'aktiv' : ''} onClick={() => {
+                setHandyWahl(v.id)
+                // zurück zum Skript: dort weiter, wo es zuletzt stand
+                if (v.art === 'pdf') setSprung((s) => ({ seite: seiteRef.current, mal: s.mal + 1, sanft: false }))
+                else scrollTo({ top: 0 })
+              }}>
+              {v.art === 'pdf' ? 'Skript' : (bestand.dokumente.get(v.id)?.titel ?? 'Buch')}
             </button>
           ))}
         </div>
@@ -342,19 +367,20 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
               ref={v.art === 'pdf' ? setSkriptFlaeche : undefined}
               className={`platz-ansicht ${v.art === 'pdf' ? 'platz-skript' : 'platz-blatt'}`}
               style={{ flexGrow: entwurf[v.id] ?? v.breite } as CSSProperties}
-              aria-label={v.art === 'pdf' ? 'Skript' : 'Blatt'}
+              aria-label={v.art === 'pdf' ? 'Skript' : (bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch')}
             >
               <AnsichtKopf
                 ansicht={v}
-                name="Skript"
+                name={v.art === 'pdf' ? 'Skript' : (bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch')}
+                lineatur={v.art === 'buch' ? lineaturVon(bestand.dokumente.get(v.id)) : undefined}
                 erste={i === 0}
                 letzte={i === offen.length - 1}
                 allein={alleOffen.length === 1}
-                onLineatur={(l) => ansichten.lineatur(v.id, l)}
+                onLineatur={(l) => void setzeBuchLineatur(speicher, v.id, l)}
                 onVerschiebe={(r) => ansichten.verschiebe(v.id, r)}
                 onSchliesse={() => ansichten.schliesse(v.id)}
               />
-              {v.art === 'pdf' ? skript : <Blatt anhangId={quelle.id} seite={seite} ansicht={v} werkzeug={werkzeug} farbe={farbe} />}
+              {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} /> : null}
             </section>
           </Fragment>
         ))}
@@ -399,7 +425,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         farbe={farbe}
         onWerkzeug={setWerkzeug}
         onFarbe={setFarbe}
-        extra={<BildKnoepfe onDateien={(d) => void fotosAufBlatt(speicher, { anhangId: quelle.id, seite, blatt: ansichten.zielBlatt() }, d)} />}
+        extra={<BildKnoepfe onDateien={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))} />}
       />
     </div>
   )

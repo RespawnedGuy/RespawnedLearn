@@ -1,38 +1,26 @@
-// Zeichenblätter im Übungsplatz (Vertrag 5.3, „Blätter“): beliebig viele Blätter mit eigener Lineatur neben dem
-// Skript, frei sortierbar, in der Breite ziehbar, nach unten verlängerbar. Die Lineatur zeichnet die App in
+// Bausteine des Übungsplatzes (Vertrag Lernen 1.3, 5.3): Anordnung der Ansichten (Skript, Notizbücher), Lineatur,
+// Bilder auf Seiten, Kopf je Ansicht, Trenner zum Ziehen der Breite. Die Lineatur zeichnet die App in
 // Seitenkoordinaten, damit Tinte und Linien auf jedem Gerät übereinanderliegen.
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  A4,
   LINEATUREN,
   anordnungJson,
-  bilderJson,
-  blattFormat,
   liesAnordnung,
-  liesBilder,
-  platzFuerBild,
-  rueckeBild,
-  liesTinte,
-  lineaturName,
   lineaturSchichten,
-  neueBlattId,
-  neuesBlatt,
   oeffneAnsicht,
   pfade,
+  rueckeBild,
   schliesseAnsicht,
   setzeBreiten,
-  setzeLineatur,
-  tinteSvg,
-  ulid,
   verschiebeAnsicht,
+  zeigeBuch,
   SEITE_BREITE,
   type Anordnung,
   type Ansicht,
   type BlattBild,
-  type Farbe,
   type Lineatur
 } from '@rl/kern'
-import { TintenEbene, ausschnitt, bildUrl, melde, mitFinger, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
+import { ausschnitt, bildUrl, mitFinger, useDaten } from '@rl/oberflaeche'
 
 /** Strichstärke der Lineatur in Bildschirmpixeln, unabhängig von der Größe des Blatts */
 const STAERKE = { fein: 0.5, mittel: 0.8, kraeftig: 1.1, punkt: 2.4 } as const
@@ -52,12 +40,6 @@ export const LineaturBild = memo(function LineaturBild({ art, format, breite = S
   )
 })
 
-/** Hat dieses Blatt auf irgendeiner Seite Tinte? Dann wird es beim Schließen nur ausgeblendet. */
-function blattHatTinte(alle: string[], text: (p: string) => string | undefined, anhangId: string, blatt: string): boolean {
-  const muster = new RegExp(`^lernen/blaetter/${anhangId}/S\\d{3}${blatt === '1' ? '' : `-${blatt}`}\\.svg$`)
-  return alle.some((p) => muster.test(p) && liesTinte(text(p) ?? '').length > 0)
-}
-
 /** Anordnung der Ansichten lesen und ändern; gespeichert wird im Datenordner, damit sie auf allen Geräten gilt */
 export function useAnordnung(anhangId: string) {
   const { speicher } = useDaten()
@@ -66,74 +48,24 @@ export function useAnordnung(anhangId: string) {
   const sichere = (neu: Anordnung) => void speicher.schreibe(pfad, anordnungJson(neu))
   return {
     anordnung,
-    neuesBlatt: (l: Lineatur) => sichere(neuesBlatt(anordnung, neueBlattId(anordnung, ulid()), l)),
+    zeigeBuch: (id: string) => sichere(zeigeBuch(anordnung, id)),
     verschiebe: (id: string, r: -1 | 1) => sichere(verschiebeAnsicht(anordnung, id, r)),
     breiten: (b: Record<string, number>) => sichere(setzeBreiten(anordnung, b)),
-    lineatur: (id: string, l: Lineatur) => sichere(setzeLineatur(anordnung, id, l)),
-    schliesse: (id: string) => sichere(schliesseAnsicht(anordnung, id, id !== 'pdf' && blattHatTinte(speicher.pfade(), (p) => speicher.text(p), anhangId, id))),
+    schliesse: (id: string) => sichere(schliesseAnsicht(anordnung, id, true)),
     oeffne: (id: string) => sichere(oeffneAnsicht(anordnung, id)),
-    /** Ziel für ein Bild: das erste offene Blatt; sonst ein ausgeblendetes wieder öffnen oder ein neues anlegen */
-    zielBlatt: (): string => {
-      const offen = anordnung.ansichten.find((v) => v.art === 'blatt' && !v.zu)
+    /** Ziel für ein Bild: das erste offene Notizbuch, sonst ein ausgeblendetes wieder zeigen; null = keins da */
+    zielBuch: (): string | null => {
+      const offen = anordnung.ansichten.find((v) => v.art === 'buch' && !v.zu)
       if (offen) return offen.id
-      const zu = anordnung.ansichten.find((v) => v.art === 'blatt')
-      if (zu) {
-        sichere(oeffneAnsicht(anordnung, zu.id))
-        return zu.id
-      }
-      const id = neueBlattId(anordnung, ulid())
-      sichere(neuesBlatt(anordnung, id, 'kariert'))
-      return id
-    }
-  }
-}
-
-/** Seitenverhältnis (Höhe/Breite) eines Bilds, sobald es geladen ist */
-async function verhaeltnisVon(src: string): Promise<number> {
-  const i = new Image()
-  i.src = src
-  await i.decode().catch(() => {})
-  return i.naturalWidth ? i.naturalHeight / i.naturalWidth : 0.75
-}
-
-/**
- * Bild auf ein Blatt der Seite legen (unter das unterste Bild, das Blatt wächst bei Bedarf). `src` dient nur dazu,
- * das Seitenverhältnis zu bestimmen; gespeichert wird der Verweis auf den Anhang bzw. den Ausschnitt.
- */
-export async function legeBildAufBlatt(
-  speicher: Speicher,
-  ort: { anhangId: string; seite: number; blatt: string },
-  bild: Pick<BlattBild, 'anhang' | 'seite' | 'bereich'>,
-  src: string
-): Promise<void> {
-  const verhaeltnis = await verhaeltnisVon(src)
-  const bilderPfad = pfade.blattBilder(ort.anhangId, ort.seite)
-  const tintePfad = pfade.blatt(ort.anhangId, ort.seite, ort.blatt)
-  const bilder = liesBilder(speicher.text(bilderPfad))
-  const format = blattFormat(speicher.text(tintePfad))
-  const platz = platzFuerBild(bilder, ort.blatt, verhaeltnis, format)
-  if (platz.format > format) await speicher.schreibe(tintePfad, tinteSvg(liesTinte(speicher.text(tintePfad) ?? ''), SEITE_BREITE * platz.format))
-  const { format: _f, ...lage } = platz
-  await speicher.aendere(bilderPfad, (alt) => bilderJson([...liesBilder(alt), { id: ulid().slice(-8).toLowerCase(), blatt: ort.blatt, ...bild, ...lage }]))
-  melde('Bild liegt auf dem Blatt. Mit „Lesen“ verschieben, vergrößern oder entfernen.')
-}
-
-/** Fotos aus Kamera, Galerie oder Zwischenablage ablegen und aufs Blatt legen */
-export async function fotosAufBlatt(speicher: Speicher, ort: { anhangId: string; seite: number; blatt: string }, dateien: Iterable<File>) {
-  for (const f of dateien) {
-    if (!f.type.startsWith('image/')) continue
-    const id = await neuerAnhang(speicher, f.name ? f : new File([f], `Bild ${new Date().toLocaleString('de-DE')}.png`, { type: f.type }))
-    const url = URL.createObjectURL(f)
-    try {
-      await legeBildAufBlatt(speicher, ort, { anhang: id }, url)
-    } finally {
-      URL.revokeObjectURL(url)
+      const zu = anordnung.ansichten.find((v) => v.art === 'buch')
+      if (zu) sichere(oeffneAnsicht(anordnung, zu.id))
+      return zu?.id ?? null
     }
   }
 }
 
 /** Ein Bild auf dem Blatt; mit „Lesen“ antippen, dann ziehen, an der Ecke vergrößern oder entfernen */
-function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntfernen }: { bild: BlattBild; format: number; aktiv: boolean; gewaehlt: boolean; onWahl: () => void; onAendern: (b: BlattBild) => void; onEntfernen: () => void }) {
+export function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntfernen }: { bild: BlattBild; format: number; aktiv: boolean; gewaehlt: boolean; onWahl: () => void; onAendern: (b: BlattBild) => void; onEntfernen: () => void }) {
   const { speicher, bestand } = useDaten()
   const [src, setSrc] = useState<string | null>(null)
   const [lage, setLage] = useState<BlattBild | null>(null)
@@ -196,57 +128,11 @@ function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntf
   )
 }
 
-/** Ein Zeichenblatt zur Skriptseite: Lineatur, Bilder, Tinte, unten „Verlängern“ (Bilder kommen über die Werkzeugleiste) */
-export function Blatt({ anhangId, seite, ansicht, werkzeug, farbe }: { anhangId: string; seite: number; ansicht: Ansicht; werkzeug: Werkzeug; farbe: Farbe }) {
-  const { speicher } = useDaten()
-  const [gewaehlt, setGewaehlt] = useState<string | null>(null)
-  const pfad = pfade.blatt(anhangId, seite, ansicht.id)
-  const bilderPfad = pfade.blattBilder(anhangId, seite)
-  const format = blattFormat(speicher.text(pfad))
-  const bilder = liesBilder(speicher.text(bilderPfad)).filter((b) => b.blatt === ansicht.id)
-  const lesen = werkzeug === 'lesen'
-  useEffect(() => {
-    if (!lesen) setGewaehlt(null)
-  }, [lesen])
-  const verlaengern = () => {
-    // Die Striche bleiben, wo sie sind; nur die Seite wird eine A4-Höhe länger
-    void speicher.schreibe(pfad, tinteSvg(liesTinte(speicher.text(pfad) ?? ''), SEITE_BREITE * (format + A4)))
-  }
-  const aendere = (f: (alle: BlattBild[]) => BlattBild[]) => void speicher.aendere(bilderPfad, (alt) => bilderJson(f(liesBilder(alt))))
-  return (
-    <>
-      <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} onPointerDown={() => setGewaehlt(null)}>
-        <LineaturBild art={ansicht.lineatur ?? 'kariert'} format={format} />
-        {bilder.map((b) => (
-          <BildAufBlatt
-            key={b.id}
-            bild={b}
-            format={format}
-            aktiv={lesen}
-            gewaehlt={gewaehlt === b.id}
-            onWahl={() => setGewaehlt(b.id)}
-            onAendern={(neu) => aendere((alle) => alle.map((x) => (x.id === neu.id ? neu : x)))}
-            onEntfernen={() => {
-              setGewaehlt(null)
-              aendere((alle) => alle.filter((x) => x.id !== b.id))
-            }}
-          />
-        ))}
-        <TintenEbene pfad={pfad} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} />
-      </div>
-      <div className="blatt-unten">
-        <button type="button" className="knopf still klein" onClick={verlaengern} title="Das Blatt um eine Seite nach unten verlängern">
-          + Platz nach unten
-        </button>
-      </div>
-    </>
-  )
-}
-
-/** Kopf einer Ansicht: Name oder Lineatur, verschieben, schließen */
+/** Kopf einer Ansicht: Name (beim Notizbuch mit Lineatur), verschieben, schließen */
 export function AnsichtKopf({
   ansicht,
   name,
+  lineatur,
   erste,
   letzte,
   allein,
@@ -256,25 +142,25 @@ export function AnsichtKopf({
 }: {
   ansicht: Ansicht
   name?: ReactNode
+  lineatur?: Lineatur
   erste: boolean
   letzte: boolean
   allein: boolean
-  onLineatur: (l: Lineatur) => void
+  onLineatur?: (l: Lineatur) => void
   onVerschiebe: (r: -1 | 1) => void
   onSchliesse: () => void
 }) {
   return (
     <div className="ansicht-kopf">
-      {ansicht.art === 'blatt' ? (
-        <select className="lineatur-wahl" value={ansicht.lineatur ?? 'kariert'} onChange={(e) => onLineatur(e.target.value as Lineatur)} aria-label="Lineatur">
+      <span className="ansicht-name">{name}</span>
+      {lineatur && onLineatur && (
+        <select className="lineatur-wahl" value={lineatur} onChange={(e) => onLineatur(e.target.value as Lineatur)} aria-label="Lineatur">
           {LINEATUREN.map((l) => (
             <option key={l.art} value={l.art}>
               {l.name}
             </option>
           ))}
         </select>
-      ) : (
-        <span className="ansicht-name">{name}</span>
       )}
       <span style={{ flex: 1 }} />
       {!allein && (
@@ -287,7 +173,7 @@ export function AnsichtKopf({
             <span className="nur-breit">›</span>
             <span className="nur-schmal">↓</span>
           </button>
-          <button type="button" className="knopf still klein symbol" onClick={onSchliesse} aria-label={ansicht.art === 'pdf' ? 'Skript ausblenden' : 'Blatt schließen'} title={ansicht.art === 'pdf' ? 'Skript ausblenden' : 'Blatt schließen (Geschriebenes bleibt)'}>
+          <button type="button" className="knopf still klein symbol" onClick={onSchliesse} aria-label={ansicht.art === 'pdf' ? 'Skript ausblenden' : 'Buch schließen'} title={ansicht.art === 'pdf' ? 'Skript ausblenden' : 'Buch schließen (es bleibt erhalten, „+ Buch“ holt es zurück)'}>
             ×
           </button>
         </>
@@ -342,77 +228,6 @@ export function Trenner({ links, rechts, onZiehen, onFertig }: { links: Ansicht;
         onZiehen({})
       }}
     />
-  )
-}
-
-/** „+ Blatt“: neues Blatt mit Lineatur oder Ausgeblendetes wieder zeigen */
-export function BlattMenue({ anordnung, onNeu, onOeffne }: { anordnung: Anordnung; onNeu: (l: Lineatur) => void; onOeffne: (id: string) => void }) {
-  const [offen, setOffen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!offen) return
-    const weg = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOffen(false)
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOffen(false)
-    addEventListener('pointerdown', weg, true)
-    addEventListener('keydown', esc)
-    return () => {
-      removeEventListener('pointerdown', weg, true)
-      removeEventListener('keydown', esc)
-    }
-  }, [offen])
-  const zu = anordnung.ansichten.filter((v) => v.zu)
-  let nr = 0
-  const nummer = new Map(anordnung.ansichten.filter((v) => v.art === 'blatt').map((v) => [v.id, ++nr]))
-  return (
-    <div className="blatt-menue-huelle" ref={ref}>
-      <button type="button" className="knopf klein" aria-expanded={offen} onClick={() => setOffen(!offen)}>
-        + Blatt
-      </button>
-      {offen && (
-        <div className="blatt-menue" role="menu">
-          <div className="klein-leise">Neues Blatt</div>
-          <div className="lineatur-knoepfe">
-            {LINEATUREN.map((l) => (
-              <button
-                key={l.art}
-                type="button"
-                role="menuitem"
-                className="lineatur-knopf"
-                onClick={() => {
-                  onNeu(l.art)
-                  setOffen(false)
-                }}
-              >
-                <span className="lineatur-probe">
-                  <LineaturBild art={l.art} format={0.5} breite={300} />
-                </span>
-                {l.name}
-              </button>
-            ))}
-          </div>
-          {zu.length > 0 && (
-            <>
-              <div className="klein-leise">Wieder zeigen</div>
-              {zu.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  role="menuitem"
-                  className="knopf still klein"
-                  style={{ justifyContent: 'flex-start' }}
-                  onClick={() => {
-                    onOeffne(v.id)
-                    setOffen(false)
-                  }}
-                >
-                  {v.art === 'pdf' ? 'Skript' : `Blatt ${nummer.get(v.id)} · ${lineaturName(v.lineatur ?? 'kariert')}`}
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 

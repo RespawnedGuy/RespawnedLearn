@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   A4,
   MM,
+  alteStandardAnordnung,
   anordnungJson,
   blattFormat,
   bilderJson,
@@ -21,16 +22,32 @@ import {
   setzeBreiten,
   setzeLineatur,
   tinteSvg,
-  verschiebeAnsicht
+  verschiebeAnsicht,
+  zeigeBuch
 } from '../src'
 
 describe('Blätter neben dem Skript (Vertrag 5.3)', () => {
-  it('ohne Datei: Skript und ein Blatt mit Kästchen, wie bisher', () => {
-    const a = liesAnordnung(undefined)
+  it('ohne Datei: ab Lernen 1.3 das Skript allein; die alte Vorgabe (Skript und Blatt 1) bleibt fürs Anheben', () => {
+    expect(liesAnordnung(undefined)).toEqual({ schema: 2, ansichten: [{ art: 'pdf', id: 'pdf', breite: 3 }] })
+    const a = alteStandardAnordnung()
     expect(a.ansichten.map((v) => [v.art, v.id, v.lineatur])).toEqual([
       ['pdf', 'pdf', undefined],
       ['blatt', '1', 'kariert']
     ])
+  })
+
+  it('Anordnung mit Notizbüchern (schema 2): alte Blätter gelten darin nicht mehr, Bücher brauchen eine ULID', () => {
+    const text = JSON.stringify({ schema: 2, ansichten: [{ art: 'pdf', id: 'pdf', breite: 2 }, { art: 'buch', id: '01JNB8000000000000000B0001', breite: 1 }, { art: 'buch', id: 'kaputt', breite: 1 }, { art: 'blatt', id: '1', breite: 1 }] })
+    const a = liesAnordnung(text)
+    expect(a).toEqual({ schema: 2, ansichten: [{ art: 'pdf', id: 'pdf', breite: 2 }, { art: 'buch', id: '01JNB8000000000000000B0001', breite: 1 }] })
+    expect(liesAnordnung(anordnungJson(a))).toEqual(a)
+    // Buch schließen: fällt aus der Anordnung, das Buch selbst bleibt als Datei
+    expect(schliesseAnsicht(a, '01JNB8000000000000000B0001', true)).toEqual({ schema: 2, ansichten: [{ art: 'pdf', id: 'pdf', breite: 2 }] })
+    // wieder zeigen und ein zweites dazu
+    let b = zeigeBuch(liesAnordnung(undefined), '01JNB8000000000000000B0001')
+    b = zeigeBuch(b, '01JNB8000000000000000B0002')
+    expect(b.ansichten.map((v) => v.id)).toEqual(['pdf', '01JNB8000000000000000B0001', '01JNB8000000000000000B0002'])
+    expect(zeigeBuch(b, '01JNB8000000000000000B0002')).toEqual(b)
   })
 
   it('das erste Blatt behält seine alte Datei, weitere bekommen ihre ID angehängt', () => {
@@ -41,7 +58,7 @@ describe('Blätter neben dem Skript (Vertrag 5.3)', () => {
   })
 
   it('Rechnung in Kästchen, Graph auf Millimeterpapier: drei Ansichten, frei sortierbar', () => {
-    let a = liesAnordnung(undefined)
+    let a = alteStandardAnordnung()
     a = neuesBlatt(a, 'mm1', 'millimeter')
     expect(offeneAnsichten(a).map((v) => v.id)).toEqual(['pdf', '1', 'mm1'])
     a = verschiebeAnsicht(a, 'mm1', -1)
@@ -55,14 +72,14 @@ describe('Blätter neben dem Skript (Vertrag 5.3)', () => {
   })
 
   it('verschieben überspringt ausgeblendete Ansichten', () => {
-    let a = neuesBlatt(liesAnordnung(undefined), 'b2', 'liniert')
+    let a = neuesBlatt(alteStandardAnordnung(), 'b2', 'liniert')
     a = schliesseAnsicht(a, '1', true)
     a = verschiebeAnsicht(a, 'b2', -1)
     expect(offeneAnsichten(a).map((v) => v.id)).toEqual(['b2', 'pdf'])
   })
 
   it('schließen: leeres Blatt verschwindet, beschriebenes wird nur ausgeblendet, die letzte Ansicht bleibt', () => {
-    let a = neuesBlatt(liesAnordnung(undefined), 'b2', 'punkte')
+    let a = neuesBlatt(alteStandardAnordnung(), 'b2', 'punkte')
     a = schliesseAnsicht(a, 'b2', false)
     expect(a.ansichten.some((v) => v.id === 'b2')).toBe(false)
     a = schliesseAnsicht(a, '1', true)
@@ -100,7 +117,7 @@ describe('Blätter neben dem Skript (Vertrag 5.3)', () => {
   })
 
   it('Lineatur wechseln und neue IDs ohne Doppel', () => {
-    let a = setzeLineatur(liesAnordnung(undefined), '1', 'noten')
+    let a = setzeLineatur(alteStandardAnordnung(), '1', 'noten')
     expect(a.ansichten[1].lineatur).toBe('noten')
     a = neuesBlatt(a, neueBlattId(a, '01JABCDEFGHK7X2M9'), 'kariert')
     expect(a.ansichten[2].id).toBe('k7x2m9')

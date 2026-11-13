@@ -357,5 +357,27 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
   .platz-ansicht .ansicht-kopf { position: sticky; top: 0; z-index: 3; background: var(--grund); }
   .platz-skript .pdf-seite { scroll-margin-top: 40px; }
 }
-.handy-ansichten { margin: 0 8px 10px; }
+.handy-ansichten { margin: 0 8px 10px; position: sticky; top: calc(61px + env(safe-area-inset-top, 0px)); z-index: 20; box-shadow: var(--schatten); }
 .handy-ansichten button { flex: 1; }
+
+/* Notizbücher (Vertrag Lernen 1.3): Seiten untereinander, Verweise aufs Skript außerhalb des Papiers */
+.buch-seiten { display: flex; flex-direction: column; gap: 16px; }
+.buch-blatt { position: relative; margin-left: 52px; }
+.buch-rand { position: absolute; left: -52px; top: 0; bottom: 0; width: 46px; }
+.verweis {
+  position: absolute; left: 0; right: 2px; padding: 3px 2px; border-radius: 8px; border: 1px solid var(--verweis-rand); background: var(--verweis-grund);
+  color: var(--verweis-text); font: inherit; font-size: 0.6875rem; line-height: 1.15; text-align: center; cursor: pointer;
+}
+.verweis.aus-markierung { background: var(--gelb-weich); border-color: var(--gelb-rand); color: var(--gelb-text); }
+.verweis:hover { border-color: var(--akzent); }
+:root { --verweis-grund: #efeafb; --verweis-rand: #d9d0f3; --verweis-text: #4b35a0; }
+@media (prefers-color-scheme: dark) { :root { --verweis-grund: #2c2640; --verweis-rand: #4a3f70; --verweis-text: #d4caf5; } }
+.buch-menue { width: 320px; max-height: 70vh; overflow-y: auto; }
+.buch-zeile { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; border: none; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
+.buch-zeile:hover { background: var(--mulde-hell); }
+.buch-zeile small { display: block; color: var(--leise); font-size: 0.75rem; }
+.buch-ruecken { flex: none; width: 24px; height: 32px; border-radius: 3px 6px 6px 3px; background: var(--verweis-grund); border-left: 4px solid var(--akzent); }
+.buch-neu { justify-content: flex-start; }
+.buch-allein { max-width: 900px; margin: 0 auto; padding: 0 24px 120px 0; }
+@media (max-width: 900px) { .buch-allein { padding: 0 8px 120px 0; } .buch-blatt { margin-left: 44px; } .buch-rand { left: -44px; width: 40px; } }
+.ansicht-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

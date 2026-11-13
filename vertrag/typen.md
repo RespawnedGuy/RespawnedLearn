@@ -55,36 +55,51 @@ Module werden nie gelöscht (Abschnitt 7). Ein herausgenommenes PDF bleibt mit a
 
 **Lesestand** `lernen/stand/<geraet>.json`: pro PDF die zuletzt gelesene Seite und die Zeit, `{"<anhang-id>": {"seite": 12, "am": "2026-10-21T08:00:00Z"}}`. Jedes Gerät schreibt nur seine eigene Datei, gelesen wird über alle Geräte, der jüngste Eintrag gewinnt. Daraus ergeben sich „Zuletzt bearbeitet“ und die Stelle, an der ein Klick weitermacht. Ohne Lesestand zählt die jüngste Markierung im PDF.
 
-**Zeichenblätter** neben dem Skript: Welche Ansichten im Übungsplatz nebeneinander stehen (am Handy untereinander), steht pro PDF in `lernen/blaetter/<anhang-id>/anordnung.json` und gilt für alle Seiten und Geräte. Die Reihenfolge der Liste ist die Reihenfolge auf dem Schirm, `breite` ist der Anteil an der Breite relativ zu den anderen offenen Ansichten.
-```json
-{"ansichten": [{"art": "pdf", "id": "pdf", "breite": 2},
-               {"art": "blatt", "id": "1", "lineatur": "kariert", "breite": 1.5},
-               {"art": "blatt", "id": "k7x2m9", "lineatur": "millimeter", "breite": 1.5, "zu": true}]}
+**`notizbuch`** (`lernen/buecher/<id>.md`, ab Lernen 1.3): Schreibseiten, die nicht an einer Skriptseite hängen. Ein Buch gehört keinem Skript; es steht frei oder in einem Modul. Beim Schreiben merkt es sich, welche Skriptseite gerade offen war (Verweise), und Markierungen aus dem Skript landen als Ausschnitt darin.
+```yaml
+typ: notizbuch
+titel: Übungen Kapitel 3
+lineatur: kariert          # wie bei den Zeichenblättern; gilt für alle Seiten und lässt sich jederzeit wechseln
+modul: "[[modul-id]]"      # optional: gehört zu diesem Modul, sonst frei
+status: archiviert         # optional: aus der Auswahl genommen; gelöscht wird ein Buch nie
 ```
-- `art`: `pdf` (das Skript, genau einmal, `id: pdf`) oder `blatt`. Die `id` eines Blatts besteht aus Kleinbuchstaben und Ziffern; das erste heißt `1`.
-- `lineatur`: `kariert` (5 mm), `liniert` (8 mm), `punkte` (5 mm), `millimeter` (1/5/10 mm), `noten` (12 Systeme pro A4) oder `leer`. Die Maße beziehen sich auf A4-Breite (210 mm = 1000 Seitenkoordinaten), die Linien stehen also auf jedem Gerät an derselben Stelle der Tinte. Die Lineatur gehört nicht zur Tinte und lässt sich jederzeit wechseln.
-- `zu: true`: ausgeblendet. Ein Blatt, das auf irgendeiner Seite Tinte hat, wird beim Schließen nur ausgeblendet und lässt sich wieder öffnen; ein Blatt ohne Tinte fällt aus der Liste. Mindestens eine Ansicht bleibt offen.
-- Fehlt die Datei, gilt: Skript (`breite` 3) und Blatt `1` mit Kästchen (`breite` 2).
-
-Die Tinte liegt pro Skriptseite und Blatt in `lernen/blaetter/<anhang-id>/S001.svg` (Blatt `1`, das erste Blatt) bzw. `S001-<blatt>.svg` (Format wie 5.4). Ein Blatt ist mindestens A4 hoch (Höhe 1414 bei Breite 1000); „Platz nach unten“ macht es um eine A4-Höhe länger, indem die SVG-Höhe wächst. Kürzer wird es nie, damit keine Striche abgeschnitten werden.
-
-**Bilder auf Blättern**: Fotos (Kamera, Galerie, Einfügen aus der Zwischenablage) und Ausschnitte aus dem PDF („Ins Blatt“ an einer markierten Stelle, z. B. eine Aufgabe) liegen pro Skriptseite in `lernen/blaetter/<anhang-id>/S001-bilder.json`, unter der Tinte, sodass sich darauf schreiben lässt.
+Die Seiten liegen im Ordner daneben: `lernen/buecher/<id>/S001.svg` (Tinte, Format 5.4, mindestens A4 hoch, wächst nach unten, kürzer wird sie nie) und `lernen/buecher/<id>/S001.json` mit den Bildern und Verweisen dieser Seite. Die Seiten sind fortlaufend nummeriert; eine Seite entsteht erst mit ihrem ersten Strich oder Bild, leere Seitendateien gibt es nicht.
 ```json
-{"bilder": [{"id": "x3k9p2qa", "blatt": "1", "anhang": "01JFOTO…", "x": 48, "y": 48, "b": 700, "h": 525},
-            {"id": "m2c8r7tb", "blatt": "k7x2m9", "anhang": "01JSKRIPT…", "seite": 3, "bereich": {"x": 0.1, "y": 0.2, "b": 0.5, "h": 0.25}, "x": 48, "y": 597, "b": 700, "h": 248}]}
+{"bilder":   [{"id": "m2c8r7tb", "anhang": "01JSKRIPT…", "seite": 12, "bereich": {"x": 0.1, "y": 0.2, "b": 0.5, "h": 0.1}, "x": 48, "y": 380, "b": 600, "h": 120}],
+ "verweise": [{"id": "v3k9p2", "y": 96, "anhang": "01JSKRIPT…", "seite": 12, "am": "2026-11-13T10:42:00+01:00"},
+              {"id": "v4p1x7", "y": 380, "anhang": "01JSKRIPT…", "seite": 12, "marke": "a7k2c9", "am": "2026-11-13T10:44:10+01:00"}]}
 ```
-- `blatt`: auf welchem Blatt der Seite; `x`, `y`, `b`, `h` in Seitenkoordinaten dieses Blatts (Breite 1000). Das Seitenverhältnis bleibt beim Vergrößern erhalten.
-- `anhang`: Sidecar-ID (5.1). Ein Foto wird wie jedes andere als Anhang abgelegt (Original nach `anhaenge/`). Bei einem PDF stehen `seite` und `bereich` (Anteile der Seite wie bei Markierungen) dabei; die App schneidet den Ausschnitt beim Anzeigen aus, es entsteht keine Bilddatei.
-- Ein Bild vom Blatt nehmen löscht nur den Eintrag, nie das Foto oder das PDF.
+- `bilder`: wie bei den Zeichenblättern, nur ohne `blatt` (die Seite gehört genau einem Buch).
+- `verweise`: wohin die Stelle der Buchseite im Skript zeigt. `y` ist die Höhe auf der Buchseite (Seitenkoordinaten, Breite 1000), `anhang` und `seite` die Skriptseite, `am` optional. Mit `marke` (ID einer Zeile in `lernen/markierungen/<anhang-id>.md`, 5.4) stammt der Verweis aus einer Markierung, sonst hat die App ihn beim Schreiben gesetzt. Verweise sind abgeleitet: Die App darf einen Verweis ohne `marke` entfernen, wenn darunter bis zum nächsten Verweis nichts mehr geschrieben steht.
+- Unbekannte Felder in `S001.json` bleiben erhalten.
 
-**Heft für ein Buch auf Papier**: „Buch ohne PDF“ erzeugt in der App ein leeres PDF (A4 hoch, 60 Seiten) mit der gewählten Lineatur auf jeder Seite, legt es als Anhang mit `art: skript` und `heft: <lineatur>` ab und macht daraus ein Buch (Modul mit diesem PDF). So gelten Seiten, Lesestand und Module wie bei jedem Buch. Die Anordnung wird gleich mitgeschrieben: Skript ausgeblendet, Blatt `1` mit derselben Lineatur. Das PDF lässt sich wie jedes andere einblenden, beschreiben und drucken.
+**Anordnung im Übungsplatz**: Welche Ansichten neben einem Skript stehen (am PC nebeneinander, am Handy eine mit Umschalter), steht pro PDF in `lernen/blaetter/<anhang-id>/anordnung.json` und gilt für alle Geräte. Die Reihenfolge der Liste ist die Reihenfolge auf dem Schirm, `breite` der Anteil an der Breite relativ zu den anderen offenen Ansichten.
+```json
+{"schema": 2,
+ "ansichten": [{"art": "pdf", "id": "pdf", "breite": 2},
+               {"art": "buch", "id": "01JNB8…", "breite": 1.5},
+               {"art": "buch", "id": "01JNC2…", "breite": 1.5, "zu": true}]}
+```
+- `art`: `pdf` (das Skript, genau einmal, `id: pdf`) oder `buch` (`id` = ID des Notizbuchs). `zu: true` blendet aus, das Buch bleibt. Mindestens eine Ansicht bleibt offen.
+- Fehlt die Datei, steht das Skript allein da.
+- Eine Anordnung ohne `schema: 2` stammt aus Lernen 1.2 oder früher und enthält noch Zeichenblätter (`art: blatt`); sie wird beim ersten Öffnen des Skripts angehoben (siehe unten).
+
+**Zeichenblätter (bis Lernen 1.2, werden angehoben):** Früher hing an jeder Skriptseite je Blatt eine eigene Schreibseite: Anordnung mit `{"art": "blatt", "id": "1", "lineatur": "kariert"}`, Tinte in `lernen/blaetter/<anhang-id>/S001.svg` (Blatt `1`) bzw. `S001-<blatt>.svg`, Bilder in `S001-bilder.json` mit Feld `blatt`. Fehlte die Anordnung, galt Blatt `1` mit Kästchen.
+
+**Anheben (Migration auf Lernen 1.3)**: Beim ersten Öffnen eines Skripts, dessen Anordnung kein `schema: 2` trägt oder fehlt, obwohl alte Blätter da sind, wird jedes Blatt mit Inhalt zu einem Notizbuch:
+- Die ID ist abgeleitet, nicht zufällig: Zeitteil der Anhang-ID plus eine Prüfsumme aus Anhang-ID und Blatt-ID (gültige ULID). `erstellt` und `geaendert` übernimmt das Buch vom Anhang, `titel` ist der Titel des Skripts (weitere Blätter mit Lineatur dahinter), `lineatur` die des Blatts, `modul` das Modul des Skripts. Damit schreiben zwei Geräte, die gleichzeitig anheben, byte-gleiche Dateien.
+- Nur Skriptseiten mit Strichen oder Bildern werden Buchseiten, in Seitenreihenfolge. Die Tinte wird byte-genau übernommen (fehlt sie bei einer Seite mit Bildern, entsteht eine leere A4-Seite), die Bilder ohne `blatt`, und jede Buchseite bekommt oben einen Verweis (`y: 0`, ohne `am`) auf ihre Skriptseite.
+- In der Anordnung wird aus `{"art": "blatt"}` ein `{"art": "buch"}` mit derselben Breite und demselben `zu`; Blätter ohne Inhalt fallen weg. Dazu `schema: 2`.
+- Die alten Dateien in `lernen/blaetter/<anhang-id>/` bleiben unverändert liegen (Archiv, Grundlagen 7) und werden danach nicht mehr gelesen.
+
+**Heft für ein Buch auf Papier**: Ab Lernen 1.3 legt „Buch ohne PDF“ ein Notizbuch ohne Skript an (kein leeres PDF mehr, keine Grenze bei 60 Seiten). Bis Lernen 1.2 entstand ein leeres PDF (A4 hoch, 60 Seiten) als Anhang mit `art: skript` und `heft: <lineatur>`, als Buch (Modul mit diesem PDF) mit ausgeblendetem Skript und Blatt `1`. Solche Hefte werden wie jedes Skript angehoben; ihr Notizbuch trägt das Modul des Hefts, die Verweise zeigen auf die Seiten des leeren PDFs. Das PDF bleibt liegen.
 
 **Inhaltsverzeichnis** `lernen/inhalt/<anhang-id>.json`: die Kapitel eines PDFs mit der PDF-Seite (nicht der gedruckten Seitenzahl), gelesen beim ersten Öffnen. Vorrang hat die eingebettete Gliederung (Lesezeichen) des PDFs (`herkunft: pdf`), sonst die gedruckten Inhaltsseiten am Anfang, deren Seitenzahlen über die Seitenlabels oder den Versatz zu den Kapitelanfängen umgerechnet werden (`herkunft: gedruckt`); findet sich nichts, steht `herkunft: keins`. Man kann Kapitel setzen, Seiten korrigieren und Einträge entfernen; danach steht `eigen: true` und das Verzeichnis wird nie mehr automatisch überschrieben. `version` ist die Version des Auslesens: eine neuere darf ein nicht eigenes Verzeichnis ersetzen.
 ```json
 {"herkunft": "pdf", "version": 1, "kapitel": [{"titel": "1.2 Spannungsteiler", "seite": 9, "ebene": 2}]}
 ```
 
-**`anhang`** eines Skripts trägt `art: skript`; ein von der App erzeugtes leeres Heft zusätzlich `heft: <lineatur>` (siehe Zeichenblätter). Sidecars mit `art: plan` oder `projekt` stammen aus RespawnedNotes VX und bleiben unberührt.
+**`anhang`** eines Skripts trägt `art: skript`; ein bis Lernen 1.2 erzeugtes leeres Heft zusätzlich `heft: <lineatur>` (siehe Heft). Sidecars mit `art: plan` oder `projekt` stammen aus RespawnedNotes VX und bleiben unberührt.
 
 ### 5.4 Markierungen und Handschrift (beide Apps)
 

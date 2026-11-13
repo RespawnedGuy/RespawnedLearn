@@ -29,7 +29,8 @@ Dateinamen und Unterordner sind frei wählbar, weil Links über IDs laufen. Die 
 │  ├─ einstellungen/ki-zugang.verschluesselt.json KI-Zugang, verschlüsselt, für alle eigenen Geräte (5.8)
 │  ├─ markierungen/<anhang-id>.md  Stellen in Skripten
 │  ├─ tinte/<anhang-id>/S001.svg   Handschrift im Skript
-│  └─ blaetter/<anhang-id>/        Zeichenblätter: anordnung.json, S001.svg, S001-<blatt>.svg, S001-bilder.json
+│  ├─ buecher/<id>.md, <id>/       Notizbücher: Steckbrief, je Seite S001.svg und S001.json (ab Lernen 1.3)
+│  └─ blaetter/<anhang-id>/        anordnung.json je Skript; alte Zeichenblätter (bis 1.2, nur noch Archiv)
 ├─ anhaenge/JJJJ/MM/ Originaldateien (PDF, JPG …), unveränderlich
 └─ reviews/          Wiederholungsprotokoll, je Gerät eine Datei
 ```
@@ -83,7 +84,7 @@ Eine App ändert nur die Felder, die sie bearbeiten will, den Rest schreibt sie 
 
 ## 7. Löschen
 
-- Wissen wird nie gelöscht: keine Karten, Module, Notizen, Markierungen, Tinte, Protokolle oder Originale.
+- Wissen wird nie gelöscht: keine Karten, Module, Notizen, Notizbücher, Markierungen, Tinte, Protokolle oder Originale.
 - Einzige Ausnahme sind **Konfliktkopien** (8). Die App löscht eine Konfliktkopie nur, nachdem ein Mensch entschieden hat („Zweite Fassung verwerfen“ oder „übernehmen“). Andere Dateien kann die App technisch nicht löschen.
 - Ein Bild vom Blatt nehmen oder ein Kapitel aus dem Inhaltsverzeichnis entfernen ändert nur den Eintrag in der jeweiligen Datei.
 

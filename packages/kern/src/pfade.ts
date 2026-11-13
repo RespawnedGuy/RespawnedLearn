@@ -29,7 +29,11 @@ export const pfade = {
   blatt: (anhangId: string, seite: number, blatt = '1') => `lernen/blaetter/${anhangId}/S${drei(seite)}${blatt === '1' ? '' : `-${blatt}`}.svg`,
   /** Bilder (Fotos, PDF-Ausschnitte) auf den Blättern einer Skriptseite */
   blattBilder: (anhangId: string, seite: number) => `lernen/blaetter/${anhangId}/S${drei(seite)}-bilder.json`,
-  /** Welche Ansichten (Skript, Blätter) im Übungsplatz nebeneinander stehen */
+  /** Notizbuch (Vertrag Lernen 1.3, 5.3): Steckbrief, je Seite Tinte und Bilder/Verweise */
+  buch: (id: string) => `lernen/buecher/${id}.md`,
+  buchTinte: (id: string, seite: number) => `lernen/buecher/${id}/S${drei(seite)}.svg`,
+  buchSeite: (id: string, seite: number) => `lernen/buecher/${id}/S${drei(seite)}.json`,
+  /** Welche Ansichten (Skript, Notizbücher) im Übungsplatz nebeneinander stehen */
   blattAnordnung: (anhangId: string) => `lernen/blaetter/${anhangId}/anordnung.json`,
   karte: (id: string) => `lernen/karten/${id}.md`,
   modul: (id: string) => `lernen/module/${id}.md`,

@@ -21,9 +21,9 @@ export const LINEATUREN: { art: Lineatur; name: string }[] = [
 export const lineaturName = (l: Lineatur) => LINEATUREN.find((x) => x.art === l)?.name ?? 'Kästchen'
 
 export interface Ansicht {
-  /** pdf = das Skript selbst, blatt = ein Zeichenblatt */
-  art: 'pdf' | 'blatt'
-  /** „pdf“ fürs Skript; das erste Blatt heißt „1“ (seine Tinte liegt wie früher in S001.svg) */
+  /** pdf = das Skript selbst, buch = ein Notizbuch (ab Lernen 1.3), blatt = altes Zeichenblatt (bis 1.2, wird angehoben) */
+  art: 'pdf' | 'blatt' | 'buch'
+  /** „pdf“ fürs Skript, die ID des Notizbuchs; alte Blätter: das erste heißt „1“ (Tinte in S001.svg) */
   id: string
   lineatur?: Lineatur
   /** Anteil an der Breite, relativ zu den anderen offenen Ansichten */
@@ -33,8 +33,13 @@ export interface Ansicht {
 }
 
 export interface Anordnung {
+  /** 2 ab Lernen 1.3 (Notizbücher); fehlt es, stammt die Anordnung aus der Zeit der Zeichenblätter */
+  schema?: number
   ansichten: Ansicht[]
 }
+
+/** Gültige ID eines Notizbuchs: eine ULID */
+export const istBuchId = (id: unknown): id is string => typeof id === 'string' && /^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)
 
 const ARTEN = new Set(LINEATUREN.map((l) => l.art))
 const MIN_BREITE = 0.2
@@ -42,8 +47,13 @@ const MAX_BREITE = 20
 
 const breiteOk = (b: unknown, sonst: number) => (typeof b === 'number' && Number.isFinite(b) ? Math.min(MAX_BREITE, Math.max(MIN_BREITE, b)) : sonst)
 
-/** So sieht der Übungsplatz ohne eigene Anordnung aus: Skript links, ein Blatt mit Kästchen rechts (wie bisher) */
+/** So sieht der Übungsplatz ohne eigene Anordnung aus: das Skript allein (Notizbücher kommen über „+ Buch“) */
 export function standardAnordnung(): Anordnung {
+  return { schema: 2, ansichten: [{ art: 'pdf', id: 'pdf', breite: 3 }] }
+}
+
+/** Anordnung aus Lernen 1.2 ohne Datei: Skript und Blatt 1 mit Kästchen (Grundlage fürs Anheben) */
+export function alteStandardAnordnung(): Anordnung {
   return {
     ansichten: [
       { art: 'pdf', id: 'pdf', breite: 3 },
@@ -61,14 +71,15 @@ export function liesAnordnung(text: string | null | undefined): Anordnung {
     roh = null
   }
   const liste = roh && typeof roh === 'object' && Array.isArray((roh as Anordnung).ansichten) ? (roh as Anordnung).ansichten : null
-  if (!liste) return standardAnordnung()
+  if (!liste) return text ? alteStandardAnordnung() : standardAnordnung()
+  const schema = (roh as Anordnung).schema === 2 ? 2 : undefined
   const ansichten: Ansicht[] = []
   const ids = new Set<string>()
   for (const a of liste) {
     if (!a || typeof a !== 'object') continue
-    const art = a.art === 'pdf' ? 'pdf' : a.art === 'blatt' ? 'blatt' : null
+    const art = a.art === 'pdf' ? 'pdf' : a.art === 'blatt' && !schema ? 'blatt' : a.art === 'buch' ? 'buch' : null
     if (!art) continue
-    const id = art === 'pdf' ? 'pdf' : typeof a.id === 'string' && /^[a-z0-9]{1,12}$/.test(a.id) ? a.id : null
+    const id = art === 'pdf' ? 'pdf' : art === 'buch' ? (istBuchId(a.id) ? a.id : null) : typeof a.id === 'string' && /^[a-z0-9]{1,12}$/.test(a.id) ? a.id : null
     if (!id || ids.has(id)) continue
     ids.add(id)
     const v: Ansicht = { art, id, breite: breiteOk(a.breite, art === 'pdf' ? 3 : 2) }
@@ -78,16 +89,18 @@ export function liesAnordnung(text: string | null | undefined): Anordnung {
   }
   if (!ids.has('pdf')) ansichten.unshift({ art: 'pdf', id: 'pdf', breite: 3, zu: ansichten.some((a) => !a.zu) || undefined })
   if (!ansichten.some((a) => !a.zu)) delete ansichten[0].zu
-  return { ansichten }
+  return schema ? { schema, ansichten } : { ansichten }
 }
 
 export function anordnungJson(a: Anordnung): string {
-  return JSON.stringify({ ansichten: a.ansichten.map((v) => ({ ...v, breite: Math.round(v.breite * 100) / 100 })) }, null, 1) + '\n'
+  const ansichten = a.ansichten.map((v) => ({ ...v, breite: Math.round(v.breite * 100) / 100 }))
+  return JSON.stringify(a.schema ? { schema: a.schema, ansichten } : { ansichten }, null, 1) + '\n'
 }
 
 export const offeneAnsichten = (a: Anordnung) => a.ansichten.filter((v) => !v.zu)
 
 const ersetze = (a: Anordnung, id: string, f: (v: Ansicht) => Ansicht | null): Anordnung => ({
+  ...a,
   ansichten: a.ansichten.flatMap((v) => {
     if (v.id !== id) return [v]
     const neu = f(v)
@@ -99,7 +112,15 @@ const ersetze = (a: Anordnung, id: string, f: (v: Ansicht) => Ansicht | null): A
 export function neuesBlatt(a: Anordnung, id: string, lineatur: Lineatur): Anordnung {
   const blaetter = offeneAnsichten(a).filter((v) => v.art === 'blatt')
   const breite = blaetter.length ? Math.min(...blaetter.map((v) => v.breite)) : 2
-  return { ansichten: [...a.ansichten, { art: 'blatt', id, lineatur, breite }] }
+  return { ...a, ansichten: [...a.ansichten, { art: 'blatt', id, lineatur, breite }] }
+}
+
+/** Notizbuch neben das Skript stellen (hinten); steht es schon (auch ausgeblendet), wird es nur wieder gezeigt */
+export function zeigeBuch(a: Anordnung, id: string): Anordnung {
+  if (a.ansichten.some((v) => v.id === id)) return oeffneAnsicht(a, id)
+  const andere = offeneAnsichten(a).filter((v) => v.art !== 'pdf')
+  const breite = andere.length ? Math.min(...andere.map((v) => v.breite)) : 2
+  return { ...a, schema: 2, ansichten: [...a.ansichten, { art: 'buch', id, breite }] }
 }
 
 /** Mit der benachbarten offenen Ansicht tauschen (-1 = nach vorn/links, 1 = nach hinten/rechts) */
@@ -111,11 +132,11 @@ export function verschiebeAnsicht(a: Anordnung, id: string, richtung: -1 | 1): A
   const ansichten = [...a.ansichten]
   ansichten[offen[k].i] = n.v
   ansichten[n.i] = offen[k].v
-  return { ansichten }
+  return { ...a, ansichten }
 }
 
 export function setzeBreiten(a: Anordnung, breiten: Record<string, number>): Anordnung {
-  return { ansichten: a.ansichten.map((v) => (v.id in breiten ? { ...v, breite: breiteOk(breiten[v.id], v.breite) } : v)) }
+  return { ...a, ansichten: a.ansichten.map((v) => (v.id in breiten ? { ...v, breite: breiteOk(breiten[v.id], v.breite) } : v)) }
 }
 
 export const setzeLineatur = (a: Anordnung, id: string, lineatur: Lineatur): Anordnung => ersetze(a, id, (v) => ({ ...v, lineatur }))
@@ -126,7 +147,8 @@ export const setzeLineatur = (a: Anordnung, id: string, lineatur: Lineatur): Ano
  */
 export function schliesseAnsicht(a: Anordnung, id: string, hatTinte: boolean): Anordnung {
   if (offeneAnsichten(a).length <= 1) return a
-  return ersetze(a, id, (v) => (v.art === 'blatt' && !hatTinte ? null : { ...v, zu: true }))
+  // Ein Notizbuch verschwindet aus der Anordnung, es bleibt ja als eigene Datei und lässt sich über „+ Buch“ wieder holen
+  return ersetze(a, id, (v) => ((v.art === 'blatt' && !hatTinte) || v.art === 'buch' ? null : { ...v, zu: true }))
 }
 
 /** Ausgeblendete Ansicht wieder zeigen, hinten angefügt */
@@ -134,7 +156,7 @@ export function oeffneAnsicht(a: Anordnung, id: string): Anordnung {
   const v = a.ansichten.find((x) => x.id === id)
   if (!v) return a
   const { zu: _zu, ...offen } = v
-  return { ansichten: [...a.ansichten.filter((x) => x.id !== id), offen] }
+  return { ...a, ansichten: [...a.ansichten.filter((x) => x.id !== id), offen] }
 }
 
 /** Nächste freie Blatt-ID: kurz, nur Kleinbuchstaben und Ziffern */
@@ -314,18 +336,25 @@ export function liesBilder(text: string | null | undefined): BlattBild[] {
   const liste = roh && typeof roh === 'object' && Array.isArray((roh as { bilder?: unknown }).bilder) ? (roh as { bilder: Partial<BlattBild>[] }).bilder : []
   const out: BlattBild[] = []
   for (const b of liste) {
-    if (!b || typeof b.id !== 'string' || typeof b.blatt !== 'string' || typeof b.anhang !== 'string') continue
-    if (![b.x, b.y, b.b, b.h].every(zahl) || b.b! <= 0 || b.h! <= 0) continue
-    const bild: BlattBild = { id: b.id, blatt: b.blatt, anhang: b.anhang, x: b.x!, y: b.y!, b: b.b!, h: b.h! }
-    if (b.seite !== undefined || b.bereich !== undefined) {
-      const r = b.bereich
-      if (!zahl(b.seite) || b.seite < 1 || !r || ![r.x, r.y, r.b, r.h].every(anteil)) continue
-      bild.seite = b.seite
-      bild.bereich = { x: r.x, y: r.y, b: r.b, h: r.h }
-    }
-    out.push(bild)
+    if (!b || typeof b.blatt !== 'string') continue
+    const bild = bildAus(b)
+    if (bild) out.push({ ...bild, blatt: b.blatt })
   }
   return out
+}
+
+/** Prüft ein Bild (Lage, Größe, Ausschnitt); das Feld `blatt` prüft der Aufrufer. Auch für Notizbücher (buecher.ts). */
+export function bildAus(b: Partial<BlattBild> | null | undefined): Omit<BlattBild, 'blatt'> | null {
+  if (!b || typeof b.id !== 'string' || typeof b.anhang !== 'string') return null
+  if (![b.x, b.y, b.b, b.h].every(zahl) || b.b! <= 0 || b.h! <= 0) return null
+  const bild: Omit<BlattBild, 'blatt'> = { id: b.id, anhang: b.anhang, x: b.x!, y: b.y!, b: b.b!, h: b.h! }
+  if (b.seite !== undefined || b.bereich !== undefined) {
+    const r = b.bereich
+    if (!zahl(b.seite) || b.seite < 1 || !r || ![r.x, r.y, r.b, r.h].every(anteil)) return null
+    bild.seite = b.seite
+    bild.bereich = { x: r.x, y: r.y, b: r.b, h: r.h }
+  }
+  return bild
 }
 
 export function bilderJson(bilder: BlattBild[]): string {
