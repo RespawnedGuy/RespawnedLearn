@@ -55,7 +55,6 @@ export function Werkzeugleiste({
       <button type="button" className={werkzeug === 'radierer' ? 'aktiv' : ''} aria-pressed={werkzeug === 'radierer'} onClick={() => onWerkzeug('radierer')} title="Mit dem Stift: einfach umdrehen">
         Radierer
       </button>
-      <span className="hinweis nur-breit">oder Stift umdrehen</span>
       {extra}
     </div>
   )
