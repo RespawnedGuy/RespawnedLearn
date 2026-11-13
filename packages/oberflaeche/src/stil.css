@@ -1,6 +1,6 @@
 /* RespawnedNotes – gemeinsame Optik beider Apps (Phoenix-Stil: warmes Weiß, ruhige Flächen).
    Apple-Prinzip: nur zeigen, was gerade gebraucht wird. Akzent je App über --akzent. */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Caveat:wght@500;600&display=swap');
+/* Keine Schriften aus dem Netz: die App läuft offline und meldet niemandem ihren Start. Manrope usw. greifen, wenn installiert, sonst die Systemschrift. */
 
 :root {
   --grund: #f6f4f0;

@@ -25,6 +25,7 @@ Dateinamen und Unterordner sind frei wählbar, weil Links über IDs laufen. Die 
 │  ├─ fragen/<anhang-id>/S012.json Fragen zu einem Kapitel (5.7)
 │  ├─ fragen-stand/<geraet>.json   welche Kapitelfragen ein Gerät erledigt hat
 │  ├─ vorfragen/<datum>.json       Vorfragen eines Tages (5.8)
+│  ├─ einstellungen/ki-prompts.json eigene KI-Anweisungen, nur Abweichungen vom Standard (5.8)
 │  ├─ markierungen/<anhang-id>.md  Stellen in Skripten
 │  ├─ tinte/<anhang-id>/S001.svg   Handschrift im Skript
 │  └─ blaetter/<anhang-id>/        Zeichenblätter: anordnung.json, S001.svg, S001-<blatt>.svg, S001-bilder.json
@@ -73,7 +74,7 @@ tags: [lernen/elektrotechnik]
 | Was | Schreibt | Andere |
 |---|---|---|
 | `lernen/**`, `reviews/`, Typen aus 5.3 bis 5.5 | RespawnedLearn | lesen |
-| `lernen/fragen/**`, `lernen/vorfragen/**` (5.7, 5.8) | der Erzeuger der Fragen (bisher der Server von RespawnedNotes VX, künftig die App mit eigenem API-Schlüssel) | lesen |
+| `lernen/fragen/**`, `lernen/vorfragen/**` (5.7, 5.8) | der Erzeuger der Fragen: RespawnedLearn auf Knopfdruck mit dem KI-Zugang des Geräts (früher der Server von RespawnedNotes VX) | lesen |
 | `quelle`, `anhang` | anlegende App; `name` und `beschreibung` darf jede App setzen | lesen |
 | Pflichtfelder `id`, `typ`, `erstellt` | anlegende App, danach unveränderlich | — |
 
@@ -95,8 +96,9 @@ Eine App ändert nur die Felder, die sie bearbeiten will, den Rest schreibt sie 
 - **Nur anhängen, und zwar pro Gerät:** Protokoll (`reviews/JJJJ-MM.<geraet>.jsonl`), Lesestand und Fragen-Stand hat jedes Gerät in einer eigenen Datei, damit gleichzeitiges Arbeiten auf zwei Geräten gar nicht erst Konflikte erzeugt.
 - **Originale** (PDF, Foto) legt die App nur neu an; existiert der Pfad schon, schreibt sie nicht.
 - **Keine Statusfelder mit hoher Änderungsrate im Frontmatter**, damit Syncthing nicht ständig ganze Notizen verteilt.
+- **Keine Geheimnisse im Ordner:** KI-Schlüssel, die Adresse eines eigenen KI-Rechners und das gewählte Modell merkt sich jedes Gerät selbst (im Konfigurationsordner der App). Sie stehen nie im Datenordner, damit Syncthing sie nicht verteilt.
 
 ## 10. Offene Punkte
 
 1. **Tags:** Namensräume mit Präfix (`lernen/…`).
-2. **Seitenbilder und PDF-Text** rechnet bis Schritt 3 niemand voraus; die App zeichnet PDFs mit pdf.js selbst.
+2. **Seitenbilder** rechnet niemand voraus; die App zeichnet PDFs mit pdf.js selbst und liest den Text der Seiten ebenso daraus.

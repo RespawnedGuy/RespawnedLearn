@@ -1,33 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { fragenStand, hilfeStufen, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rl/kern'
 import { geraet, ortLink, useDaten, type Speicher } from '@rl/oberflaeche'
 import { Abrufflaeche, KiRueckmeldung, useAbruf } from './Abruf'
 import { Inhalt } from './Inhalt'
+import { aktiverZugang, useKiZugang } from './kianbieter/zugang'
 
-interface KiStand {
-  bereit: boolean
-  grund?: string
-  laeuft?: boolean
-}
-
-let angestossen = false
-
-/** Stand der KI auf dem Server; stößt einmal pro Sitzung eine Runde an, damit ein neues Kapitel bald Fragen hat */
-function useKi(): KiStand | null {
-  const [stand, setStand] = useState<KiStand | null>(null)
-  useEffect(() => {
-    let weg = false
-    const ziel = angestossen ? fetch('/api/fragen') : fetch('/api/fragen/jetzt', { method: 'POST' })
-    angestossen = true
-    ziel
-      .then((r) => (r.ok ? (r.json() as Promise<KiStand>) : null))
-      .then((s) => !weg && setStand(s))
-      .catch(() => undefined)
-    return () => {
-      weg = true
-    }
-  }, [])
-  return stand
+/** Stand der KI auf diesem Gerät: ohne eingerichtete KI sagt die App es, statt still keine Fragen zu zeigen */
+function useKi(): { bereit: boolean; grund?: string } | null {
+  const z = useKiZugang()
+  if (!z) return null
+  return aktiverZugang(z) ? { bereit: true } : { bereit: false, grund: 'Unter Einstellungen › KI einen Anbieter einrichten.' }
 }
 
 export function useOffeneFragen(): OffeneFrage[] {
@@ -123,10 +105,9 @@ export function KapitelFragen() {
         <p className="leer">
           {reihe.length
             ? `Geschafft: ${reihe.length} ${reihe.length === 1 ? 'Frage' : 'Fragen'}.`
-            : 'Gerade sind keine Fragen offen. Sie entstehen auf dem Server zu dem Kapitel, in dem du liest, und erscheinen, sobald du den Stoff gelesen hast.'}
+            : 'Gerade sind keine Fragen offen. Sie entstehen zu dem Kapitel, in dem du liest, und erscheinen, sobald du den Stoff gelesen hast.'}
         </p>
-        {ki && !ki.bereit && <p className="klein-leise">KI auf dem Server: {ki.grund}</p>}
-        {ki?.laeuft && <p className="klein-leise">Der Server erzeugt gerade Fragen.</p>}
+        {ki && !ki.bereit && <p className="klein-leise">KI: {ki.grund}</p>}
       </div>
     )
   }

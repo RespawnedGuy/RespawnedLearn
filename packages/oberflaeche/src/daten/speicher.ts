@@ -308,15 +308,6 @@ export class Speicher {
     }
   }
 
-  /** Seitenbilder rechnete der Server; ohne Server zeichnet pdf.js die Seiten selbst */
-  seitenbild(_pfad: string, _seite: number, _breite: number): string | null {
-    return null
-  }
-
-  pdfInfo(_pfad: string): Promise<{ seiten: number; formate: number[] } | null> {
-    return Promise.resolve(null)
-  }
-
   /** Die Kopie ersetzt das Original; danach verschwindet die Kopie */
   async uebernehmeKonflikt(kopie: string): Promise<void> {
     const original = konfliktOriginal(kopie)

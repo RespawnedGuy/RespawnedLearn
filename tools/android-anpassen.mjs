@@ -14,6 +14,10 @@ const rechte = [
 ]
 for (const r of rechte) if (!manifest.includes(r.split('"')[1])) manifest = manifest.replace(/<application/, `${r}\n    <application`)
 if (!manifest.includes('requestLegacyExternalStorage')) manifest = manifest.replace(/<application/, '<application android:requestLegacyExternalStorage="true"')
+// Ollama im eigenen Netz spricht unverschlüsseltes http (Port 11434); welche Adressen die App erreichen darf, regelt
+// die Freigabe in app/src-tauri/capabilities/default.json
+if (manifest.includes('usesCleartextTraffic')) manifest = manifest.replace(/android:usesCleartextTraffic="[^"]*"/, 'android:usesCleartextTraffic="true"')
+else manifest = manifest.replace(/<application/, '<application android:usesCleartextTraffic="true"')
 fs.writeFileSync(manifestPfad, manifest)
 
 const alt = fs.readdirSync(path.join(gen, 'java'), { recursive: true }).map(String).find((p) => p.endsWith('MainActivity.kt'))

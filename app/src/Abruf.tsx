@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Farbe } from '@rl/kern'
-import { TintenEbene } from '@rl/oberflaeche'
+import { ortLink, TintenEbene, useDaten } from '@rl/oberflaeche'
 import { Inhalt } from './Inhalt'
 import { rueckmeldung, schriftBild, type Rueckmeldung } from './ki'
 
@@ -81,8 +81,10 @@ export function KiRueckmeldung({
   /** weitere Knöpfe in derselben Reihe */
   extra?: React.ReactNode
 }) {
+  const { speicher } = useDaten()
   const [zustand, setZustand] = useState<'ruht' | 'laeuft' | 'fehler'>('ruht')
   const [r, setR] = useState<Rueckmeldung | null>(null)
+  const [fehler, setFehler] = useState('')
   const ab = useRef<AbortController | null>(null)
   useEffect(() => () => ab.current?.abort(), [])
 
@@ -91,10 +93,14 @@ export function KiRueckmeldung({
     ab.current = new AbortController()
     setZustand('laeuft')
     const bild = await schriftBild(abruf.huelle.current).catch(() => null)
-    const antwort = await rueckmeldung({ art, frage, muster, antwort: abruf.text, bild }, ab.current.signal)
+    const antwort = await rueckmeldung(speicher, { art, frage, muster, antwort: abruf.text, bild }, ab.current.signal)
     if (ab.current.signal.aborted) return
+    if ('problem' in antwort) {
+      setFehler(antwort.problem)
+      return setZustand('fehler')
+    }
     setR(antwort)
-    setZustand(antwort ? 'ruht' : 'fehler')
+    setZustand('ruht')
   }
 
   return (
@@ -107,7 +113,11 @@ export function KiRueckmeldung({
             </button>
           )}
           {extra}
-          {zustand === 'fehler' && !fest && <span className="klein-leise">Die KI ist gerade nicht erreichbar.</span>}
+          {zustand === 'fehler' && !fest && (
+            <span className="klein-leise">
+              {fehler} {/Einstellungen/.test(fehler) && <a href={ortLink('einstellungen')}>Zu den Einstellungen</a>}
+            </span>
+          )}
         </div>
       )}
       {r && zustand !== 'laeuft' && (

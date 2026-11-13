@@ -5,24 +5,24 @@ Regeln für jede Claude-Sitzung hier. Nils ergänzt diese Datei selbst, nichts d
 ## Projekt
 
 - **RespawnedLearn** ist der Lernteil von RespawnedNotes VX als eigenständige App (Nils 2026-11-12/13): lokal, ohne Server, Datenordner auf der Platte, Abgleich zwischen Geräten über Syncthing. Für Nils und andere Nutzer; öffentliches Repo unter AGPL-3.0, Weitergabe auch als Installer/APK. Plattformen Windows und Android, iOS erst wenn die App erfolgreich wird.
-- **KI** nur mit eigenem Anthropic-API-Schlüssel je Nutzer, ohne Schlüssel läuft alles andere. Nie ein Abo-Token (`claude -p`, `CLAUDE_CODE_OAUTH_TOKEN`) oder ein Schlüssel von Nils in Code, Build oder Historie.
+- **KI** nur mit eigenem Zugang je Nutzer, Anbieter frei wählbar (Anthropic, OpenAI, Gemini, Perplexity, Ollama; Nils 2026-11-13), ohne KI läuft alles andere. Später evtl. ein Abo, das die API übernimmt. Anweisungen an die KI sind vorausgefüllte, änderbare Einstellungen mit „Standard“. Nie ein Abo-Token (`claude -p`, `CLAUDE_CODE_OAUTH_TOKEN`) oder ein Schlüssel von Nils in Code, Build oder Historie.
 - **Stack** (exakt laut Lockfiles): TypeScript 7 strict, Node 22, React 19, Vite 8, CodeMirror 6, pdfjs, Vitest; Tauri 2 (Rust, `app/src-tauri`, Crates exakt in `Cargo.toml`/`Cargo.lock`). Neue Abhängigkeit oder Major-Sprung nur mit exakter Version und Begründung im Plan, Versionen mindestens zwei Wochen alt.
 - RespawnedNotes VX (Repo RespawnedGuy/RespawnedVX) bleibt bis auf Weiteres unangetastet; der Rückbau des Lernteils dort ist ein eigener Auftrag.
 
 ## Landkarte
 
 - `packages/kern/src/` (Tests `packages/kern/test/`): rein, nur relative Importe, kein Browser, kein React. `bestand.ts` (Index aller Dateien), `pfade.ts` (Orte im Datenordner), `module`, `mitschrift`, `fragen`, `inhalt`, `lernen.ts`, `blaetter.ts` (Zeichenblätter, Lineaturen, leeres Heft), `tinte`, `marken`. Einige Dateien stammen aus der Arbeits-App (`journal`, `aufgaben`, `berichtsvorlagen`), weil `bestand.ts` und der Editor sie brauchen.
-- `vertrag/`: Datenvertrag „Lernen 1.0“ (Wegweiser `DATENVERTRAG.md`, `grundlagen.md`, `typen.md`, `aenderungen.md`); erst Vertrag ändern, dann Code.
+- `vertrag/`: Datenvertrag „Lernen 1.1“ (Wegweiser `DATENVERTRAG.md`, `grundlagen.md`, `typen.md`, `aenderungen.md`); erst Vertrag ändern, dann Code.
 - `packages/oberflaeche/src/`: `daten/ordner.ts` (Schnittstelle `Ablage`, Tauri-Befehle), `daten/ablageImSpeicher.ts` (Ordner im Arbeitsspeicher für Tests und `npm run dev`, `Platte` = Syncthing nachgestellt), `daten/speicher.ts` (Texte im Arbeitsspeicher, Schreiben nach 1 s Ruhe, nur auf bekanntem Stempel, sonst Konfliktkopie; Tests `packages/oberflaeche/test/speicher.test.ts`), `editor/`, `pdf/`, `Kopf.tsx`, `Fehlergrenze.tsx`.
-- `app/src/`: `main.tsx`, `OrdnerWahl.tsx` (erster Start), `App.tsx`, `Start.tsx`, `Sammeln.tsx` (Übungsplatz), `Blaetter.tsx`, `Mitschrift.tsx`, `Abruf.tsx`, `Konflikte.tsx` (zwei Fassungen, übernehmen oder verwerfen), `wissen.ts` (Karten, FSRS), `ki.ts`.
-- `app/src-tauri/src/`: `ordner.rs` (Lesen, viele Texte auf einmal, atomares Schreiben, Schreiben nur auf erwartetem Stempel, Konfliktkopien löschen und sonst nichts, Liste, Schreibprobe; ohne Tauri, mit `cargo test`), `lib.rs` (Befehle, Ordner beobachten, Einstellungen des Geräts). `android/MainActivity.kt` + `tools/android-anpassen.mjs` setzen in der GitHub Action „Zugriff auf alle Dateien“.
+- `app/src/`: `main.tsx`, `OrdnerWahl.tsx` (erster Start), `App.tsx`, `Start.tsx`, `Sammeln.tsx` (Übungsplatz), `Blaetter.tsx`, `Mitschrift.tsx`, `Abruf.tsx`, `Konflikte.tsx` (zwei Fassungen, übernehmen oder verwerfen), `wissen.ts` (Karten, FSRS), `ki.ts` (KI-Funktionen der Ansichten), `kianbieter/` (je Anbieter ein Adapter, `frage.ts` = `kiFrage()` mit Schema-Prüfung, `zugang.ts` = Schlüssel nur auf dem Gerät), `Einstellungen.tsx` (+ `EinstellungenKi`, `EinstellungenPrompts`). KI-Aufträge, Standard-Anweisungen und Antwort-Schemas rein in `kern` (`kiAuftraege`, `kiPrompts`, `kiSchemas`). Nutzer-Wiki: `docs/ki-anbieter.md`.
+- `app/src-tauri/src/`: `ordner.rs` (Lesen, viele Texte auf einmal, atomares Schreiben, Schreiben nur auf erwartetem Stempel, Konfliktkopien löschen und sonst nichts, Liste, Schreibprobe; ohne Tauri, mit `cargo test`), `zugang.rs` (KI-Zugang im Konfigurationsordner, atomar, 0600), `lib.rs` (Befehle, Ordner beobachten, Einstellungen des Geräts, Plugin `http` für Anfragen an die Anbieter ohne CORS; erlaubte Adressen in `capabilities/default.json`, CSP in `tauri.conf.json`). `android/MainActivity.kt` + `tools/android-anpassen.mjs` setzen in der GitHub Action „Zugriff auf alle Dateien“.
 
-## Laufender Umbau (Stand 2026-11-13, nach Schritt 2)
+## Laufender Umbau (Stand 2026-11-13, nach Schritt 3a)
 
 Bauplan von Nils freigegeben („Go“ 2026-11-13), nacheinander:
 1. ~~Repo, Historie, Tauri-Gerüst~~ (v0.1.0): Historie der übernommenen Dateien aus VX (`git filter-repo`, Claude-Session-Zeilen entfernt, Historie auf Adressen/Token gescannt), Tauri für Windows und Android, Ordnerwahl, Rust-Befehle mit Tests, GitHub Action baut Installer und Debug-APK.
 2. ~~Ordner statt Server~~ (v0.2.0): Speicher auf dem Ordner, Android fragt die Dateiliste alle 10 s ab, Konfliktansicht, Vertrag „Lernen 1.0“. Geprüft gegen echtes Syncthing 1.30.0 (Konfliktname, Zwischendateien werden nicht verteilt). KI, Kapitelfragen und Vorfragen sind bis Schritt 3 ohne Funktion.
-3. Serverfunktionen in die App: Seitenbilder und PDF-Text über pdf.js, KI über die Anthropic-API mit eigenem Schlüssel, Einstellungen.
+3. Serverfunktionen in die App (Plan v2 freigegeben): ~~3a~~ (v0.3.0) fünf Anbieter, Einstellungen, änderbare Anweisungen (Vertrag 1.1), Erklären/Rückmeldung/Frage-Vorschlag/Korrektur, Seitenbilder nur noch über pdf.js, keine Schriften aus dem Netz. 3b (v0.4.0): PDF-Text über pdf.js, Kapitelfragen und Vorfragen auf Knopfdruck, Logik aus VX `server/fragen.mjs`/`vorfragen.mjs` nach `kern` mit Tests.
 4. Releases: signierte APK (Schlüssel als GitHub-Secret), Windows vorerst unsigniert.
 5. Umzug von Nils' Lerndaten (`lernen/**`, `reviews/`, Skripte mit Sidecars) mit SHA-256-Liste vorher/nachher, Quelle unberührt.
 

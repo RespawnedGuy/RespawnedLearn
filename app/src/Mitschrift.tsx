@@ -188,15 +188,16 @@ function KartenDialog({ stelle, titel, onZu, onAnlegen }: { stelle: KartenStelle
   const [denkt, setDenkt] = useState(true)
   const [laeuft, setLaeuft] = useState(false)
   const getippt = useRef(false)
+  const { speicher } = useDaten()
   useEffect(() => {
     const ab = new AbortController()
-    void frageZurMitschrift(titel, stelle.abschnitt, stelle.antwort, ab.signal).then((f) => {
+    void frageZurMitschrift(speicher, titel, stelle.abschnitt, stelle.antwort, ab.signal).then((f) => {
       if (ab.signal.aborted) return
       if (f && !getippt.current) setFrage(f)
       setDenkt(false)
     })
     return () => ab.abort()
-  }, [titel, stelle])
+  }, [speicher, titel, stelle])
   const fertig = async () => {
     if (!frage.trim() || !antwort.trim() || laeuft) return
     setLaeuft(true)

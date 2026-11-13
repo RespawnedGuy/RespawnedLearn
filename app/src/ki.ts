@@ -1,39 +1,49 @@
-// KI-Hilfen beim Anlegen von Lernkarten. Läuft über den Server (Claude über das Abo); ohne Netz oder ohne
-// eingerichtete KI kommt einfach nichts zurück, die Karte entsteht trotzdem.
-import type { Bereich, Eintrag } from '@rl/kern'
+// KI-Hilfen beim Lernen: Frage vorschlagen, Rechtschreibung, Rückmeldung, Erklären. Gefragt wird die KI, die in den
+// Einstellungen gewählt ist (eigener Schlüssel, siehe kianbieter/). Ohne KI oder Netz kommt bei den stillen Hilfen
+// einfach nichts zurück, die Karte entsteht trotzdem; wo jemand wartet, sagt die App, woran es liegt.
+import { erklaerAuftrag, korrekturAnnehmen, korrekturAuftrag, rueckmeldungAuftrag, SCHEMAS, vorschlagAuftrag, type Bereich, type Eintrag } from '@rl/kern'
 import { ausschnitt, stellenText, type Speicher } from '@rl/oberflaeche'
 import type { ChatZeile } from './kiBlock'
+import { bildAus, kiFrage } from './kianbieter/frage'
+import { KiFehler } from './kianbieter/typen'
 
-async function frageServer<T>(aktion: string, daten: unknown, signal?: AbortSignal): Promise<T | null> {
-  try {
-    const r = await fetch(`/api/ki/${aktion}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(daten), signal })
-    return r.ok ? ((await r.json()) as T) : null
-  } catch {
-    return null
-  }
-}
+/** Fehler als Satz für die Oberfläche; abgebrochen = leer */
+export const fehlerText = (e: unknown) => (e instanceof KiFehler ? e.message : 'Die KI hat gerade nicht geantwortet. Später noch einmal versuchen.')
 
 /** Frage zur markierten Stelle; ohne Text im PDF (Scan, Formel als Bild) geht ein Bild der Stelle mit */
 export async function frageVorschlagen(speicher: Speicher, quelle: Eintrag, seite: number, bereich: Bereich, signal?: AbortSignal): Promise<string | null> {
   const datei = String(quelle.felder.datei ?? '')
   const stelle = await stellenText(speicher, datei, seite, bereich).catch(() => '')
-  const bild = stelle.length < 40 ? await ausschnitt(speicher, datei, seite, bereich, 900).catch(() => null) : null
+  const bild = stelle.length < 40 ? bildAus(await ausschnitt(speicher, datei, seite, bereich, 900).catch(() => null)) : null
   if (!stelle && !bild) return null
-  const r = await frageServer<{ frage: string }>('vorschlag', { buch: quelle.titel, seite, stelle, bild }, signal)
+  const r = await kiFrage<{ frage: string }>(speicher, 'vorschlag', {
+    text: vorschlagAuftrag({ buch: quelle.titel, seite, stelle }),
+    bilder: bild ? [bild] : [],
+    schema: SCHEMAS.frage,
+    name: 'frage',
+    aufwand: 'niedrig',
+    signal
+  }).catch(() => null)
   return r?.frage?.trim() || null
 }
 
 /** Frage zu einer Stelle der eigenen Mitschrift (die Stelle ist die Antwort) */
-export async function frageZurMitschrift(titel: string, abschnitt: string[], stelle: string, signal?: AbortSignal): Promise<string | null> {
-  const r = await frageServer<{ frage: string }>('vorschlag', { art: 'mitschrift', buch: titel, abschnitt: abschnitt.join(' › '), stelle }, signal)
+export async function frageZurMitschrift(speicher: Speicher, titel: string, abschnitt: string[], stelle: string, signal?: AbortSignal): Promise<string | null> {
+  const r = await kiFrage<{ frage: string }>(speicher, 'vorschlag', {
+    text: vorschlagAuftrag({ art: 'mitschrift', buch: titel, abschnitt: abschnitt.join(' › '), stelle }),
+    schema: SCHEMAS.frage,
+    name: 'frage',
+    aufwand: 'niedrig',
+    signal
+  }).catch(() => null)
   return r?.frage?.trim() || null
 }
 
 /** Nur Rechtschreibung und Tippfehler; null, wenn nichts zu ändern ist oder die KI nicht erreichbar ist */
-export async function korrigiere(text: string): Promise<string | null> {
-  const r = await frageServer<{ text: string }>('korrektur', { text })
-  const neu = r?.text?.trim()
-  return neu && neu !== text.trim() ? neu : null
+export async function korrigiere(speicher: Speicher, text: string): Promise<string | null> {
+  if (!text.trim()) return null
+  const r = await kiFrage<{ text: string }>(speicher, 'korrektur', { text: korrekturAuftrag(text), schema: SCHEMAS.text, name: 'text', aufwand: 'niedrig' }).catch(() => null)
+  return r ? korrekturAnnehmen(text, r.text) : null
 }
 
 export interface Rueckmeldung {
@@ -45,9 +55,27 @@ export interface Rueckmeldung {
   tipp: string
 }
 
-/** KI-Rückmeldung auf die eigene Antwort (Handschrift als Bild und/oder getippt); null ohne KI oder Netz */
-export function rueckmeldung(daten: { art: string; frage: string; muster: string; antwort: string; bild: string | null }, signal?: AbortSignal): Promise<Rueckmeldung | null> {
-  return frageServer<Rueckmeldung>('rueckmeldung', daten, signal)
+/** KI-Rückmeldung auf die eigene Antwort (Handschrift als Bild und/oder getippt); sonst ein Satz, woran es lag */
+export async function rueckmeldung(
+  speicher: Speicher,
+  daten: { art: string; frage: string; muster: string; antwort: string; bild: string | null },
+  signal?: AbortSignal
+): Promise<Rueckmeldung | { problem: string }> {
+  const bild = bildAus(daten.bild)
+  if (!bild && !daten.antwort.trim()) return { urteil: 'leer', gelesen: '', richtig: [], fehlt: [], fehler: [], tipp: 'Schreib erst deine Antwort auf.' }
+  try {
+    const r = await kiFrage<Rueckmeldung>(speicher, 'rueckmeldung', {
+      text: rueckmeldungAuftrag({ ...daten, mitBild: !!bild }),
+      bilder: bild ? [bild] : [],
+      schema: SCHEMAS.urteil,
+      name: 'rueckmeldung',
+      signal
+    })
+    const sauber = (l: string[]) => l.map((x) => String(x).trim()).filter(Boolean)
+    return { urteil: r.urteil, gelesen: r.gelesen.trim(), richtig: sauber(r.richtig), fehlt: sauber(r.fehlt), fehler: sauber(r.fehler), tipp: r.tipp.trim() }
+  } catch (e) {
+    return { problem: signal?.aborted ? '' : fehlerText(e) }
+  }
 }
 
 /** Handschrift der Schreibfläche als PNG (weißer Grund); null, wenn nichts geschrieben ist */
@@ -97,16 +125,23 @@ export async function stelleLesen(speicher: Speicher, quelle: Eintrag, seite: nu
 
 /**
  * Erklärung der Stelle oder, mit Verlauf, Antwort auf die letzte Rückfrage. Statt null kommt ein `fehler` zurück,
- * damit das Chatfenster sagen kann, woran es liegt (kein Netz, KI auf dem Server nicht eingerichtet).
+ * damit das Chatfenster sagen kann, woran es liegt (kein Netz, keine KI eingerichtet, Schlüssel abgelehnt).
  */
-export async function erklaere(s: StelleZumErklaeren, verlauf: ChatZeile[], signal?: AbortSignal): Promise<{ antwort: string; begriff: string } | { fehler: string }> {
+export async function erklaere(speicher: Speicher, s: StelleZumErklaeren, verlauf: ChatZeile[], signal?: AbortSignal): Promise<{ antwort: string; begriff: string } | { fehler: string }> {
+  const bild = bildAus(s.bild)
+  if (!s.stelle.trim() && !bild) return { antwort: 'In der Markierung ist kein Text zu finden. Markiere die Stelle etwas großzügiger.', begriff: '' }
   try {
-    const r = await fetch('/api/ki/erklaeren', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...s, verlauf }), signal })
-    const j = (await r.json().catch(() => ({}))) as { antwort?: string; begriff?: string; fehler?: string }
-    if (!r.ok || !j.antwort) return { fehler: j.fehler || 'Die KI hat gerade nicht geantwortet. Später noch einmal versuchen.' }
-    return { antwort: j.antwort, begriff: j.begriff ?? '' }
-  } catch {
-    if (signal?.aborted) return { fehler: '' }
-    return { fehler: 'Keine Verbindung zum Server. Erklären geht nur online.' }
+    const r = await kiFrage<{ antwort: string; begriff: string }>(speicher, 'erklaeren', {
+      text: erklaerAuftrag({ ...s, verlauf }),
+      bilder: bild ? [bild] : [],
+      schema: SCHEMAS.erklaerung,
+      name: 'erklaerung',
+      aufwand: 'niedrig',
+      signal
+    })
+    if (!r.antwort.trim()) return { fehler: 'Die KI hat eine leere Antwort geschickt. Noch einmal versuchen.' }
+    return { antwort: r.antwort.trim(), begriff: r.begriff.trim().slice(0, 80) }
+  } catch (e) {
+    return { fehler: signal?.aborted ? '' : fehlerText(e) }
   }
 }

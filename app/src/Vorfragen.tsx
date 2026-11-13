@@ -51,15 +51,9 @@ export function VorfragenHinweis() {
 }
 
 async function holeVorfragen(neu: boolean): Promise<{ v: VorfragenDatei | null; hinweis?: string }> {
-  try {
-    const r = await fetch('/api/vorfragen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ neu }) })
-    const j = (await r.json().catch(() => ({}))) as { fehler?: string; leer?: string }
-    const v = liesVorfragen(JSON.stringify(j))
-    if (v?.fragen.length) return { v }
-    return { v: null, hinweis: j.fehler ?? j.leer ?? 'Die KI hat keine Vorfragen gefunden.' }
-  } catch {
-    return { v: null, hinweis: 'Der Server ist gerade nicht erreichbar.' }
-  }
+  // Die App erzeugt Vorfragen selbst ab Version 0.4.0 (Schritt 3b); bis dahin gelten nur schon vorhandene Dateien
+  void neu
+  return { v: null, hinweis: 'Neue Vorfragen erzeugt die App mit dem nächsten Update selbst.' }
 }
 
 /** `#/lernen/vorfragen`: eine Frage zur Zeit, erst raten, dann wahlweise auflösen */

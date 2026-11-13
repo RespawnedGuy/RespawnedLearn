@@ -2,6 +2,7 @@
 //! Kein Server, kein Netz nötig. Den Abgleich zwischen Geräten macht Syncthing auf dem Ordner.
 
 mod ordner;
+mod zugang;
 
 use notify::{RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
@@ -121,6 +122,23 @@ fn konflikt_loeschen(z: State<Zustand>, pfad: String) -> Result<(), String> {
     ordner::konflikt_loeschen(&wurzel(&z)?, &pfad)
 }
 
+fn zugang_datei(app: &AppHandle) -> Result<PathBuf, String> {
+    let d = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(d.join("ki-zugang.json"))
+}
+
+/// KI-Zugang des Geräts (Schlüssel, Modelle); liegt nie im Datenordner
+#[tauri::command]
+fn ki_zugang_lesen(app: AppHandle) -> Result<Option<serde_json::Value>, String> {
+    Ok(zugang::lesen(&zugang_datei(&app)?))
+}
+
+/// Speichert den KI-Zugang; `null` löscht ihn
+#[tauri::command]
+fn ki_zugang_setzen(app: AppHandle, wert: Option<serde_json::Value>) -> Result<(), String> {
+    zugang::setzen(&zugang_datei(&app)?, wert.as_ref())
+}
+
 /// encodeURIComponent rückwärts (Kopfzeilen dürfen nur ASCII enthalten, Dateinamen haben Umlaute)
 fn url_dekodieren(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
@@ -143,6 +161,7 @@ fn url_dekodieren(s: &str) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_http::init())
         .manage(Zustand::default())
         .setup(|app| {
             let h = app.handle();
@@ -159,7 +178,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

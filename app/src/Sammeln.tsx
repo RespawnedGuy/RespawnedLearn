@@ -137,7 +137,7 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
     const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
     const id = await karteAusStelle(speicher, { quelle, seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null })
     // Selbst getippte Fragen: Schreibfehler nachträglich korrigieren, die Karte ist schon da
-    if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(eigen).then((neu) => {
+    if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(speicher, eigen).then((neu) => {
         if (neu) void korrigiereFrage(speicher, id, eigen, neu)
       })
     setAuswahl(null)

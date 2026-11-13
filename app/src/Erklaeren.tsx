@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { tag, type Bereich, type Eintrag } from '@rl/kern'
-import { Dialog, melde, useDaten } from '@rl/oberflaeche'
+import { Dialog, melde, ortLink, useDaten } from '@rl/oberflaeche'
 import { erklaere, stelleLesen, type StelleZumErklaeren } from './ki'
 import { kiBlock, type ChatZeile } from './kiBlock'
 import { Inhalt } from './Inhalt'
@@ -27,7 +27,7 @@ export function ErklaerFenster({ quelle, seite, bereich, farbe, onZu }: { quelle
     const a = (ab.current = new AbortController())
     setDenkt(true)
     setFehler('')
-    const r = await erklaere(s, bisher, a.signal)
+    const r = await erklaere(speicher, s, bisher, a.signal)
     if (a.signal.aborted) return
     setDenkt(false)
     if ('fehler' in r) return setFehler(r.fehler)
@@ -100,9 +100,15 @@ export function ErklaerFenster({ quelle, seite, bereich, farbe, onZu }: { quelle
         {fehler && (
           <div className="erklaer-fehler">
             {fehler}{' '}
-            <button type="button" className="knopf klein still" onClick={nochmal}>
-              Noch einmal
-            </button>
+            {/Einstellungen/.test(fehler) ? (
+              <a className="knopf klein still" href={ortLink('einstellungen')} onClick={() => onZu(false)}>
+                Zu den Einstellungen
+              </a>
+            ) : (
+              <button type="button" className="knopf klein still" onClick={nochmal}>
+                Noch einmal
+              </button>
+            )}
           </div>
         )}
         <div ref={ende} />

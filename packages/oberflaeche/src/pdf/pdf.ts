@@ -85,35 +85,6 @@ export async function seitenFormat(doc: PdfDokument, nr: number): Promise<number
   return v.height / v.width
 }
 
-/** Breiten, in denen der Server Seitenbilder rechnet (wie server/seitenbild.mjs) */
-const STUFEN = [480, 960, 1600, 2400, 3600, 4800]
-export const bildStufe = (px: number) => STUFEN.find((b) => b >= px) ?? STUFEN[STUFEN.length - 1]
-
-export function ladeBild(src: string): Promise<HTMLImageElement> {
-  return new Promise((ok, fehler) => {
-    const i = new Image()
-    i.decoding = 'async'
-    i.onload = () => ok(i)
-    i.onerror = fehler
-    i.src = src
-  })
-}
-
-/** Ausschnitt aus dem Seitenbild des Servers; null, wenn es keins gibt (offline, noch nicht hochgeladen) */
-async function ausschnittVomServer(speicher: Speicher, pfad: string, nr: number, b: Bereich, breite: number): Promise<string | null> {
-  const src = speicher.seitenbild(pfad, nr, bildStufe(breite / Math.max(b.b, 0.02)))
-  if (!src) return null
-  const bild = await ladeBild(src).catch(() => null)
-  if (!bild) return null
-  const w = bild.naturalWidth
-  const h = bild.naturalHeight
-  const c = document.createElement('canvas')
-  c.width = Math.max(1, Math.round(b.b * w))
-  c.height = Math.max(1, Math.round(b.h * h))
-  c.getContext('2d')!.drawImage(bild, b.x * w, b.y * h, c.width, c.height, 0, 0, c.width, c.height)
-  return c.toDataURL('image/jpeg', 0.85)
-}
-
 const ausschnitte = new Map<string, Promise<string | null>>()
 // Vorschauen eine nach der anderen: Die Planübersicht wollte sonst alle PDFs gleichzeitig laden und zeichnen,
 // und der geöffnete Plan musste warten, bis das Handy damit durch war
@@ -125,8 +96,6 @@ export function ausschnitt(speicher: Speicher, pfad: string, nr: number, b: Bere
   let p = ausschnitte.get(k)
   if (!p) {
     p = reihe.then(async () => {
-      const vomServer = await ausschnittVomServer(speicher, pfad, nr, b, breite)
-      if (vomServer) return vomServer
       const doc = await ladePdf(speicher, pfad)
       if (!doc || nr < 1 || nr > doc.numPages) return null
       const seite = await doc.getPage(nr)
