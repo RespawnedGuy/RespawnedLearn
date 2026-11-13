@@ -47,16 +47,16 @@ pub fn lesen(wurzel: &Path, rel: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Schreibt eine Datei vollständig oder gar nicht: erst in eine Nachbardatei, dann umbenennen. So sieht Syncthing nie
-/// eine halb geschriebene Datei. Die Nachbardatei heißt wie Syncthings eigene Zwischendateien (`.syncthing.<name>.tmp`),
-/// die Syncthing von sich aus nicht abgleicht.
+/// eine halb geschriebene Datei. Die Nachbardatei hat die Form von Syncthings Zwischendateien, die Syncthing von sich aus
+/// nicht abgleicht, aber einen eigenen Zusatz (`zwischenname`), und wird neu angelegt, nie eine vorhandene geöffnet.
 pub fn schreiben(wurzel: &Path, rel: &str, inhalt: &[u8]) -> Result<(), String> {
     let ziel = sicherer_pfad(wurzel, rel)?;
     let ordner = ziel.parent().ok_or_else(|| format!("{rel}: kein Ordner"))?;
     fs::create_dir_all(ordner).map_err(|e| format!("{rel}: {e}"))?;
     let name = ziel.file_name().and_then(|n| n.to_str()).ok_or_else(|| format!("{rel}: kein Dateiname"))?;
-    let zwischen = ordner.join(format!(".syncthing.{name}.tmp"));
+    let zwischen = ordner.join(zwischenname(name));
     let ergebnis = (|| {
-        let mut f = fs::File::create(&zwischen)?;
+        let mut f = fs::OpenOptions::new().write(true).create_new(true).open(&zwischen)?;
         f.write_all(inhalt)?;
         f.sync_all()?;
         fs::rename(&zwischen, &ziel)
@@ -66,6 +66,17 @@ pub fn schreiben(wurzel: &Path, rel: &str, inhalt: &[u8]) -> Result<(), String> 
         return Err(format!("{rel}: {e}"));
     }
     Ok(())
+}
+
+/// Name der eigenen Zwischendatei: `.syncthing.<name>.<zufall>.tmp`. Syncthing gleicht alles mit diesem Anfang und
+/// Ende nicht ab (geprüft gegen 1.30.0), nutzt selbst aber genau `.syncthing.<name>.tmp`, während es eine Datei
+/// zieht. Der Zusatz verhindert, dass die App in eine solche halbe Datei schreibt oder sie wegbenennt.
+fn zwischenname(name: &str) -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static ZAEHLER: AtomicU64 = AtomicU64::new(0);
+    let zeit = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0);
+    let z = zeit ^ ((std::process::id() as u64) << 32) ^ ZAEHLER.fetch_add(1, Ordering::Relaxed).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    format!(".syncthing.{name}.{:x}.tmp", z)
 }
 
 /// Alle Dateien im Datenordner, sortiert nach Pfad. Zwischendateien und Verwaltungsordner fehlen, Konfliktkopien von
@@ -236,6 +247,29 @@ mod tests {
         assert_eq!(lesen(d.path(), "lernen/karten/01J.md").unwrap(), b"neu");
         let namen: Vec<_> = fs::read_dir(d.path().join("lernen/karten")).unwrap().map(|e| e.unwrap().file_name()).collect();
         assert_eq!(namen.len(), 1);
+    }
+
+    #[test]
+    fn laesst_die_zwischendatei_von_syncthing_in_ruhe() {
+        // Syncthing zieht gerade dieselbe Datei in `.syncthing.<name>.tmp` (gegen echtes Syncthing 1.30.0 beobachtet,
+        // wenn zwei Geräte gleichzeitig anheben). Die App darf dort weder hineinschreiben noch sie wegbenennen.
+        let d = ordner();
+        fs::create_dir_all(d.path().join("lernen")).unwrap();
+        let fremd = d.path().join("lernen/.syncthing.m.md.tmp");
+        fs::write(&fremd, b"Block von Syncthing").unwrap();
+        schreiben(d.path(), "lernen/m.md", b"neu").unwrap();
+        assert_eq!(fs::read(&fremd).unwrap(), b"Block von Syncthing");
+        assert_eq!(lesen(d.path(), "lernen/m.md").unwrap(), b"neu");
+        // die eigene Zwischendatei zählt wie die von Syncthing als Zwischendatei und bleibt nicht liegen
+        let namen: Vec<_> = fs::read_dir(d.path().join("lernen")).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
+        assert_eq!(namen.len(), 2, "{namen:?}");
+    }
+
+    #[test]
+    fn eigene_zwischendatei_gilt_als_zwischendatei() {
+        assert!(ist_zwischendatei(&zwischenname("m.md")));
+        assert_ne!(zwischenname("m.md"), zwischenname("m.md"));
+        assert_ne!(zwischenname("m.md"), ".syncthing.m.md.tmp");
     }
 
     #[test]
