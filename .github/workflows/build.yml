@@ -126,10 +126,18 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          printf '%s' "$ANDROID_KEY_BASE64" | base64 -d > "$RUNNER_TEMP/respawnedlearn.jks"
+          # Zeilenumbrüche und Leerzeichen aus der Zwischenablage (Windows: \r\n) stören Base64 und Passwort
+          printf '%s' "$ANDROID_KEY_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/respawnedlearn.jks"
+          alias=$(printf '%s' "$ANDROID_KEY_ALIAS" | tr -d '\r\n' | xargs)
+          passwort=$(printf '%s' "$ANDROID_KEY_PASSWORD" | tr -d '\r\n')
+          # früh und verständlich scheitern statt nach fünf Minuten im Gradle-Build
+          if ! keytool -list -keystore "$RUNNER_TEMP/respawnedlearn.jks" -storepass "$passwort" -alias "$alias" > /dev/null; then
+            echo "::error::Keystore, Passwort oder Alias passen nicht zusammen (Secrets ANDROID_KEY_*, siehe docs/signieren.md)"
+            exit 1
+          fi
           {
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
-            echo "password=$ANDROID_KEY_PASSWORD"
+            echo "keyAlias=$alias"
+            echo "password=$passwort"
             echo "storeFile=$RUNNER_TEMP/respawnedlearn.jks"
           } > app/src-tauri/gen/android/keystore.properties
       - name: Android-Projekt anpassen
