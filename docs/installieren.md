@@ -41,8 +41,9 @@ Lädst du nur von dieser Releases-Seite und stimmt die Prüfsumme, ist die Warnu
 2. Android fragt, ob der Browser (oder die Datei-App) **unbekannte Apps installieren** darf. Erlaube es für diese eine App;
    danach kannst du es in den Einstellungen wieder abschalten.
 3. Google Play Protect zeigt eventuell „Unbekannte App“. Wähle **Details** und **Trotzdem installieren**.
-4. Beim ersten Start bittet RespawnedLearn um **Zugriff auf alle Dateien**, damit es im Syncthing-Ordner schreiben darf
-   (so wie Obsidian). Ohne diese Freigabe kann die App deinen Datenordner nicht lesen.
+4. Beim ersten Start erklärt RespawnedLearn, wozu es **Zugriff auf alle Dateien** braucht: damit es im Syncthing-Ordner
+   schreiben darf (so wie Obsidian). Tippe auf **Zugriff erlauben**, schalte den Zugriff in den Einstellungen ein und
+   kehre zurück. Ohne diese Freigabe kann die App deinen Datenordner nicht lesen.
 
 Updates installierst du einfach über die alte Version, deine Einstellungen bleiben. Nur wer eine frühere Testfassung
 (Debug-APK aus den Actions) hat, muss diese **einmal deinstallieren**, weil die Releases einen anderen Schlüssel tragen.

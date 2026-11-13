@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { inTauri, ordnerStand, setzeOrdner, type OrdnerStand } from '@rl/oberflaeche'
+import { dateizugriff, dateizugriffAnfragen, inTauri, ordnerStand, setzeOrdner, type OrdnerStand } from '@rl/oberflaeche'
+import { startSchritt } from './ersterStart'
 
 /** Vorschlag unter Android: ein Ordner im gemeinsamen Speicher, den Syncthing ebenfalls erreicht */
 const ANDROID_VORSCHLAG = '/storage/emulated/0/RespawnedLearn'
@@ -8,19 +9,33 @@ const ANDROID_VORSCHLAG = '/storage/emulated/0/RespawnedLearn'
 /**
  * Erster Start: Ohne Datenordner geht nichts. Am PC wählt man ihn im Dateidialog, unter Android tippt man den Pfad
  * (der Dateidialog liefert dort keinen echten Pfad). Läuft die Oberfläche ohne Tauri im Browser, zeigt sie direkt die App.
+ * Unter Android erklärt sie vorher, wofür „Zugriff auf alle Dateien“ nötig ist, und fragt erst auf Knopfdruck.
  */
 export function OrdnerWahl({ children }: { children: ReactNode }) {
   const [stand, setStand] = useState<OrdnerStand | null>(null)
   const [pfad, setPfad] = useState(ANDROID_VORSCHLAG)
   const [fehler, setFehler] = useState('')
+  const [zugriff, setZugriff] = useState(dateizugriff)
   const tauri = inTauri()
+  const schritt = startSchritt(zugriff, stand?.ordner ?? null)
 
   useEffect(() => {
     if (tauri) void ordnerStand().then(setStand).catch((e) => setFehler(String(e)))
   }, [tauri])
 
-  if (!tauri || stand?.ordner) return <>{children}</>
+  // Zurück aus der Android-Einstellung (oder nach dem Systemdialog bis Android 10): Zugriff neu prüfen
+  useEffect(() => {
+    if (schritt !== 'erlaubnis') return
+    const pruefe = () => setZugriff(dateizugriff())
+    document.addEventListener('visibilitychange', pruefe)
+    const takt = setInterval(pruefe, 1000)
+    return () => (document.removeEventListener('visibilitychange', pruefe), clearInterval(takt))
+  }, [schritt])
+
+  if (!tauri) return <>{children}</>
   if (!stand) return fehler ? <p className="leer">{fehler}</p> : null
+  if (schritt === 'app') return <>{children}</>
+  if (schritt === 'erlaubnis') return <Erlaubnis />
 
   const uebernimm = async (p: string) => {
     setFehler('')
@@ -43,12 +58,6 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
       <p className="klein-leise">
         Mehrere Geräte? Lass den Ordner von Syncthing abgleichen. Das ist freiwillig, ohne bleibt alles auf diesem Gerät.
       </p>
-      {android && (
-        <p className="klein-leise">
-          Damit die App und Syncthing denselben Ordner sehen, braucht sie unter Android „Zugriff auf alle Dateien“. Hast du
-          das beim Start nicht erlaubt, findest du es unter Einstellungen › Apps › RespawnedLearn › Berechtigungen.
-        </p>
-      )}
       {android ? (
         <form
           onSubmit={(e) => {
@@ -77,9 +86,34 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
       {fehler && (
         <p className="ordner-fehler" role="alert">
           {fehler}
-          {android && ' Erlaube der App „Zugriff auf alle Dateien“ (siehe oben) und versuche es noch einmal.'}
+          {android && ' Prüfe den Pfad: Er muss im Gerätespeicher liegen, zum Beispiel wie im Vorschlag.'}
         </p>
       )}
+    </main>
+  )
+}
+
+/** Android, erster Schritt: erst sagen, wofür die Erlaubnis da ist, dann auf Knopfdruck die Einstellung öffnen */
+function Erlaubnis() {
+  return (
+    <main className="ordner-wahl karte">
+      <h1>Zugriff auf deinen Lernordner</h1>
+      <p>
+        RespawnedLearn speichert Lernkarten, Mitschriften und Skripte als gewöhnliche Dateien in einem Ordner deiner Wahl.
+        So kannst du sie sichern, selbst öffnen und auf Wunsch mit Syncthing auf andere Geräte bringen.
+      </p>
+      <p>
+        Damit die App und Syncthing denselben Ordner sehen, braucht sie unter Android die Erlaubnis{' '}
+        <strong>„Zugriff auf alle Dateien“</strong> (bis Android 10 „Speicher“). Die App arbeitet nur in dem Ordner, den du
+        gleich wählst.
+      </p>
+      <p className="klein-leise">
+        Nach dem Tippen fragt Android nach der Erlaubnis, meist auf einer Seite der Einstellungen. Schalte sie dort ein und
+        kehre mit „Zurück“ hierher zurück. Später findest du sie unter Einstellungen › Apps › RespawnedLearn.
+      </p>
+      <button type="button" className="knopf haupt" onClick={dateizugriffAnfragen}>
+        Zugriff erlauben
+      </button>
     </main>
   )
 }
