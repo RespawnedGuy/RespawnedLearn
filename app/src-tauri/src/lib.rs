@@ -1,6 +1,7 @@
 //! RespawnedLearn als Tauri-App: Die Oberfläche (React) spricht über diese Befehle mit dem Datenordner.
 //! Kein Server, kein Netz nötig. Den Abgleich zwischen Geräten macht Syncthing auf dem Ordner.
 
+mod kopien;
 mod ordner;
 mod tresor;
 mod zugang;
@@ -119,8 +120,8 @@ fn datei_schreiben_wenn(z: State<Zustand>, request: Request<'_>) -> Result<ordne
 
 /// Löscht eine Konfliktkopie (und nur eine solche), nachdem ein Mensch entschieden hat
 #[tauri::command]
-fn konflikt_loeschen(z: State<Zustand>, pfad: String) -> Result<(), String> {
-    ordner::konflikt_loeschen(&wurzel(&z)?, &pfad)
+fn konflikt_loeschen(z: State<Zustand>, pfad: String, original: Option<String>) -> Result<(), String> {
+    ordner::konflikt_loeschen(&wurzel(&z)?, &pfad, original.as_deref())
 }
 
 fn zugang_datei(app: &AppHandle) -> Result<PathBuf, String> {

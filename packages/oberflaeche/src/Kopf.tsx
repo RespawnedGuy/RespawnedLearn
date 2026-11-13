@@ -102,17 +102,24 @@ export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null
 export function SyncAnzeige() {
   const { speicher } = useDaten()
   const n = speicher.ungesichert()
-  const k = speicher.konflikte().length
+  const k = speicher.konflikte().length + speicher.syncProbleme().length
+  const h = speicher.hinweis
   const z = speicher.zustand
   // Die Daten liegen im Ordner; Syncthing gleicht ab. Hier steht nur, ob alles auf der Platte ist.
   const text = !speicher.dauerhaft ? 'Vorschau, nichts wird gespeichert' : z === 'fehler' ? 'Ordner nicht beschreibbar' : n ? 'speichert …' : 'gesichert'
   return (
     <span className={`sync ${z}${n ? ' ungesichert' : ''}`} title={speicher.letzterFehler || undefined}>
       <span className="nur-breit">{text}</span>
-      {k > 0 && (
-        <a className="chip rot" href={ortLink('konflikte')} title="Syncthing hat zwei Fassungen gefunden, du entscheidest">
-          {k} Konflikt{k > 1 ? 'e' : ''}
+      {h ? (
+        <a className="chip rot" href={ortLink('konflikte')} title={h.art === 'leer' ? 'Der Datenordner ist plötzlich leer' : 'Viele Dateien sind auf einmal verschwunden'}>
+          Sync prüfen
         </a>
+      ) : (
+        k > 0 && (
+          <a className="chip rot" href={ortLink('konflikte')} title="Das Sync-Programm hat zwei Fassungen angelegt oder eine Datei kam nicht ganz an, du entscheidest">
+            {k} Konflikt{k > 1 ? 'e' : ''}
+          </a>
+        )
       )}
     </span>
   )

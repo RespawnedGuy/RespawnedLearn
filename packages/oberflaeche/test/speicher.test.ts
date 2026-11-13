@@ -178,7 +178,7 @@ describe('Speicher auf dem Datenordner', () => {
     expect(p.text('lernen/fragen/k.md')).toBe('hier')
     await a.verwerfeKonflikt('anhaenge/b.sync-conflict-20261113-101010-ABCDEFG.png')
     expect([...p.dateien.keys()]).toEqual(['lernen/fragen/k.md'])
-    await expect(ablageImSpeicher(p).konfliktLoeschen('lernen/fragen/k.md')).rejects.toThrow()
+    await expect(ablageImSpeicher(p).konfliktLoeschen('lernen/fragen/k.md', 'lernen/fragen/k.md')).rejects.toThrow()
   })
 
   it('ein Original (PDF, Foto) ersetzt nie eine vorhandene Datei', async () => {

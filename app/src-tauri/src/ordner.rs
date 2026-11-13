@@ -11,8 +11,9 @@ use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-/// Ordner, die nie zu den Daten gehören: eigener Index, Syncthing-Verwaltung, Git
-const AUSGENOMMEN: &[&str] = &[".index", ".stfolder", ".stversions", ".git", ".geheim"];
+/// Ordner, die nie zu den Daten gehören: eigener Index, Syncthing-Verwaltung, Git, Zwischenspeicher von Dropbox
+/// (help.dropbox.com/delete-restore/cache-folder: „.dropbox.cache“ im Wurzelordner)
+const AUSGENOMMEN: &[&str] = &[".index", ".stfolder", ".stversions", ".git", ".geheim", ".dropbox.cache"];
 
 /// Ein Eintrag der Dateiliste, Pfad relativ zum Datenordner mit `/`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -93,7 +94,7 @@ fn sammle(wurzel: &Path, ordner: &Path, out: &mut Vec<Eintrag>) -> std::io::Resu
         let e = e?;
         let name = e.file_name();
         let name = name.to_string_lossy();
-        if ist_zwischendatei(&name) {
+        if ist_zwischendatei(&name) || ist_fremde_verwaltung(&name) {
             continue;
         }
         let typ = e.file_type()?;
@@ -113,6 +114,22 @@ fn sammle(wurzel: &Path, ordner: &Path, out: &mut Vec<Eintrag>) -> std::io::Resu
 /// Zwischendateien von Syncthing und dieser App
 pub fn ist_zwischendatei(name: &str) -> bool {
     (name.starts_with(".syncthing.") && name.ends_with(".tmp")) || name.starts_with("~syncthing~")
+}
+
+/// Sperr-, Zwischen- und Verwaltungsdateien anderer Programme, die nie zu den Daten gehören. Quelle: Nextcloud-Client,
+/// `sync-exclude.lst` und `src/csync/csync_exclude.cpp` (Office-Sperren `~$*`, LibreOffice `.~lock.*`, halbe Downloads
+/// `*.part`/`*.filepart`/`*.crdownload`, macOS `._*`/`.DS_Store`, Windows `Thumbs.db`/`desktop.ini`, eigene Journale).
+pub fn ist_fremde_verwaltung(name: &str) -> bool {
+    let k = name.to_lowercase();
+    k.starts_with("~$")
+        || k.starts_with(".~lock.")
+        || k.ends_with('~')
+        || (k.starts_with('~') && k.ends_with(".tmp"))
+        || [".part", ".filepart", ".crdownload"].iter().any(|e| k.ends_with(e))
+        || k.starts_with("._")
+        || ["thumbs.db", ".ds_store", "desktop.ini"].contains(&k.as_str())
+        || k.starts_with(".sync_") && k.contains(".db")
+        || [".csync_journal.db", ".owncloudsync.log", ".nextcloudsync.log", ".nextcloudpermissions.log"].iter().any(|p| k.starts_with(p))
 }
 
 /// Pfad relativ zum Datenordner, immer mit `/` (auch unter Windows)
@@ -191,15 +208,11 @@ pub fn schreiben_wenn(wurzel: &Path, rel: &str, inhalt: &[u8], erwartet: Option<
     Ok(Geschrieben::Ok { groesse: e.groesse, geaendert: e.geaendert, stempel })
 }
 
-/// Konfliktkopie von Syncthing oder dieser App?
-pub fn ist_konfliktkopie(rel: &str) -> bool {
-    rel.rsplit('/').next().is_some_and(|n| n.contains(".sync-conflict-"))
-}
-
-/// Löscht eine Konfliktkopie, nachdem ein Mensch entschieden hat. Andere Dateien löscht die App nie (sie löscht kein
-/// Wissen); Syncthings Versionierung behält auch die gelöschte Kopie noch eine Weile.
-pub fn konflikt_loeschen(wurzel: &Path, rel: &str) -> Result<(), String> {
-    if !ist_konfliktkopie(rel) {
+/// Löscht eine Konfliktkopie (eines beliebigen Sync-Programms, `kopien::loeschbar`), nachdem ein Mensch entschieden hat
+/// oder nichts verloren gehen kann. Andere Dateien löscht die App nie (sie löscht kein Wissen); die Versionierung bzw.
+/// der Papierkorb des Sync-Programms behält auch die gelöschte Kopie noch eine Weile.
+pub fn konflikt_loeschen(wurzel: &Path, rel: &str, original: Option<&str>) -> Result<(), String> {
+    if !crate::kopien::loeschbar(wurzel, rel, original) {
         return Err(format!("{rel} ist keine Konfliktkopie, die App löscht nur Konfliktkopien"));
     }
     let p = sicherer_pfad(wurzel, rel)?;
@@ -288,6 +301,34 @@ mod tests {
     }
 
     #[test]
+    fn liste_uebergeht_verwaltung_anderer_sync_programme() {
+        let d = ordner();
+        schreiben(d.path(), "lernen/karten/k.md", b"k").unwrap();
+        for n in ["~$k.docx", ".~lock.k.md#", "k.md~", "~k.tmp", "s.pdf.part", "s.pdf.crdownload", "._k.md", ".DS_Store", "Thumbs.db", "desktop.ini", ".sync_1a2b.db", ".sync_1a2b.db-wal", ".owncloudsync.log"] {
+            fs::write(d.path().join("lernen/karten").join(n), b"x").unwrap();
+        }
+        fs::create_dir_all(d.path().join(".dropbox.cache/2026")).unwrap();
+        fs::write(d.path().join(".dropbox.cache/2026/x.md"), b"x").unwrap();
+        let pfade: Vec<_> = liste(d.path()).unwrap().into_iter().map(|e| e.pfad).collect();
+        assert_eq!(pfade, ["lernen/karten/k.md"]);
+    }
+
+    #[test]
+    fn loescht_kopien_anderer_programme_nur_mit_original() {
+        let d = ordner();
+        schreiben(d.path(), "lernen/tinte/A/S001.svg", b"<svg></svg>").unwrap();
+        schreiben(d.path(), "lernen/tinte/A/S001 (1).svg", b"<svg>2</svg>").unwrap();
+        schreiben(d.path(), "lernen/tinte/A/S002.svg", b"<svg>3</svg>").unwrap();
+        schreiben(d.path(), "lernen/karten/k (Nils's conflicted copy 2024-01-31).md", b"k").unwrap();
+        assert!(konflikt_loeschen(d.path(), "lernen/tinte/A/S002.svg", Some("lernen/tinte/A/S001.svg")).is_err());
+        assert!(konflikt_loeschen(d.path(), "lernen/tinte/A/S001 (1).svg", None).is_err());
+        konflikt_loeschen(d.path(), "lernen/tinte/A/S001 (1).svg", Some("lernen/tinte/A/S001.svg")).unwrap();
+        konflikt_loeschen(d.path(), "lernen/karten/k (Nils's conflicted copy 2024-01-31).md", None).unwrap();
+        let pfade: Vec<_> = liste(d.path()).unwrap().into_iter().map(|e| e.pfad).collect();
+        assert_eq!(pfade, ["lernen/tinte/A/S001.svg", "lernen/tinte/A/S002.svg"]);
+    }
+
+    #[test]
     fn liste_nennt_groesse_und_zeit() {
         let d = ordner();
         schreiben(d.path(), "a.md", b"12345").unwrap();
@@ -350,13 +391,13 @@ mod tests {
         let d = ordner();
         schreiben(d.path(), "lernen/m.md", b"m").unwrap();
         schreiben(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md", b"k").unwrap();
-        assert!(konflikt_loeschen(d.path(), "lernen/m.md").is_err());
-        assert!(konflikt_loeschen(d.path(), "lernen.sync-conflict-x/m.md").is_err());
-        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md").unwrap();
+        assert!(konflikt_loeschen(d.path(), "lernen/m.md", None).is_err());
+        assert!(konflikt_loeschen(d.path(), "lernen.sync-conflict-x/m.md", None).is_err());
+        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md", None).unwrap();
         let pfade: Vec<_> = liste(d.path()).unwrap().into_iter().map(|e| e.pfad).collect();
         assert_eq!(pfade, ["lernen/m.md"]);
         // Schon weg (Syncthing war schneller): kein Fehler
-        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md").unwrap();
+        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md", None).unwrap();
     }
 
     /// Messung: Start mit 2000 Karten (Liste + alle Texte lesen). Kein harter Grenzwert, die Zeit steht in der Ausgabe.

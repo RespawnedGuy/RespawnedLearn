@@ -5,7 +5,7 @@ import { gliedere, blockText, berichtStellen, type BerichtStelle, type Gliederun
 import { liesMarken, type Marke } from './marken'
 import { findeLinks } from './links'
 import { blockiertDurch, istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
-import { istKonfliktkopie } from './pfade'
+import { syncKopien } from './syncKopien'
 
 export interface Eintrag {
   id: string
@@ -159,9 +159,11 @@ export class Bestand {
 
   constructor(texte: Map<string, string>) {
     this.texte = texte
+    // Eine Konfliktkopie (jedes Sync-Programm) trägt dieselbe ID wie das Original und darf es nicht verdrängen; sie
+    // erscheint nur in der Konfliktansicht
+    const kopien = syncKopien(texte.keys(), (p) => texte.get(p))
     for (const [pfad, text] of texte) {
-      // Eine Konfliktkopie trägt dieselbe ID wie das Original und darf es nicht verdrängen; sie erscheint nur in der Konfliktansicht
-      if (!pfad.endsWith('.md') || istKonfliktkopie(pfad)) continue
+      if (!pfad.endsWith('.md') || kopien.has(pfad)) continue
       const d = zerlege(text)
       const f = felder(d.kopf)
       const id = typeof f.id === 'string' ? f.id : null

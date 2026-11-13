@@ -1,0 +1,41 @@
+{
+  "zweck": "Namen von Konfliktkopien. Gelesen von packages/kern/test/syncKopien.test.ts und app/src-tauri/src/ordner.rs (cargo test), damit TypeScript und Rust dieselben Dateien als Kopie sehen (Vertrag Lernen, Grundlagen 8).",
+  "quellen": {
+    "Syncthing": "https://docs.syncthing.net/users/syncing (<filename>.sync-conflict-<date>-<time>-<modifiedBy>.<ext>); echter Name aus Syncthing 1.30.0, Probe 2026-11-13",
+    "Nextcloud": "github.com/nextcloud/desktop src/common/utility.cpp: makeConflictFileName (' (conflicted copy [<Nutzer> ]yyyy-MM-dd hhmmss)'), isConflictFile ('_conflict-', '(conflicted copy', '(case clash from'), conflictFileBaseNameFromPattern (äußerste Marke)",
+    "Dropbox": "help.dropbox.com/organize/conflicted-copy (EN: Nutzername, 'conflicted copy', Datum; DE: 'in Konflikt stehende Kopie'); kein exaktes Beispiel in der Quelle"
+  },
+  "bekannt": [
+    { "name": "lernen/karten/k.sync-conflict-20261113-071134-KMQQN77.md", "original": "lernen/karten/k.md", "programm": "Syncthing", "geraet": "KMQQN77", "zeit": "2026-11-13T07:11" },
+    { "name": "reviews/2026-11.pc-ab12.sync-conflict-20261113-070102-android-x1y2.jsonl", "original": "reviews/2026-11.pc-ab12.jsonl", "programm": "Syncthing", "geraet": "android-x1y2", "zeit": "2026-11-13T07:01" },
+    { "name": "lernen/ohne-endung.sync-conflict-20261113-101010-ABCDEFG", "original": "lernen/ohne-endung", "programm": "Syncthing", "geraet": "ABCDEFG", "zeit": "2026-11-13T10:10" },
+    { "name": "lernen/a.sync-conflict-20261113-101010-ABCDEFG.sync-conflict-20261114-090000-HIJKLMN.md", "original": "lernen/a.sync-conflict-20261113-101010-ABCDEFG.md", "programm": "Syncthing", "geraet": "HIJKLMN", "zeit": "2026-11-14T09:00" },
+    { "name": "lernen/tinte/A1/S001 (conflicted copy 2018-04-10 093612).svg", "original": "lernen/tinte/A1/S001.svg", "programm": "Nextcloud", "zeit": "2018-04-10T09:36" },
+    { "name": "lernen/karten/mydata (conflicted copy nils 2018-04-10 093612).md", "original": "lernen/karten/mydata.md", "programm": "Nextcloud", "geraet": "nils", "zeit": "2018-04-10T09:36" },
+    { "name": "lernen/karten/k (conflicted copy 2018-04-10 093612) (conflicted copy 2018-04-11 101010).md", "original": "lernen/karten/k (conflicted copy 2018-04-10 093612).md", "programm": "Nextcloud", "zeit": "2018-04-11T10:10" },
+    { "name": "lernen/karten/k_conflict-20180410-093612.md", "original": "lernen/karten/k.md", "programm": "Nextcloud", "zeit": "2018-04-10T09:36" },
+    { "name": "lernen/karten/K (case clash from 2024-02-01 120000).md", "original": "lernen/karten/K.md", "programm": "Nextcloud", "zeit": "2024-02-01T12:00" },
+    { "name": "lernen/karten/k (Nils's conflicted copy 2024-01-31).md", "original": "lernen/karten/k.md", "programm": "Dropbox", "geraet": "Nils", "zeit": "2024-01-31" },
+    { "name": "lernen/stand/pc-ab12 (Max Mustermanns in Konflikt stehende Kopie 2024-01-31).json", "original": "lernen/stand/pc-ab12.json", "programm": "Dropbox", "geraet": "Max Mustermanns", "zeit": "2024-01-31" },
+    { "name": "lernen/karten/k (Nils's conflicted copy 2024-01-31) (1).md", "original": "lernen/karten/k.md", "programm": "Dropbox", "geraet": "Nils", "zeit": "2024-01-31" }
+  ],
+  "keine": [
+    "lernen/a.md",
+    "lernen/a.sync-conflict-kaputt.md",
+    "x.sync-conflict-20261113-101010-ABCDEFG/a.md",
+    "lernen/karten/Konflikte im Team.md",
+    "anhaenge/2026/11/abc123-conflicted copy.pdf",
+    "lernen/karten/my_conflict.md"
+  ],
+  "kopieVon": [
+    { "kopie": "lernen/tinte/A1/S001 (1).svg", "original": "lernen/tinte/A1/S001.svg", "ja": true },
+    { "kopie": "lernen/tinte/A1/S001 2.svg", "original": "lernen/tinte/A1/S001.svg", "ja": true },
+    { "kopie": "lernen/einstellungen/ki-prompts-LAPTOP.json", "original": "lernen/einstellungen/ki-prompts.json", "ja": true },
+    { "kopie": "anhaenge/2026/11/abc123-skript (1).pdf", "original": "anhaenge/2026/11/abc123-skript.pdf", "ja": true },
+    { "kopie": "lernen/tinte/A1/S001 (1).json", "original": "lernen/tinte/A1/S001.svg", "ja": false },
+    { "kopie": "lernen/tinte/A2/S001 (1).svg", "original": "lernen/tinte/A1/S001.svg", "ja": false },
+    { "kopie": "lernen/tinte/A1/S0012.svg", "original": "lernen/tinte/A1/S001.svg", "ja": false },
+    { "kopie": "lernen/tinte/A1/S001.svg", "original": "lernen/tinte/A1/S001.svg", "ja": false },
+    { "kopie": "lernen/tinte/A1/S001 (1)/x.svg", "original": "lernen/tinte/A1/S001.svg", "ja": false }
+  ]
+}

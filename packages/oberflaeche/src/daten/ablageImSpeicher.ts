@@ -1,6 +1,6 @@
 // Ein Datenordner im Arbeitsspeicher: für Tests (mehrere Geräte auf einer Platte, Syncthing nachgestellt) und für
 // `npm run dev` im Browser, wo es keinen echten Ordner gibt. Verhält sich wie die Rust-Befehle in ordner.rs.
-import { istKonfliktkopie } from '@rl/kern'
+import { loeschbareKopie } from '@rl/kern'
 import type { Ablage, Geschrieben, OrdnerEintrag, TextDatei } from './ordner'
 
 interface Datei {
@@ -74,8 +74,8 @@ export function ablageImSpeicher(platte = new Platte(), o: { stumm?: boolean; ab
       const d = platte.dateien.get(pfad)!
       return { art: 'ok', groesse: d.inhalt.length, geaendert: d.geaendert, stempel: platte.stempel(pfad)! }
     },
-    async konfliktLoeschen(pfad) {
-      if (!istKonfliktkopie(pfad)) throw new Error(`${pfad} ist keine Konfliktkopie, die App löscht nur Konfliktkopien`)
+    async konfliktLoeschen(pfad, original) {
+      if (!loeschbareKopie(pfad, original, (p) => platte.text(p))) throw new Error(`${pfad} ist keine Konfliktkopie, die App löscht nur Konfliktkopien`)
       platte.loesche(pfad)
     },
     async beobachte(rueckruf) {

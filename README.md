@@ -4,8 +4,9 @@ Lernen mit eigenen Skripten und Büchern: Mitschriften, Lernkarten mit Wiederhol
 Zeichenblätter neben dem Skript und auf Wunsch KI-Fragen zum Kapitel, das du gerade liest.
 
 - **Lokal:** Deine Daten liegen als Markdown, JSON und SVG in einem Ordner deiner Wahl. Kein Konto, kein Server.
-- **Auf mehreren Geräten:** Gleiche den Ordner mit [Syncthing](https://syncthing.net) ab, so wie viele es mit Obsidian tun.
-  Schalte in Syncthing die Dateiversionierung „Gestaffelt“ ein, dann bleibt jede überschriebene Datei erhalten.
+- **Auf mehreren Geräten:** Gleiche den Ordner mit einem Sync-Programm deiner Wahl ab, etwa [Syncthing](https://syncthing.net),
+  Nextcloud, Dropbox, OneDrive oder Google Drive. Die App erkennt deren Konfliktkopien; was zu beachten ist, steht in
+  [docs/sync.md](docs/sync.md).
 - **KI optional:** Wer KI-Fragen möchte, trägt einen eigenen Anthropic-API-Schlüssel ein. Ohne Schlüssel läuft alles andere.
 - **Plattformen:** Windows und Android.
 

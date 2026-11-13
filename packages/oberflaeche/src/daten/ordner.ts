@@ -32,8 +32,8 @@ export interface Ablage {
   leseDatei(pfad: string): Promise<Uint8Array>
   /** Schreibt nur, wenn die Datei noch den Stand `erwartet` hat (null = darf noch nicht existieren) */
   schreibeWenn(pfad: string, inhalt: Uint8Array | string, erwartet: string | null): Promise<Geschrieben>
-  /** Löscht eine Konfliktkopie; andere Dateien lehnt die Ablage ab */
-  konfliktLoeschen(pfad: string): Promise<void>
+  /** Löscht eine Konfliktkopie von `original`; andere Dateien lehnt die Ablage ab (`loeschbareKopie` in kern) */
+  konfliktLoeschen(pfad: string, original: string): Promise<void>
   /** Meldet Änderungen im Ordner (auch von Syncthing); liefert die Abmeldung */
   beobachte(rueckruf: () => void): Promise<() => void>
   /** Wie oft die Dateiliste zusätzlich abgefragt wird (ms, 0 = nie): Unter Android schweigt die Dateiüberwachung im gemeinsamen Speicher oft */
@@ -60,7 +60,7 @@ export async function tauriAblage(): Promise<Ablage> {
       invoke<Geschrieben>('datei_schreiben_wenn', bytes(inhalt), {
         headers: { pfad: encodeURIComponent(pfad), ...(erwartet === null ? {} : { erwartet }) }
       }),
-    konfliktLoeschen: (pfad) => invoke<void>('konflikt_loeschen', { pfad }),
+    konfliktLoeschen: (pfad, original) => invoke<void>('konflikt_loeschen', { pfad, original }),
     beobachte: (rueckruf) => listen<string[]>('ordner-geaendert', () => rueckruf()),
     abfrageMs: plattform === 'android' ? 10_000 : 60_000,
     dauerhaft: true

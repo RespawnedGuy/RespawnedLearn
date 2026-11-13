@@ -5,10 +5,10 @@ Grundsätze, Ordnerstruktur, Dateien, Links, Eigentum, Löschen, Sync und offene
 ## 1. Grundsätze
 
 1. **Eine Wahrheit.** Der Datenordner auf der Platte (Markdown mit YAML-Frontmatter, JSON, SVG und Originale) ist die einzige Quelle der Wahrheit. Es gibt keinen Server. Was die App daraus berechnet (Index, Lernstand), hält sie nur im Arbeitsspeicher.
-2. **Abgleich nur über Dateien.** Geräte gleichen den Ordner mit Syncthing ab. Die App reagiert auf Dateiänderungen (Dateiüberwachung, unter Android zusätzlich regelmäßiger Vergleich der Dateiliste) und spricht mit keinem anderen Gerät direkt.
+2. **Abgleich nur über Dateien.** Geräte gleichen den Ordner mit einem beliebigen Sync-Programm ab (Syncthing, Nextcloud, Dropbox, OneDrive, Google Drive für Desktop, iCloud Drive unter Windows, am Handy z. B. FolderSync); die App kennt keines davon direkt. Die App reagiert auf Dateiänderungen (Dateiüberwachung, unter Android zusätzlich regelmäßiger Vergleich der Dateiliste) und spricht mit keinem anderen Gerät direkt.
 3. **Unbekanntes bleibt erhalten.** Die App löscht, sortiert oder normalisiert keine Frontmatter-Felder, Textblöcke oder Dateien, die sie nicht kennt.
 4. **Originale sind unantastbar.** Fotos und PDFs werden nach dem Ablegen nie verändert. Handschrift, Markierungen und Blätter liegen in eigenen Dateien daneben.
-5. **Wissen wird nie gelöscht.** Dateien werden nur aktualisiert. Ältere Stände hält die Dateiversionierung von Syncthing (empfohlen: „Gestaffelt“).
+5. **Wissen wird nie gelöscht.** Dateien werden nur aktualisiert. Ältere Stände hält die Dateiversionierung des Sync-Programms (Syncthing: „Gestaffelt“ empfohlen; Cloud-Dienste: Versionsverlauf und Papierkorb).
 
 ## 2. Ordnerstruktur
 
@@ -35,7 +35,7 @@ Dateinamen und Unterordner sind frei wählbar, weil Links über IDs laufen. Die 
 └─ reviews/          Wiederholungsprotokoll, je Gerät eine Datei
 ```
 
-Nicht zu den Daten gehören und werden von der App übergangen: `.stfolder/`, `.stversions/` (Syncthing), `.git/`, `.index/`, `.geheim/` sowie Zwischendateien (`.syncthing.<name>.tmp`, `~syncthing~*`). Ordner `arbeit/` aus RespawnedNotes VX dürfen im selben Ordner liegen; die App liest sie nicht aus und ändert sie nie.
+Nicht zu den Daten gehören und werden von der App übergangen: `.stfolder/`, `.stversions/` (Syncthing), `.dropbox.cache/` (Dropbox), `.git/`, `.index/`, `.geheim/`, Zwischendateien (`.syncthing.<name>.tmp`, `~syncthing~*`) sowie Sperr- und Verwaltungsdateien anderer Programme (ab Lernen 1.4, nach der Ausschlussliste des Nextcloud-Clients): `~$*`, `.~lock.*`, `*~`, `~*.tmp`, `*.part`, `*.filepart`, `*.crdownload`, `._*`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, `.sync_*.db*`, `.csync_journal.db*`, `.owncloudsync.log*`, `.nextcloudsync.log*`, `.nextcloudpermissions.log*`. Ordner `arbeit/` aus RespawnedNotes VX dürfen im selben Ordner liegen; die App liest sie nicht aus und ändert sie nie.
 
 ## 3. Dateien und Pflichtfelder
 
@@ -85,16 +85,21 @@ Eine App ändert nur die Felder, die sie bearbeiten will, den Rest schreibt sie 
 ## 7. Löschen
 
 - Wissen wird nie gelöscht: keine Karten, Module, Notizen, Notizbücher, Markierungen, Tinte, Protokolle oder Originale.
-- Einzige Ausnahme sind **Konfliktkopien** (8). Die App löscht eine Konfliktkopie nur, nachdem ein Mensch entschieden hat („Zweite Fassung verwerfen“ oder „übernehmen“). Andere Dateien kann die App technisch nicht löschen.
+- Einzige Ausnahme sind **Konfliktkopien** (8). Die App löscht eine Konfliktkopie nur, nachdem ein Mensch entschieden hat („Zweite Fassung verwerfen“ oder „übernehmen“) oder wenn dabei nichts verloren gehen kann (8, ab Lernen 1.4). Andere Dateien kann die App technisch nicht löschen: Auch die Ablage prüft vor dem Löschen selbst, dass es eine Konfliktkopie ist und ihr Original existiert.
 - Ein Bild vom Blatt nehmen oder ein Kapitel aus dem Inhaltsverzeichnis entfernen ändert nur den Eintrag in der jeweiligen Datei.
 
 ## 8. Sync, Offline und Konflikte
 
-- **Jedes Gerät hat den ganzen Ordner** und arbeitet ohne Netz. Syncthing gleicht ab, sobald Geräte sich sehen.
+- **Jedes Gerät hat den ganzen Ordner** und arbeitet ohne Netz. Das Sync-Programm gleicht ab, sobald es kann. Dateien müssen auf dem Gerät liegen (bei Cloud-Diensten „Immer auf diesem Gerät behalten“), Platzhalter ohne Inhalt kann die App nicht lesen.
 - **Atomar schreiben:** Die App schreibt jede Datei erst vollständig in eine Nachbardatei `.syncthing.<name>.tmp` im selben Ordner und benennt sie dann um. Syncthing sieht so nie eine halbe Datei und gleicht die Zwischendatei nicht ab.
 - **Ruhe vor dem Schreiben:** Getippter Text steht sofort in der Oberfläche und wird nach etwa einer Sekunde ohne weitere Änderung geschrieben, beim Wechsel in den Hintergrund sofort.
 - **Nur auf dem bekannten Stand schreiben:** Die App merkt sich zu jeder gelesenen Datei ihren Stand (Größe, Änderungszeit, Prüfsumme des Inhalts). Direkt vor dem Schreiben vergleicht sie ihn mit der Datei auf der Platte. Hat Syncthing die Datei inzwischen ersetzt und weicht der eigene Text ab, wird der eigene Text zur Konfliktkopie und die Datei behält den Stand von außen. Ist der Text gleich, ist es kein Konflikt. Wurde die Datei von außen gelöscht, während hier noch ungespeicherter Text stand, legt die App sie mit diesem Text neu an.
-- **Konfliktkopien** heißen wie bei Syncthing: `<name>.sync-conflict-<JJJJMMTT>-<HHMMSS>-<gerät>.<endung>`. Bei Syncthing ist `<gerät>` die siebenstellige Kennung, bei der App der Gerätename. Sie werden nie still verworfen: Die App zählt sie im Kopf, zeigt Datei und zweite Fassung nebeneinander und lässt den Menschen entscheiden. Im Index zählt eine Konfliktkopie nicht als zweites Dokument derselben ID.
+- **Konfliktkopien der App** heißen wie bei Syncthing: `<name>.sync-conflict-<JJJJMMTT>-<HHMMSS>-<gerät>.<endung>`. Bei Syncthing ist `<gerät>` die siebenstellige Kennung, bei der App der Gerätename.
+- **Konfliktkopien der Sync-Programme** (ab Lernen 1.4) erkennt die App auf zwei Wegen. (A) Bekannte Namensmuster, belegt aus Primärquellen: Syncthing (wie oben), Nextcloud/ownCloud `<name> (conflicted copy [<nutzer> ]JJJJ-MM-TT HHMMSS).<endung>`, älter `<name>_conflict-JJJJMMTT-HHMMSS.<endung>`, `<name> (case clash from JJJJ-MM-TT HHMMSS).<endung>`, Dropbox `<name> (<nutzer>'s conflicted copy JJJJ-MM-TT)[ (n)].<endung>` und deutsch `… in Konflikt stehende Kopie …`. Bei einer Kopie einer Kopie zählt die letzte Marke. (B) Unabhängig vom Programm, nur in den Ordnern der App (`lernen/`, `reviews/`, `anhaenge/`, `gemeinsam/anhaenge|quellen|entitaeten/`): eine Datei, die wie eine vorhandene Datei im selben Ordner heißt plus Zusatz (` (1)`, ` 2`, `-RECHNERNAME`) und keinen Namen trägt, den die App selbst vergibt (2), sowie bei Markdown eine zweite Datei mit derselben `id` im selben Ordner. Original ist dann `<id>.md`, sonst der kürzeste Name. Die Namensfälle stehen als Testtabelle in `testdaten/syncnamen.json`.
+- **Konfliktkopien werden nie still verworfen.** Die App zählt sie im Kopf, zeigt Datei und zweite Fassung nebeneinander und lässt den Menschen entscheiden. Im Index zählt eine Konfliktkopie nicht als zweites Dokument derselben ID.
+- **Ausnahme: Auflösen ohne Menschen, wenn nichts verloren gehen kann** (ab Lernen 1.4): gleicher Inhalt (Unterschiede nur bei Zeilenenden oder BOM) → Kopie löschen; eine Seite leer → die volle bleibt; eine Seite unlesbar (siehe unten) und zugleich der Anfang der anderen → die vollständige bleibt; Protokolle `reviews/*.jsonl` → Zeilen beider Fassungen vereinigen, jede Zeile einmal, nach `am` sortiert. Binärdateien nur bei leerer Seite oder Byte für Byte gleichem Inhalt. Die Konfliktansicht nennt die Zahl der so gelösten Kopien.
+- **Unlesbare Dateien** (ab Lernen 1.4): leer, JSON nicht lesbar, JSONL mit beschädigter Zeile, SVG ohne `</svg>`, Markdown mit Kopfbereich ohne Ende. Die App zeigt sie als „Unvollständige Dateien“ und lässt sie stehen. Bevor die App eine unlesbare Datei überschreibt, legt sie deren Inhalt als Konfliktkopie ab.
+- **Ordner leer oder Massenschwund** (ab Lernen 1.4): Ist die Dateiliste plötzlich leer, obwohl vorher mindestens 10 Dateien da waren, übernimmt die App das nicht, zeigt einen Hinweis und schreibt nichts, bis Dateien zurück sind oder der Mensch bestätigt. Verschwinden auf einmal mindestens 10 Dateien und mindestens 20 % des Bestands, zeigt sie einen Hinweis; sie legt verschwundene Dateien nicht von sich aus neu an (außer bei ungespeichertem Text, siehe oben).
 - **Nur anhängen, und zwar pro Gerät:** Protokoll (`reviews/JJJJ-MM.<geraet>.jsonl`), Lesestand und Fragen-Stand hat jedes Gerät in einer eigenen Datei, damit gleichzeitiges Arbeiten auf zwei Geräten gar nicht erst Konflikte erzeugt.
 - **Originale** (PDF, Foto) legt die App nur neu an; existiert der Pfad schon, schreibt sie nicht.
 - **Keine Statusfelder mit hoher Änderungsrate im Frontmatter**, damit Syncthing nicht ständig ganze Notizen verteilt.

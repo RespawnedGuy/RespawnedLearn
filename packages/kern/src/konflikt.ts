@@ -1,27 +1,28 @@
 // Konfliktkopien für Menschen lesbar machen: woher die zweite Fassung kommt, was für eine Datei es ist und welche
 // Zeilen sich unterscheiden. Rein, ohne Oberfläche; die Konfliktansicht der App baut darauf auf.
 import { felder, linkZiel, zerlege } from './frontmatter'
-
-const NAME = /\.sync-conflict-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-([^./]+)/
+import { bekannteKopie, type Programm, type SyncKopie } from './syncKopien'
 
 export interface Herkunft {
-  /** Syncthing: siebenstellige Gerätekennung; diese App: Gerätename */
+  /** Programm, das die Kopie angelegt hat; null = unbekannt (Kopie nur am Namen oder an der ID erkannt) */
+  programm: Programm | null
+  /** Syncthing: siebenstellige Gerätekennung; diese App: Gerätename; Nextcloud/Dropbox: Nutzername; sonst leer */
   geraet: string
-  /** Zeitpunkt aus dem Dateinamen als `JJJJ-MM-TTTHH:MM` (Ortszeit des Geräts, das die Kopie anlegte) */
+  /** Zeitpunkt aus dem Dateinamen als `JJJJ-MM-TTTHH:MM` oder `JJJJ-MM-TT` (Ortszeit des Geräts), sonst leer */
   zeit: string
 }
 
-/** Gerät und Zeit aus dem Namen einer Konfliktkopie; null, wenn es keine ist */
-export function konfliktHerkunft(kopie: string): Herkunft | null {
-  const m = NAME.exec(kopie.slice(kopie.lastIndexOf('/') + 1))
-  if (!m) return null
-  return { geraet: m[7], zeit: `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}` }
+/** Programm, Gerät und Zeit einer Konfliktkopie; null, wenn der Name keine bekannte Konfliktkopie ist */
+export function konfliktHerkunft(kopie: string | SyncKopie): Herkunft | null {
+  const k = typeof kopie === 'string' ? bekannteKopie(kopie) : kopie
+  if (!k) return null
+  return { programm: k.programm, geraet: k.geraet ?? '', zeit: k.zeit ?? '' }
 }
 
 /** `2026-11-12T18:30` → `12.11.2026, 18:30` */
 export function zeitLesbar(zeit: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(zeit)
-  return m ? `${m[3]}.${m[2]}.${m[1]}, ${m[4]}:${m[5]}` : zeit
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(zeit)
+  return !m ? zeit : m[4] ? `${m[3]}.${m[2]}.${m[1]}, ${m[4]}:${m[5]}` : `${m[3]}.${m[2]}.${m[1]}`
 }
 
 const ARTEN: Record<string, string> = { frage: 'Lernkarte', notiz: 'Mitschrift', modul: 'Modul', erklaerung: 'Erklärung' }

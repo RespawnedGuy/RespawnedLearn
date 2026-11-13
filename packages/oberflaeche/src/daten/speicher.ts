@@ -1,8 +1,9 @@
 // Der Datenordner ist die einzige Wahrheit (Vertrag Lernen, Grundlagen 1 und 8). Der Speicher hält alle Textdateien im
 // Arbeitsspeicher, damit die Ansichten sofort reagieren, und schreibt Änderungen nach kurzer Ruhe atomar in den Ordner.
-// Syncthing gleicht den Ordner zwischen den Geräten ab. Hat Syncthing eine Datei ersetzt, während hier noch etwas
-// ungespeichert war, entsteht eine Konfliktkopie `*.sync-conflict-*`: Es geht nie etwas verloren, ein Mensch entscheidet.
-import { istKonfliktkopie, istText, konfliktOriginal } from '@rl/kern'
+// Ein Sync-Programm (Syncthing, Dropbox, OneDrive …) gleicht den Ordner zwischen den Geräten ab. Hat es eine Datei ersetzt,
+// während hier noch etwas ungespeichert war, entsteht eine Konfliktkopie `*.sync-conflict-*`. Kopien der Sync-Programme
+// erkennt `syncKopien()`; was sich ohne Verlust lösen lässt, löst der Speicher selbst, sonst entscheidet ein Mensch.
+import { automatisch, inAppOrdner, istText, loeschbareKopie, syncKopien, unlesbar, type SyncKopie } from '@rl/kern'
 import { ablageImSpeicher } from './ablageImSpeicher'
 import { inTauri, tauriAblage, type Ablage, type OrdnerEintrag, type TextDatei } from './ordner'
 
@@ -15,6 +16,35 @@ interface TextEintrag {
 }
 
 export type SyncZustand = 'bereit' | 'fehler'
+
+/** Hinweis auf ein Problem mit dem Sync-Programm: Ordner plötzlich leer (die App schreibt dann nicht) oder viele Dateien weg */
+export type SyncHinweis = { art: 'leer' } | { art: 'schwund'; anzahl: number }
+
+export interface SyncProblem {
+  pfad: string
+  grund: string
+}
+
+/** Ab so vielen Dateien gilt eine leere Liste oder ein großer Schwund als verdächtig */
+const VIELE = 10
+const ANTEIL = 0.2
+const BINAER_VERGLEICH_BIS = 20_000_000
+
+function gemerkteZahl(): number {
+  try {
+    return Number(localStorage.getItem('rl-dateizahl')) || 0
+  } catch {
+    return 0
+  }
+}
+
+function merkeZahl(n: number) {
+  try {
+    localStorage.setItem('rl-dateizahl', String(n))
+  } catch {
+    // nur eine Bequemlichkeit
+  }
+}
 
 export interface SpeicherOptionen {
   /** Fehlt: im Tauri-Fenster der echte Ordner, sonst eine Ablage im Arbeitsspeicher */
@@ -65,6 +95,15 @@ export class Speicher {
   private aufraeumen: (() => void)[] = []
   zustand: SyncZustand = 'bereit'
   letzterFehler = ''
+  hinweis: SyncHinweis | null = null
+  /** Wie viele Konfliktkopien der Speicher seit dem Start ohne Menschen gelöst hat */
+  automatischErledigt = 0
+  /** Ordner plötzlich leer: nichts schreiben, bis Dateien zurück sind oder der Mensch bestätigt */
+  private pause = false
+  private leerBestaetigt = false
+  private aufloesenLaeuft = false
+  private kopienCache: { version: number; kopien: Map<string, SyncKopie> } | null = null
+  private problemeCache: { version: number; probleme: SyncProblem[] } | null = null
   version = 0
   /** false in der Vorschau im Browser: nichts bleibt erhalten */
   dauerhaft = true
@@ -76,6 +115,10 @@ export class Speicher {
     this.ablage = typeof a === 'function' ? await a() : a ?? (inTauri() ? await tauriAblage() : ablageImSpeicher(undefined, { dauerhaft: false }))
     this.dauerhaft = this.ablage.dauerhaft
     const liste = await this.ablage.dateien()
+    if (!liste.length && this.dauerhaft && gemerkteZahl() >= VIELE) {
+      this.hinweis = { art: 'leer' }
+      this.pause = true
+    } else if (this.dauerhaft) merkeZahl(liste.length)
     for (const e of liste) this.staende.set(e.pfad, e)
     for (const d of await this.ablage.texteLesen(liste.filter((e) => liestText(e.pfad)).map((e) => e.pfad))) {
       this.texte.set(d.pfad, { text: d.text, stempel: d.stempel, offen: false })
@@ -86,6 +129,7 @@ export class Speicher {
       const uhr = setInterval(() => void this.abfragen(), this.ablage.abfrageMs)
       this.aufraeumen.push(() => clearInterval(uhr))
     }
+    void this.aufloesen()
     if (typeof document !== 'undefined') {
       // In den Hintergrund: sofort schreiben (Android beendet Apps dort ohne Vorwarnung). Zurück: nachsehen, was kam.
       const sichtbar = () => (document.visibilityState === 'hidden' ? void this.speichereAlles() : void this.abfragen())
@@ -141,13 +185,60 @@ export class Speicher {
     return n
   }
 
+  /** Konfliktkopien aller Sync-Programme mit ihrem Original */
+  kopien(): Map<string, SyncKopie> {
+    if (this.kopienCache?.version !== this.version) this.kopienCache = { version: this.version, kopien: this.kopienJetzt() }
+    return this.kopienCache.kopien
+  }
+
+  private kopienJetzt(): Map<string, SyncKopie> {
+    return syncKopien(this.pfade(), (p) => this.texte.get(p)?.text)
+  }
+
   konflikte(): string[] {
-    return this.pfade().filter(istKonfliktkopie)
+    return [...this.kopien().keys()].sort()
+  }
+
+  /** Unlesbare Dateien (leer, halb übertragen, beschädigt). Sie bleiben, bis das Sync-Programm eine ganze Fassung bringt. */
+  syncProbleme(): SyncProblem[] {
+    if (this.problemeCache?.version === this.version) return this.problemeCache.probleme
+    const kopien = this.kopien()
+    const probleme: SyncProblem[] = []
+    for (const [pfad, e] of this.texte) {
+      if (e.offen || e.stempel === null || !inAppOrdner(pfad) || kopien.has(pfad)) continue
+      const grund = unlesbar(pfad, e.text)
+      if (grund) probleme.push({ pfad, grund })
+    }
+    this.problemeCache = { version: this.version, probleme }
+    return probleme
+  }
+
+  /** Der leere Ordner ist richtig so (z. B. bewusst neu angefangen): wieder schreiben */
+  weiterTrotzLeer(): void {
+    this.leerBestaetigt = true
+    this.pause = false
+    this.hinweis = null
+    this.melde()
+    void this.abfragen()
+  }
+
+  /** Hinweis gelesen */
+  hinweisWeg(): void {
+    if (this.hinweis?.art === 'leer') return this.weiterTrotzLeer()
+    this.hinweis = null
+    this.melde()
   }
 
   async schreibe(pfad: string, text: string): Promise<void> {
     const alt = this.texte.get(pfad)
     if (alt?.text === text) return
+    // Unlesbare Datei auf der Platte (meist halb übertragen): Ihr Inhalt bleibt als Konfliktkopie, bevor die App sie ersetzt
+    const ohneCr = (t: string) => t.replace(/\r\n/g, '\n')
+    if (alt && !alt.offen && alt.stempel !== null && alt.text.trim() && inAppOrdner(pfad) && unlesbar(pfad, alt.text) && !ohneCr(text).startsWith(ohneCr(alt.text))) {
+      const kopie = konfliktPfad(pfad, geraet())
+      this.texte.set(kopie, { text: alt.text, stempel: null, offen: true })
+      this.planeSchreiben(kopie, 0)
+    }
     this.texte.set(pfad, { text, stempel: alt?.stempel ?? null, offen: true })
     this.melde()
     this.planeSchreiben(pfad, this.o.wartezeit ?? 1000)
@@ -175,6 +266,10 @@ export class Speicher {
   speichereJetzt(pfad: string): Promise<void> {
     clearTimeout(this.uhren.get(pfad))
     this.uhren.delete(pfad)
+    if (this.pause) {
+      this.planeSchreiben(pfad, 5000)
+      return Promise.resolve()
+    }
     return this.inReihe(async () => {
       const e = this.texte.get(pfad)
       if (!e?.offen) return
@@ -226,6 +321,7 @@ export class Speicher {
     } finally {
       this.abfrageLaeuft = false
     }
+    await this.aufloesen()
   }
 
   private async abfrageEinmal(): Promise<void> {
@@ -237,8 +333,26 @@ export class Speicher {
       this.melde()
       return
     }
+    const vorher = this.staende.size
+    if (!liste.length && vorher >= VIELE && !this.leerBestaetigt) {
+      // Laufwerk getrennt, Cloud offline, Ordner ersetzt: nicht als „alles gelöscht“ übernehmen und nichts schreiben
+      if (this.hinweis?.art !== 'leer') {
+        this.hinweis = { art: 'leer' }
+        this.pause = true
+        this.melde()
+      }
+      return
+    }
+    if (this.pause && liste.length) {
+      this.pause = false
+      this.hinweis = null
+    }
+    if (this.dauerhaft) merkeZahl(liste.length)
     let geaendert = false
     const neu = new Map(liste.map((e) => [e.pfad, e]))
+    let weg = 0
+    for (const p of this.staende.keys()) if (!neu.has(p)) weg++
+    if (vorher >= VIELE && weg >= VIELE && weg >= vorher * ANTEIL) this.hinweis = { art: 'schwund', anzahl: weg }
     const lesen: string[] = []
     for (const e of liste) {
       const alt = this.staende.get(e.pfad)
@@ -310,7 +424,7 @@ export class Speicher {
 
   /** Die Kopie ersetzt das Original; danach verschwindet die Kopie */
   async uebernehmeKonflikt(kopie: string): Promise<void> {
-    const original = konfliktOriginal(kopie)
+    const original = (this.kopien().get(kopie) ?? this.kopienJetzt().get(kopie))?.original
     if (!original) return
     const text = this.text(kopie)
     if (text !== undefined) {
@@ -323,17 +437,74 @@ export class Speicher {
       const stempel = (await this.ablage.texteLesen([original]))[0]?.stempel ?? null
       const r = await this.inReihe(() => this.ablage.schreibeWenn(original, b, stempel))
       if (r.art !== 'ok') return
+      this.staende.set(original, { pfad: original, groesse: r.groesse, geaendert: r.geaendert })
     }
     await this.verwerfeKonflikt(kopie)
   }
 
-  /** Die Kopie wird gelöscht, das Original bleibt (Syncthings Versionierung behält die Kopie noch eine Weile) */
+  /** Die Kopie wird gelöscht, das Original bleibt (Versionierung bzw. Papierkorb des Sync-Programms behält sie eine Weile) */
   async verwerfeKonflikt(kopie: string): Promise<void> {
-    if (!istKonfliktkopie(kopie)) return
+    const k = this.kopien().get(kopie) ?? this.kopienJetzt().get(kopie)
+    if (!k || !loeschbareKopie(kopie, k.original, (p) => this.text(p) ?? (this.staende.has(p) ? '' : undefined))) return
     clearTimeout(this.uhren.get(kopie))
-    await this.inReihe(() => this.ablage.konfliktLoeschen(kopie))
+    await this.inReihe(() => this.ablage.konfliktLoeschen(kopie, k.original))
     this.texte.delete(kopie)
     this.staende.delete(kopie)
     this.melde()
+  }
+
+  /**
+   * Löst Konfliktkopien, bei denen nichts verloren gehen kann (gleicher Inhalt, eine Seite leer oder halb übertragen,
+   * Protokolle zusammenführen; `automatisch()` in kern). Läuft nach dem Öffnen und nach jeder Abfrage. Fehler lassen den
+   * Konflikt einfach stehen, dann entscheidet der Mensch.
+   */
+  private async aufloesen(): Promise<void> {
+    if (this.aufloesenLaeuft || this.pause) return
+    this.aufloesenLaeuft = true
+    const vorher = this.automatischErledigt
+    try {
+      for (const k of this.kopienJetzt().values()) {
+        try {
+          if (await this.loeseAutomatisch(k)) this.automatischErledigt++
+        } catch {
+          // bleibt als Konflikt stehen
+        }
+      }
+    } finally {
+      this.aufloesenLaeuft = false
+      if (this.automatischErledigt !== vorher) this.melde()
+    }
+  }
+
+  private async loeseAutomatisch(k: SyncKopie): Promise<boolean> {
+    const kt = this.texte.get(k.kopie)
+    const ot = this.texte.get(k.original)
+    if (kt?.offen || ot?.offen) return false
+    if (liestText(k.kopie)) {
+      if (!kt) return false
+      const a = automatisch(k.original, ot?.text, kt.text)
+      if (!a) return false
+      if (a.art === 'weg') await this.verwerfeKonflikt(k.kopie)
+      else if (a.art === 'uebernehmen') await this.uebernehmeKonflikt(k.kopie)
+      else {
+        await this.schreibe(k.original, a.text)
+        await this.speichereJetzt(k.original)
+        if (this.text(k.original) !== a.text || this.texte.get(k.original)?.offen) return false
+        await this.verwerfeKonflikt(k.kopie)
+      }
+      return !this.staende.has(k.kopie) && !this.texte.has(k.kopie)
+    }
+    // Binärdateien (PDF, Foto): leere Seite oder Byte für Byte gleich
+    const sk = this.staende.get(k.kopie)
+    const so = this.staende.get(k.original)
+    if (!sk || !so) return false
+    if (sk.groesse === 0) await this.verwerfeKonflikt(k.kopie)
+    else if (so.groesse === 0) await this.uebernehmeKonflikt(k.kopie)
+    else if (sk.groesse === so.groesse && sk.groesse <= BINAER_VERGLEICH_BIS) {
+      const [a, b] = await Promise.all([this.ablage.leseDatei(k.kopie), this.ablage.leseDatei(k.original)])
+      if (a.length !== b.length || a.some((x, i) => x !== b[i])) return false
+      await this.verwerfeKonflikt(k.kopie)
+    } else return false
+    return !this.staende.has(k.kopie)
   }
 }

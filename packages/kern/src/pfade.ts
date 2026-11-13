@@ -1,4 +1,5 @@
 // Wo was im Datenordner liegt (Vertrag Abschnitt 2). Dateinamen sind frei, Links laufen über IDs.
+import { bekannteKopie } from './syncKopien'
 
 export type App = 'arbeit' | 'lernen'
 
@@ -70,18 +71,14 @@ export function istText(pfad: string): boolean {
 }
 
 /**
- * Konfliktkopien heißen wie bei Syncthing `<name>.sync-conflict-<JJJJMMTT>-<HHMMSS>-<Gerät>.<endung>` (Vertrag Lernen,
- * Grundlagen 8). Das Gerät ist bei Syncthing eine siebenstellige Kennung, bei dieser App der Gerätename.
+ * Konfliktkopie mit bekanntem Namensmuster (Syncthing, diese App, Nextcloud, Dropbox; Vertrag Lernen, Grundlagen 8).
+ * Kopien unbekannter Programme erkennt erst `syncKopien()`, weil es dafür die anderen Dateien im Ordner braucht.
  */
-const KONFLIKT = /\.sync-conflict-\d{8}-\d{6}-[^./]+/
-
 export function istKonfliktkopie(pfad: string): boolean {
-  return KONFLIKT.test(pfad.slice(pfad.lastIndexOf('/') + 1))
+  return bekannteKopie(pfad) !== null
 }
 
-/** Pfad der Datei, von der die Konfliktkopie stammt; null, wenn es keine Konfliktkopie ist */
+/** Pfad der Datei, von der die Konfliktkopie stammt; null, wenn der Name keine bekannte Konfliktkopie ist */
 export function konfliktOriginal(pfad: string): string | null {
-  const i = pfad.lastIndexOf('/') + 1
-  const name = pfad.slice(i)
-  return KONFLIKT.test(name) ? pfad.slice(0, i) + name.replace(KONFLIKT, '') : null
+  return bekannteKopie(pfad)?.original ?? null
 }

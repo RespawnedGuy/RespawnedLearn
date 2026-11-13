@@ -1,11 +1,11 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from 'react'
-import { istText, konfliktBeschreibung, konfliktHerkunft, konfliktOriginal, lesbareZeilen, pfade, zeilenVergleich, zeitLesbar, zerlege } from '@rl/kern'
+import { istText, konfliktBeschreibung, konfliktHerkunft, lesbareZeilen, pfade, zeilenVergleich, zeitLesbar, zerlege, type Herkunft } from '@rl/kern'
 import { zeigeVerdeckt } from './kianbieter/zugang'
 import { useDaten } from '@rl/oberflaeche'
 import { entscheidungenFuer, FRIST_MS, type Entscheidungen, type Wahl } from './konfliktEntscheid'
 
 /**
- * Syncthing (oder diese App) hat zwei Fassungen derselben Datei gefunden. Beide stehen nebeneinander, Unterschiede sind
+ * Ein Sync-Programm (oder diese App) hat zwei Fassungen derselben Datei angelegt. Beide stehen nebeneinander, Unterschiede sind
  * mit + / − und durchgestrichen bzw. unterstrichen markiert (nicht nur über Farbe). Ein Mensch entscheidet, welche Fassung
  * bleibt; gelöscht wird erst nach einer Frist, bis dahin lässt sich alles rückgängig machen.
  */
@@ -17,30 +17,96 @@ export function Konflikte() {
     () => ent.stand
   )
   const kopien = speicher.konflikte()
-  if (!kopien.length) return <div className="leer">Keine Konflikte.</div>
+  const probleme = speicher.syncProbleme()
+  const erledigt = speicher.automatischErledigt
+  const aufgeraeumt = erledigt > 0 && (
+    <p className="klein-leise">
+      {erledigt === 1 ? 'Eine doppelte Fassung hat' : `${erledigt} doppelte Fassungen hat`} die App selbst aufgeräumt, weil dabei
+      nichts verloren ging.
+    </p>
+  )
+  if (!kopien.length && !probleme.length && !speicher.hinweis)
+    return (
+      <div className="leer">
+        Keine Konflikte.
+        {aufgeraeumt}
+      </div>
+    )
   return (
     <div className="seite konflikte">
       <h1 className="nur-vorleser">Konflikte</h1>
-      <p className="klein-leise">
-        Diese Dateien wurden auf zwei Geräten geändert, bevor sie sich abgleichen konnten. Wähle je Datei die Fassung, die
-        bleiben soll. Die andere wird nach {FRIST_MS / 1000} Sekunden gelöscht, bis dahin kannst du es rückgängig machen.
-      </p>
+      <SyncHinweis />
+      {kopien.length > 0 && (
+        <p className="klein-leise">
+          Diese Dateien wurden auf zwei Geräten geändert, bevor sie sich abgleichen konnten. Wähle je Datei die Fassung, die
+          bleiben soll. Die andere wird nach {FRIST_MS / 1000} Sekunden gelöscht, bis dahin kannst du es rückgängig machen.
+        </p>
+      )}
+      {aufgeraeumt}
       {kopien.map((k) => (
         <Konflikt key={k} kopie={k} ent={ent} />
       ))}
+      {probleme.length > 0 && (
+        <section className="karte konflikt" aria-labelledby="sync-probleme">
+          <div>
+            <h2 id="sync-probleme">Unvollständige Dateien</h2>
+            <p className="klein-leise konflikt-herkunft">
+              Leer oder beschädigt, meist weil das Sync-Programm sie noch nicht ganz übertragen hat. Sie bleiben, wie sie sind.
+              Ändert die App eine davon, hebt sie den alten Inhalt vorher als zweite Fassung auf.
+            </p>
+          </div>
+          {probleme.map((p) => {
+            const { art, titel } = konfliktBeschreibung(p.pfad)
+            return (
+              <p key={p.pfad}>
+                {art}: {titel}
+                <br />
+                <span className="klein-leise">{p.grund}.</span>
+              </p>
+            )
+          })}
+        </section>
+      )}
     </div>
   )
 }
 
+/** Ordner plötzlich leer oder viele Dateien weg: Das Sync-Programm prüfen, die App überschreibt nichts */
+function SyncHinweis() {
+  const { speicher } = useDaten()
+  const h = speicher.hinweis
+  if (!h) return null
+  return (
+    <div className="karte konflikt-frist" role="alert">
+      <span>
+        {h.art === 'leer'
+          ? 'Der Datenordner ist plötzlich leer. Vielleicht ist das Laufwerk getrennt oder dein Sync-Programm hat die Dateien entfernt. Die App schreibt nichts, bis die Dateien zurück sind.'
+          : `${h.anzahl} Dateien sind auf einmal verschwunden. Sieh in deinem Sync-Programm nach (Papierkorb, frühere Versionen). Die App legt sie nicht von sich aus neu an.`}
+      </span>
+      <button type="button" className="knopf" onClick={() => speicher.hinweisWeg()}>
+        {h.art === 'leer' ? 'Der Ordner ist richtig so' : 'Verstanden'}
+      </button>
+    </div>
+  )
+}
+
+/** Woher die zweite Fassung kommt, in Worten: Überschrift der Spalte und Zeile unter dem Titel */
+function woher(h: Herkunft | null, kopie: string): { spalte: string; zeile: string } {
+  const zeit = h?.zeit ? `, ${zeitLesbar(h.zeit)}` : ''
+  if (h?.programm === 'Syncthing') return { spalte: `Fassung von Gerät ${h.geraet}`, zeile: `zweite Fassung von Gerät ${h.geraet}${zeit}` }
+  if (h?.programm) return { spalte: `Fassung von ${h.programm}`, zeile: `zweite Fassung von ${h.programm}${h.geraet ? ` (${h.geraet})` : ''}${zeit}` }
+  return { spalte: 'Zweite Fassung', zeile: `zweite Fassung von einem Sync-Programm: „${kopie.slice(kopie.lastIndexOf('/') + 1)}“` }
+}
+
 function Konflikt({ kopie, ent }: { kopie: string; ent: Entscheidungen }) {
   const { speicher } = useDaten()
-  const original = konfliktOriginal(kopie) ?? kopie
+  const k = speicher.kopien().get(kopie)
+  const original = k?.original ?? kopie
   const text = istText(kopie)
   const links = speicher.text(original)
   const rechts = speicher.text(kopie)
-  const herkunft = konfliktHerkunft(kopie)
+  const { spalte: zweite, zeile } = woher(k ? konfliktHerkunft(k) : null, kopie)
   const { art, titel } = konfliktBeschreibung(original, links ?? rechts)
-  const zweite = herkunft ? `Fassung von Gerät ${herkunft.geraet}` : 'Zweite Fassung'
   const erste = links === undefined ? 'Datei (fehlt)' : 'Aktuelle Datei'
   const offen = ent.offen(kopie)
   const fehler = ent.fehler(kopie)
@@ -54,8 +120,7 @@ function Konflikt({ kopie, ent }: { kopie: string; ent: Entscheidungen }) {
       <div>
         <h2 id={`k-${kopie}`}>{titel}</h2>
         <p className="klein-leise konflikt-herkunft">
-          {art}
-          {herkunft && ` · zweite Fassung von Gerät ${herkunft.geraet}, ${zeitLesbar(herkunft.zeit)}`}
+          {art} · {zeile}
         </p>
       </div>
       {offen ? (

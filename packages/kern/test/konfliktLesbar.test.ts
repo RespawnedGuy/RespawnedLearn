@@ -6,7 +6,7 @@ const karte = (antwort: string) =>
 
 describe('Konfliktansicht lesbar (Design-Prüfung W1)', () => {
   it('liest Gerät und Zeit aus dem Namen, auch Gerätenamen mit Bindestrich', () => {
-    expect(konfliktHerkunft('lernen/karten/a.sync-conflict-20261112-183012-KMQQN77.md')).toEqual({ geraet: 'KMQQN77', zeit: '2026-11-12T18:30' })
+    expect(konfliktHerkunft('lernen/karten/a.sync-conflict-20261112-183012-KMQQN77.md')).toEqual({ programm: 'Syncthing', geraet: 'KMQQN77', zeit: '2026-11-12T18:30' })
     expect(konfliktHerkunft('reviews/2026-11.pc.sync-conflict-20261113-070102-android-x1y2.jsonl')?.geraet).toBe('android-x1y2')
     expect(konfliktHerkunft('lernen/karten/a.md')).toBeNull()
     expect(zeitLesbar('2026-11-12T18:30')).toBe('12.11.2026, 18:30')
