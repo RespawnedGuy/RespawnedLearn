@@ -54,7 +54,11 @@
 .lern-karte .art { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; color: var(--akzent-text); }
 .lern-karte .frage { font-size: 1.375rem; font-weight: 600; line-height: 1.45; }
 .schreibflaeche-huelle { display: flex; flex-direction: column; gap: 8px; }
-.schreib-werkzeug { display: flex; gap: 6px; justify-content: flex-end; }
+.schreib-werkzeug { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.bewertung { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.bewertung .knopf { height: auto; min-height: 56px; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 4px; }
+.bewertung .abstand { font-size: 0.75rem; font-weight: 400; color: var(--leise); }
+@media (max-width: 359px) { .bewertung { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fbfafe; background-image: linear-gradient(#eeeaf6 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
 .ki-vorschlag { display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; padding: 8px 10px; border: 1px dashed var(--akzent); border-radius: 10px; background: #f7f4fd; color: inherit; font: inherit; cursor: pointer; }
 .ki-vorschlag .inhalt { font-size: 0.875rem; line-height: 1.4; }
@@ -325,6 +329,10 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .meldung-schlecht { color: var(--rot-text); font-size: 0.875rem; }
 .prompt { padding: 12px 16px; }
 .prompt summary { font-size: 0.9375rem; }
+/* Aufklapper sehen aus wie Aufklapper: Pfeil vorn, dreht sich beim Öffnen (Design-Prüfung Kl9) */
+.anleitung summary::before, .prompt summary::before { content: '▸'; color: var(--leise); display: inline-block; width: 1em; transition: transform 0.15s; }
+.anleitung[open] > summary::before, .prompt[open] > summary::before { transform: rotate(90deg); }
+.anleitung summary::-webkit-details-marker, .prompt summary::-webkit-details-marker { display: none; }
 .prompt-wofuer { flex-basis: 100%; font-weight: 400; }
 .prompt-text { margin: 10px 0; font-family: inherit; font-size: 0.875rem; line-height: 1.45; }
 .kopf-zahnrad { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; color: var(--leise); flex: none; }

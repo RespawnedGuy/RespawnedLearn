@@ -8,7 +8,7 @@ import { Eintraege } from './Eintraege'
 import { FragenHinweis, KapitelFragen } from './Fragen'
 import { Vorfragen, VorfragenHinweis } from './Vorfragen'
 import { mitschriftSpur } from './Nutzen'
-import { bewerte, lernkarten, type Lernkarte } from './wissen'
+import { bewerte, lernkarten, naechsteAbstaende, type Lernkarte } from './wissen'
 import { allgemeineRunde, einordnen, modulRunde, type Auswahl } from './modulkarten'
 
 const SICHER = [
@@ -86,6 +86,8 @@ export function Lernen({ ort }: { ort: string[] }) {
   const frage = abruf?.frage ?? k.frage
   const antwort = abruf?.antwort ?? k.antwort
 
+  const abstaende = naechsteAbstaende(bestand, k.e.id)
+
   const weiter = async (note: Note) => {
     await bewerte(speicher, k.e.id, note, sicher ?? undefined)
     setI(i + 1)
@@ -135,24 +137,30 @@ export function Lernen({ ort }: { ort: string[] }) {
           </div>
         )}
         {offen && !bearbeiten && neu && <MitschriftLink e={neu} />}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-          {offen && !bearbeiten && neu && (
-            <button type="button" className="knopf still" style={{ height: 48, marginRight: 'auto' }} onClick={() => setBearbeiten(true)}>
-              Karte bearbeiten
-            </button>
-          )}
-          {!offen ? (
+        {!offen ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" className="knopf haupt" style={{ height: 48 }} onClick={() => setOffen(true)}>
               Lösung prüfen
             </button>
-          ) : (
-            NOTEN.map(([n, text]) => (
-              <button key={n} type="button" className={`knopf${n === 'gut' ? ' haupt' : ''}`} style={{ height: 48 }} onClick={() => void weiter(n)}>
-                {text}
+          </div>
+        ) : (
+          <>
+            {/* Vier gleiche Knöpfe, darunter wann die Karte wiederkommt (FSRS) */}
+            <div className="bewertung" role="group" aria-label="Wie gut wusstest du es?">
+              {NOTEN.map(([n, text]) => (
+                <button key={n} type="button" className="knopf" onClick={() => void weiter(n)}>
+                  {text}{' '}
+                  <span className="abstand">{abstaende[n]}</span>
+                </button>
+              ))}
+            </div>
+            {!bearbeiten && neu && (
+              <button type="button" className="knopf still klein" style={{ alignSelf: 'flex-start' }} onClick={() => setBearbeiten(true)}>
+                Karte bearbeiten
               </button>
-            ))
-          )}
-        </div>
+            )}
+          </>
+        )}
       </article>
     </div>
   )

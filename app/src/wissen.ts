@@ -236,6 +236,29 @@ export function lernstaende(b: Bestand): Map<string, Lernstand> {
   return out
 }
 
+/** Abstand bis zur nächsten Wiederholung in Worten: „in 10 Min.“, „in 1 Tag“, „in 3 Monaten“ */
+export function abstandText(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000))
+  if (min < 60) return `in ${min} Min.`
+  const std = Math.round(min / 60)
+  if (std < 24) return `in ${std} Std.`
+  const tage = Math.round(std / 24)
+  if (tage < 31) return `in ${tage} ${tage === 1 ? 'Tag' : 'Tagen'}`
+  const monate = Math.round(tage / 30.4)
+  if (monate < 12) return `in ${monate} ${monate === 1 ? 'Monat' : 'Monaten'}`
+  const jahre = Math.round(tage / 365)
+  return `in ${jahre} ${jahre === 1 ? 'Jahr' : 'Jahren'}`
+}
+
+/** Wann die Karte je Bewertung wiederkommt (FSRS-Vorschau, wie unter den Knöpfen bei Anki üblich) */
+export function naechsteAbstaende(b: Bestand, karteId: string, jetzt = new Date()): Record<Note, string> {
+  const st = lernstaende(b).get(karteId)
+  const karte: Card = st ? st.karte : createEmptyCard(jetzt)
+  const v = planer.repeat(karte, jetzt)
+  const t = (n: Note) => abstandText(v[NOTE[n]].card.due.getTime() - jetzt.getTime())
+  return { nochmal: t('nochmal'), schwer: t('schwer'), gut: t('gut'), leicht: t('leicht') }
+}
+
 export interface Lernkarte {
   e: Eintrag
   frage: string
