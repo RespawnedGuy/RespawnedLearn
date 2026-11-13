@@ -60,9 +60,9 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - uses: android-actions/setup-android@v3
+      # Das Android-SDK liegt auf dem Runner schon bereit (ANDROID_HOME), es fehlen nur NDK und Plattform
       - name: Android-NDK
-        run: sdkmanager --install "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0" > /dev/null
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: "aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android" }
       - uses: Swatinem/rust-cache@v2
