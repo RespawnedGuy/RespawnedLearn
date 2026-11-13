@@ -69,14 +69,15 @@ jobs:
         with: { workspaces: app/src-tauri }
       - run: npm ci
       - name: Android-Projekt erzeugen und anpassen
-        env: { NDK_HOME: "${{ env.ANDROID_HOME }}/ndk/27.2.12479018" }
         run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
           npm run tauri android init -- --ci
           node tools/android-anpassen.mjs
       # Vorerst Debug-Signatur: installierbar, aber nicht für den Play Store (Release-Signatur kommt in Schritt 4)
       - name: APK bauen
-        env: { NDK_HOME: "${{ env.ANDROID_HOME }}/ndk/27.2.12479018" }
-        run: npm run tauri android build -- --apk --debug --target aarch64
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          npm run tauri android build -- --apk --debug --target aarch64
       - uses: actions/upload-artifact@v4
         with:
           name: respawnedlearn-android
