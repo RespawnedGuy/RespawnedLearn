@@ -3,7 +3,9 @@
 
 mod aktualisieren;
 mod kopien;
+mod ollama;
 mod ordner;
+mod ordnerwahl;
 mod tresor;
 mod zugang;
 
@@ -70,17 +72,50 @@ fn stand(z: State<Zustand>) -> Stand {
 }
 
 /// Setzt den Datenordner, nachdem geprüft ist, dass die App dort schreiben darf
-#[tauri::command]
-fn ordner_setzen(app: AppHandle, z: State<Zustand>, pfad: String) -> Result<(), String> {
-    let p = PathBuf::from(&pfad);
+fn setze_ordner(app: &AppHandle, z: &State<Zustand>, p: PathBuf) -> Result<(), String> {
     std::fs::create_dir_all(&p).map_err(|e| format!("Ordner lässt sich nicht anlegen: {e}"))?;
     ordner::pruefe_schreibbar(&p)?;
-    let neu = Einstellungen { ordner: Some(pfad) };
+    let neu = Einstellungen { ordner: Some(p.to_string_lossy().into_owned()) };
     let datei = einstellungs_datei(&app)?;
     std::fs::create_dir_all(datei.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&datei, serde_json::to_vec_pretty(&neu).unwrap()).map_err(|e| e.to_string())?;
     *z.einstellungen.lock().unwrap() = neu;
-    beobachte(&app, &z, p)
+    beobachte(app, z, p)
+}
+
+/// Unter Android: getippter Pfad, nur Unterordner des gemeinsamen Speichers (ordnerwahl.rs). Am PC gibt es diesen Weg
+/// nicht, dort wählt nur der Dialog (`ordner_waehlen`), damit die Oberfläche keinen beliebigen Ordner setzen kann.
+#[tauri::command]
+fn ordner_setzen(app: AppHandle, z: State<Zustand>, pfad: String) -> Result<(), String> {
+    #[cfg(mobile)]
+    return setze_ordner(&app, &z, ordnerwahl::android_ordner(&pfad)?);
+    #[cfg(desktop)]
+    {
+        let _ = (app, z, pfad);
+        Err("Den Ordner bitte über „Ordner wählen“ aussuchen.".into())
+    }
+}
+
+/// Am PC: öffnet den Ordnerdialog des Systems und setzt den gewählten Ordner. `false` = abgebrochen.
+#[tauri::command]
+async fn ordner_waehlen(app: AppHandle) -> Result<bool, String> {
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_dialog::DialogExt;
+        let a = app.clone();
+        let gewaehlt = tauri::async_runtime::spawn_blocking(move || a.dialog().file().set_title("Datenordner wählen").blocking_pick_folder())
+            .await
+            .map_err(|e| e.to_string())?;
+        let Some(ordner) = gewaehlt else { return Ok(false) };
+        let p = ordner.into_path().map_err(|e| e.to_string())?;
+        setze_ordner(&app, &app.state::<Zustand>(), p)?;
+        Ok(true)
+    }
+    #[cfg(mobile)]
+    {
+        let _ = app;
+        Err("nicht-moeglich".into())
+    }
 }
 
 #[tauri::command]
@@ -243,7 +278,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, ordner_waehlen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

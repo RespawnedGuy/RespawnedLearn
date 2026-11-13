@@ -1,0 +1,19 @@
+# Schlägt neue Versionen als Pull Request vor; Nils merged. Neue Versionen erst nach 14 Tagen (Regel in CLAUDE.md:
+# mindestens zwei Wochen alt). Die Workflow-Actions sind auf Commits gepinnt, Dependabot hält Kommentar und Commit aktuell.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    cooldown: { default-days: 14 }
+    groups: { actions: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
+    cooldown: { default-days: 14 }
+    open-pull-requests-limit: 5
+  - package-ecosystem: cargo
+    directory: /app/src-tauri
+    schedule: { interval: monthly }
+    cooldown: { default-days: 14 }
+    open-pull-requests-limit: 5

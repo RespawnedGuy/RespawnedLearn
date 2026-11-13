@@ -1,7 +1,31 @@
 # Signieren (für Betreuer)
 
-Die GitHub Action (`.github/workflows/build.yml`) signiert nur, wenn die passenden **Repository-Secrets** gesetzt sind
-(Settings → Secrets and variables → Actions). Schlüssel und Passwörter gehören nie ins Repo.
+Die GitHub Action (`.github/workflows/build.yml`) signiert nur, wenn die passenden Secrets gesetzt sind. Sie gehören in
+das **Environment `release`**, nicht zu den Repository-Secrets: Dann bekommt sie nur ein Lauf auf `main`, und jeder
+solche Lauf wartet, bis du ihn freigibst. Schlüssel und Passwörter gehören nie ins Repo.
+
+## Repo absichern (einmal, vor dem Öffentlichmachen)
+
+Wer auf `main` pushen kann, bekäme sonst über die Action ein echt signiertes Update an alle Nutzer. Deshalb:
+
+1. **Environment anlegen:** Settings → Environments → New environment, Name `release`.
+   - *Required reviewers:* dich selbst eintragen, *Prevent self-review* aus lassen (du gibst deine eigenen Läufe frei).
+   - *Deployment branches and tags:* „Selected branches and tags“ → `main`.
+   - *Environment secrets:* alle Secrets aus den Abschnitten unten hier anlegen (`ANDROID_KEY_*`, `TAURI_SIGNING_*`,
+     später `WINDOWS_PFX_*`). Die Variable `TAURI_UPDATER_PUBKEY` ist öffentlich und darf eine Repository-Variable bleiben.
+   - Danach die alten **Repository-Secrets** gleichen Namens löschen (Settings → Secrets and variables → Actions).
+2. **`main` schützen:** Settings → Rules → Rulesets → New branch ruleset, Name `main`, *Enforcement* „Active“,
+   *Target branches* „Include default branch“. Anhaken: *Restrict deletions*, *Block force pushes*, *Require a pull
+   request before merging* (Required approvals 0, du mergst selbst), *Require status checks to pass* mit „Tests und Build“.
+   Keine Bypass-Liste, damit auch die Claude-App nur über Pull Requests ändert.
+3. **Secret Scanning:** Settings → Advanced Security → *Secret Protection* und *Push protection* einschalten
+   (für öffentliche Repos kostenlos).
+4. **Fremde Pull Requests:** Settings → Actions → General → *Approval for running fork pull request workflows from
+   contributors* → „Require approval for all external contributors“.
+5. **Konto:** github.com/settings/security → Passkey oder Zwei-Faktor einschalten.
+
+Ein Release läuft danach so: Pull Request mergen → Action baut → unter Actions im Lauf „Review deployments“ →
+`release` anhaken → Approve. Erst dann signieren Windows- und Android-Job, danach entsteht der Release.
 
 ## Android: eigener Schlüssel (kostenlos)
 
@@ -37,7 +61,7 @@ npx tauri signer generate -w respawnedlearn-update.key
 ```
 
 Ein Passwort ist freiwillig, empfohlen ist eins. Es entstehen zwei Dateien: `respawnedlearn-update.key` (geheim) und
-`respawnedlearn-update.key.pub` (öffentlich). Dann in Settings → Secrets and variables → Actions:
+`respawnedlearn-update.key.pub` (öffentlich). Dann im Environment `release` (Secrets) bzw. unter Settings → Secrets and variables → Actions (Variable):
 
 | Wo | Name | Inhalt |
 |---|---|---|

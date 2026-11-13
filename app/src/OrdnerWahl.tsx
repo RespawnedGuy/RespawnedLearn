@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { open } from '@tauri-apps/plugin-dialog'
-import { dateizugriff, dateizugriffAnfragen, inTauri, ordnerStand, setzeOrdner, type OrdnerStand } from '@rl/oberflaeche'
+import { dateizugriff, dateizugriffAnfragen, inTauri, ordnerStand, setzeOrdner, waehleOrdner, type OrdnerStand } from '@rl/oberflaeche'
 import { startSchritt } from './ersterStart'
 
 /** Vorschlag unter Android: ein Ordner im gemeinsamen Speicher, den Syncthing ebenfalls erreicht */
@@ -37,11 +36,11 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
   if (schritt === 'app') return <>{children}</>
   if (schritt === 'erlaubnis') return <Erlaubnis />
 
-  const uebernimm = async (p: string) => {
+  // Android: getippter Pfad (setzeOrdner); PC: Rust öffnet den Dialog und setzt die Wahl (waehleOrdner)
+  const uebernimm = async (setze: () => Promise<unknown>) => {
     setFehler('')
     try {
-      await setzeOrdner(p)
-      setStand(await ordnerStand())
+      if ((await setze()) !== false) setStand(await ordnerStand())
     } catch (e) {
       setFehler(String(e))
     }
@@ -62,7 +61,7 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void uebernimm(pfad.trim())
+            void uebernimm(() => setzeOrdner(pfad.trim()))
           }}
         >
           <label>
@@ -75,10 +74,7 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
         <button
           type="button"
           className="knopf haupt"
-          onClick={async () => {
-            const p = await open({ directory: true, multiple: false, title: 'Datenordner wählen' })
-            if (typeof p === 'string') await uebernimm(p)
-          }}
+          onClick={() => void uebernimm(waehleOrdner)}
         >
           Ordner wählen
         </button>

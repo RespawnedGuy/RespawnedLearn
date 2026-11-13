@@ -56,6 +56,7 @@ export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'
           }
           case 'konflikt_loeschen': platte.delete(args.pfad); return null;
           case 'ordner_setzen': return null;
+          case 'ordner_waehlen': return true;
           case 'tresor_kennung': return null;
           case 'ki_zugang_lesen': return null;
           case 'ki_zugang_setzen': return null;
