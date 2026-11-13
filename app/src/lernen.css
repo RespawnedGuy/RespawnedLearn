@@ -146,7 +146,7 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .vollbild-steuer button:disabled { opacity: 0.35; cursor: default; background: transparent; }
 
 /* Inhaltsverzeichnis der PDFs */
-.plan-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+.plan-titel { margin: 0; font-size: 1rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
 .inhalt-knopf { max-width: 280px; }
 .inhalt-knopf-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inhalt-liste { display: flex; flex-direction: column; gap: 1px; max-height: 60vh; overflow: auto; margin: 0 -8px; }

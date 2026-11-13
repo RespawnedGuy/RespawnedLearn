@@ -98,7 +98,8 @@ export function Lernen({ ort }: { ort: string[] }) {
     <div className="lernen-seite">
       <VorfragenHinweis />
       <FragenHinweis />
-      <div className="fortschritt" aria-label={`Karte ${i + 1} von ${runde.length}`}>
+      <h1 className="nur-vorleser">Lernen</h1>
+      <div className="fortschritt" role="progressbar" aria-label="Lernrunde" aria-valuemin={1} aria-valuemax={runde.length} aria-valuenow={i + 1} aria-valuetext={`Karte ${i + 1} von ${runde.length}`}>
         {runde.map((_, n) => (
           <span key={n} className={n < i ? 'fertig' : n === i ? 'jetzt' : ''} />
         ))}
@@ -116,12 +117,12 @@ export function Lernen({ ort }: { ort: string[] }) {
           </span>
         </div>
         {woText && !bearbeiten && <div className="klein-leise lern-wo">{woText}</div>}
-        {bearbeiten && neu ? <Bearbeiten e={neu} onFertig={() => setBearbeiten(false)} /> : <div className="frage">{frage}</div>}
+        {bearbeiten && neu ? <Bearbeiten e={neu} onFertig={() => setBearbeiten(false)} /> : <div className="frage" role="heading" aria-level={2}>{frage}</div>}
         {!offen && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className="klein-leise">Wie sicher bist du vorher?</span>
             {SICHER.map(([id, text]) => (
-              <button key={id} type="button" className={`knopf klein${sicher === id ? ' haupt' : ''}`} style={{ borderRadius: 18 }} onClick={() => setSicher(id)}>
+              <button key={id} type="button" className={`knopf klein${sicher === id ? ' haupt' : ''}`} style={{ borderRadius: 18 }} onClick={() => setSicher(id)} aria-pressed={sicher === id}>
                 {text}
               </button>
             ))}

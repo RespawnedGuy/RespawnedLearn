@@ -310,12 +310,13 @@ export function ModulSeite({ id }: { id: string }) {
   return (
     <div className="seite modul-seite">
       <div className="seite-kopf">
+        <h1 className="nur-vorleser">{m.titel}</h1>
         <input
           key={`t-${m.titel}`}
           className="titel-eingabe"
           defaultValue={m.titel}
           size={Math.max(8, m.titel.length + 1)}
-          aria-label="Name"
+          aria-label="Name des Moduls"
           onBlur={(e) => {
             const t = e.target.value.trim()
             if (t && t !== m.titel) void setzeModulFeld(speicher, m, 'titel', t)

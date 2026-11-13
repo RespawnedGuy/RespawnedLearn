@@ -144,7 +144,8 @@ export function KapitelFragen() {
 
   return (
     <div className="lernen-seite">
-      <div className="fortschritt" aria-label={`Frage ${i + 1} von ${reihe.length}`}>
+      <h1 className="nur-vorleser">Fragen zum Kapitel</h1>
+      <div className="fortschritt" role="progressbar" aria-label="Fragenrunde" aria-valuemin={1} aria-valuemax={reihe.length} aria-valuenow={i + 1} aria-valuetext={`Frage ${i + 1} von ${reihe.length}`}>
         {reihe.map((_, n) => (
           <span key={n} className={n < i ? 'fertig' : n === i ? 'jetzt' : ''} />
         ))}
@@ -156,7 +157,7 @@ export function KapitelFragen() {
             {i + 1} / {reihe.length}
           </span>
         </div>
-        <div className="frage">
+        <div className="frage" role="heading" aria-level={2}>
           <Inhalt text={q.frage} />
         </div>
         <FrageInhalt key={i} q={q} offen={offen} stufe={stufe} setStufe={setStufe} />

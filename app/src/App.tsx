@@ -61,9 +61,11 @@ export function App() {
         }
       />
       {/* Stürzt eine Ansicht ab, bleiben Kopf und Leiste bedienbar */}
+      <main id="inhalt">
       <Fehlergrenze ort={ort.join('/')}>
         {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
+      </main>
       <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
       <Meldungen />
     </>

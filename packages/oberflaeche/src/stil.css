@@ -142,6 +142,8 @@ a:hover { color: var(--akzent-dunkel); }
 button, input, textarea, select { font: inherit; color: inherit; }
 /* Ring in Akzent-Textfarbe: hell ≥ 5:1, im Dunkeln aufgehellt (Lernen 8,3:1 statt 2,98:1 mit --akzent), WCAG 1.4.11 */
 :focus-visible { outline: 2px solid var(--akzent-text); outline-offset: 2px; }
+/* Nur für Bildschirmleser (Überschriften, die das Bild schon zeigt): bleibt im Bedienbaum, nimmt keinen Platz */
+.nur-vorleser { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 /* Der Platzhalter ist Anleitung, also lesbar (CodeMirror-Standard #888 hatte 3,2:1) */
 .cm-editor .cm-placeholder { color: var(--leise); }
 

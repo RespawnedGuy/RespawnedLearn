@@ -20,6 +20,7 @@ export function Konflikte() {
   if (!kopien.length) return <div className="leer">Keine Konflikte.</div>
   return (
     <div className="seite konflikte">
+      <h1 className="nur-vorleser">Konflikte</h1>
       <p className="klein-leise">
         Diese Dateien wurden auf zwei Geräten geändert, bevor sie sich abgleichen konnten. Wähle je Datei die Fassung, die
         bleiben soll. Die andere wird nach {FRIST_MS / 1000} Sekunden gelöscht, bis dahin kannst du es rückgängig machen.

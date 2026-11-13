@@ -37,10 +37,10 @@ export function Abrufflaeche({ abruf, hinweis, format = 0.32 }: { abruf: Abruf; 
       <div className="schreib-werkzeug" role="toolbar" aria-label="Schreibfläche">
         {!tippen && (
           <>
-            <button type="button" className={`knopf klein${!radieren ? ' haupt' : ''}`} onClick={() => setRadieren(false)}>
+            <button type="button" className={`knopf klein${!radieren ? ' haupt' : ''}`} onClick={() => setRadieren(false)} aria-pressed={!radieren}>
               Stift
             </button>
-            <button type="button" className={`knopf klein${radieren ? ' haupt' : ''}`} onClick={() => setRadieren(true)}>
+            <button type="button" className={`knopf klein${radieren ? ' haupt' : ''}`} onClick={() => setRadieren(true)} aria-pressed={radieren}>
               Radierer
             </button>
             <button type="button" className="knopf klein still" onClick={() => setLeer(leer + 1)}>

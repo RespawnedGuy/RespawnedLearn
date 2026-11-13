@@ -27,17 +27,17 @@ export function Eintraege({ nurLernkarten = false, eintraege }: { nurLernkarten?
   return (
     <div className="eintraege">
       {!nurLernkarten && (arten.length > 1 || ohneThema > 0) && (
-        <div className="eintraege-filter">
-          <button type="button" className={`knopf klein${typ === null ? ' haupt' : ''}`} onClick={() => setTyp(null)}>
+        <div className="eintraege-filter" role="group" aria-label="Nach Art filtern">
+          <button type="button" className={`knopf klein${typ === null ? ' haupt' : ''}`} onClick={() => setTyp(null)} aria-pressed={typ === null}>
             Alle · {alle.length}
           </button>
           {arten.map((t) => (
-            <button key={t} type="button" className={`knopf klein${typ === t ? ' haupt' : ''}`} onClick={() => setTyp(t)}>
+            <button key={t} type="button" className={`knopf klein${typ === t ? ' haupt' : ''}`} onClick={() => setTyp(t)} aria-pressed={typ === t}>
               {TYPNAME[t] ?? t} · {alle.filter((e) => e.typ === t).length}
             </button>
           ))}
           {ohneThema > 0 && (
-            <button type="button" className={`knopf klein${typ === OHNE ? ' haupt' : ''}`} onClick={() => setTyp(OHNE)}>
+            <button type="button" className={`knopf klein${typ === OHNE ? ' haupt' : ''}`} onClick={() => setTyp(OHNE)} aria-pressed={typ === OHNE}>
               Ohne Thema · {ohneThema}
             </button>
           )}

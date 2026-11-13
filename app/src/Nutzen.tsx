@@ -30,6 +30,7 @@ export function Nutzen({ id }: { id?: string }) {
   }
   return (
     <div className="nutzen-seite">
+      <h1 className="nur-vorleser">Nutzen</h1>
       <div className="nutzen-suche">
         <label htmlFor="suche" className="unsichtbar">
           In deinem Wissen suchen

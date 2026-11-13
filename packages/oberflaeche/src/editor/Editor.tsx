@@ -30,6 +30,8 @@ export interface EditorProps {
   hilfen: DarstellungHilfen
   onKontext?: (k: EditorKontext) => void
   platzhalter?: string
+  /** Name für Bildschirmleser (WCAG 4.1.2), sonst wird der Editor als namenloses Textfeld angesagt */
+  name?: string
   autofokus?: boolean
   /** Zeile (0-basiert), an die der Cursor beim Öffnen springt */
   startZeile?: number
@@ -84,7 +86,7 @@ export const Editor = forwardRef<EditorGriff, EditorProps>(function Editor(p, gr
       autocompletion({ override: p.quellen ?? [], icons: false, activateOnTyping: true, closeOnBlur: true }),
       darstellung(() => props.current.hilfen),
       einklappen,
-      EditorView.contentAttributes.of({ spellcheck: 'true', lang: 'de', autocapitalize: 'sentences' }),
+      EditorView.contentAttributes.of({ spellcheck: 'true', lang: 'de', autocapitalize: 'sentences', ...(p.name ? { 'aria-label': p.name } : {}) }),
       EditorView.updateListener.of((u) => {
         const vonAussen = u.transactions.some((t) => t.annotation(Transaction.remote))
         if (u.docChanged && !vonAussen) {

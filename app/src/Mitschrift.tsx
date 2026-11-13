@@ -116,6 +116,7 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
   return (
     <div className="seite mitschrift-seite">
       <div className="seite-kopf">
+        <h1 className="nur-vorleser">{titel || 'Mitschrift'}</h1>
         <input
           className="titel-eingabe"
           aria-label="Titel der Mitschrift"
@@ -152,6 +153,7 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
           erweiterungen={aktionen}
           autofokus={!aktuell.rumpf.trim()}
           platzhalter="Mitschreiben … Überschriften (#, ##, ###) gliedern den Lehrgang."
+          name="Mitschrift"
         />
       </div>
       <input ref={fotoEingabe} type="file" accept="image/*" multiple hidden onChange={(ev) => void fotos(ev.target.files).then(() => (ev.target.value = ''))} />

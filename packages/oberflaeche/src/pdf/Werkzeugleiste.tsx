@@ -25,13 +25,13 @@ export function Werkzeugleiste({
 }) {
   return (
     <div className="werkzeug" role="toolbar" aria-label="Werkzeuge">
-      <button type="button" className={werkzeug === 'lesen' ? 'aktiv' : ''} onClick={() => onWerkzeug('lesen')}>
+      <button type="button" className={werkzeug === 'lesen' ? 'aktiv' : ''} aria-pressed={werkzeug === 'lesen'} onClick={() => onWerkzeug('lesen')}>
         Lesen
       </button>
-      <button type="button" className={werkzeug === 'stift' ? 'aktiv' : ''} onClick={() => onWerkzeug('stift')}>
+      <button type="button" className={werkzeug === 'stift' ? 'aktiv' : ''} aria-pressed={werkzeug === 'stift'} onClick={() => onWerkzeug('stift')}>
         Stift
       </button>
-      <button type="button" className={werkzeug === 'markieren' ? 'aktiv' : ''} onClick={() => onWerkzeug('markieren')}>
+      <button type="button" className={werkzeug === 'markieren' ? 'aktiv' : ''} aria-pressed={werkzeug === 'markieren'} onClick={() => onWerkzeug('markieren')}>
         {markierenText}
       </button>
       <span className="trenner" />
@@ -40,6 +40,7 @@ export function Werkzeugleiste({
           type="button"
           key={s.farbe}
           className={farbe === s.farbe || (s.farbe === 'alltag' && farbe === 'alltag_schwarz') ? 'farbe-aktiv' : ''}
+          aria-pressed={farbe === s.farbe || (s.farbe === 'alltag' && farbe === 'alltag_schwarz')}
           onClick={() => {
             // Alltag hat zwei Töne: zweiter Tipp wechselt zwischen Blau und Schwarz
             onFarbe(s.farbe === 'alltag' && farbe === 'alltag' ? 'alltag_schwarz' : s.farbe)
@@ -51,7 +52,7 @@ export function Werkzeugleiste({
         </button>
       ))}
       <span className="trenner" />
-      <button type="button" className={werkzeug === 'radierer' ? 'aktiv' : ''} onClick={() => onWerkzeug('radierer')} title="Mit dem Stift: einfach umdrehen">
+      <button type="button" className={werkzeug === 'radierer' ? 'aktiv' : ''} aria-pressed={werkzeug === 'radierer'} onClick={() => onWerkzeug('radierer')} title="Mit dem Stift: einfach umdrehen">
         Radierer
       </button>
       <span className="hinweis nur-breit">oder Stift umdrehen</span>

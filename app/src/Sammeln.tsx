@@ -233,7 +233,7 @@ function Uebungsplatz({ quelle, seite }: { quelle: Eintrag; seite: number }) {
   return (
     <div>
       <div className="plan-leiste">
-        <strong className="plan-titel">{quelle.titel}</strong>
+        <h1 className="plan-titel">{quelle.titel}</h1>
         <InhaltKnopf quelle={quelle} seite={seite} />
         <span style={{ flex: 1 }} />
         <a className={`knopf klein symbol${seite <= 1 ? ' aus' : ''}`} href={ortLink('sammeln', quelle.id, Math.max(1, seite - 1))} aria-label="Seite zurück">
