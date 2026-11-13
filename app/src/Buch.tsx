@@ -8,6 +8,7 @@ import {
   buchSeiteJson,
   buchSeitenNummern,
   linkZiel,
+  ohneMarkeImBuch,
   liesTinte,
   liesBuchSeite,
   pfade,
@@ -30,6 +31,7 @@ import {
 } from '@rl/kern'
 import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
+import { MarkeKnopf } from './MarkeKnopf'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
@@ -94,7 +96,7 @@ export async function bildInsBuch(speicher: Speicher, id: string, bild: Pick<Buc
 
 /**
  * Markierung ins Buch (Vertrag Lernen 1.3, 5.3): der Ausschnitt unter die letzte Zeile der Seite, auf der zuletzt
- * geschrieben wurde, dazu ein Verweis ✦ mit der Markierung. Passt er dort nicht mehr hin, oben auf die nächste Seite.
+ * geschrieben wurde, dazu ein Verweis ✦ mit der Markierung und der ID des Ausschnitts (`bild`, Lernen 1.5). Passt er dort nicht mehr hin, oben auf die nächste Seite.
  */
 export async function markierungInsBuch(
   speicher: Speicher,
@@ -119,10 +121,11 @@ export async function markierungInsBuch(
   }
   const p = platz
   const kurz = () => ulid().slice(-8).toLowerCase()
+  const bild = kurz()
   await aendereSeite(speicher, id, nr, (s) => ({
     ...s,
-    bilder: [...s.bilder, { id: kurz(), anhang: m.anhang, seite: m.seite, bereich: m.bereich, ...p }],
-    verweise: [...s.verweise, { id: kurz(), y: p.y, anhang: m.anhang, seite: m.seite, marke: m.marke, am: new Date().toISOString() }]
+    bilder: [...s.bilder, { id: bild, anhang: m.anhang, seite: m.seite, bereich: m.bereich, ...p }],
+    verweise: [...s.verweise, { id: kurz(), y: p.y, anhang: m.anhang, seite: m.seite, marke: m.marke, bild, am: new Date().toISOString() }]
   }))
 }
 
@@ -251,18 +254,34 @@ function BuchBlatt({
   return (
     <div className="buch-blatt" data-buchseite={nr}>
       <div className="buch-rand" aria-label={`Verweise auf Seite ${nr}`}>
-        {seite.verweise.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            className={`verweis${v.marke ? ' aus-markierung' : ''}${hervor === v.y ? ' blinkt' : ''}`}
-            style={{ top: `${(v.y / hoehe) * 100}%` }}
-            title={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`}
-            onClick={() => geheZu('sammeln', v.anhang, v.seite)}
-          >
-            {v.marke ? '✦ ' : ''}S. {v.seite}
-          </button>
-        ))}
+        {seite.verweise.map((v) =>
+          v.marke ? (
+            <MarkeKnopf
+              key={v.id}
+              verweis={v}
+              blinkt={hervor === v.y}
+              style={{ top: `${(v.y / hoehe) * 100}%` }}
+              onEntfernen={() => {
+                setGewaehlt(null)
+                // Schon weg (anderes Gerät)? Dann bleibt die Seite, wie sie ist.
+                void aendereSeite(speicher, id, nr, (s) => ohneMarkeImBuch(s, v.id) ?? s).then(() =>
+                  melde('Marke und Ausschnitt entfernt. Die Markierung im Skript bleibt.')
+                )
+              }}
+            />
+          ) : (
+            <button
+              key={v.id}
+              type="button"
+              className={`verweis${hervor === v.y ? ' blinkt' : ''}`}
+              style={{ top: `${(v.y / hoehe) * 100}%` }}
+              title={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`}
+              onClick={() => geheZu('sammeln', v.anhang, v.seite)}
+            >
+              S. {v.seite}
+            </button>
+          )
+        )}
       </div>
       <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`} onPointerDown={() => setGewaehlt(null)}>
         <LineaturBild art={lineatur} format={format} />

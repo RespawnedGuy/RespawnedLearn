@@ -32,6 +32,8 @@ export interface Verweis {
   seite: number
   /** aus einer Markierung (Zeile in lernen/markierungen/<anhang>.md); sonst beim Schreiben gesetzt */
   marke?: string
+  /** nur mit `marke`: ID des Ausschnitts auf derselben Seite, der zur Markierung gehört (ab Lernen 1.5) */
+  bild?: string
   am?: string
 }
 
@@ -62,6 +64,7 @@ export function liesBuchSeite(text: string | null | undefined): BuchSeite {
     if (!v || typeof v.id !== 'string' || typeof v.anhang !== 'string' || !zahl(v.y) || !zahl(v.seite) || v.seite < 1) continue
     const w: Verweis = { id: v.id, y: Math.max(0, v.y), anhang: v.anhang, seite: Math.round(v.seite) }
     if (typeof v.marke === 'string') w.marke = v.marke
+    if (typeof v.bild === 'string') w.bild = v.bild
     if (typeof v.am === 'string') w.am = v.am
     out.verweise.push(w)
   }
@@ -78,6 +81,26 @@ export function buchSeiteJson(s: BuchSeite): string {
       verweise: [...s.verweise].sort((a, b) => a.y - b.y).map((v) => ({ ...v, y: r(v.y) }))
     }) + '\n'
   )
+}
+
+/**
+ * ✦-Marke entfernen (Vertrag Lernen 1.5, 5.3): nur der Nutzer, nur Verweise aus einer Markierung. Der zugehörige
+ * Ausschnitt geht mit: über `bild`, bei älteren Marken ohne `bild` der Ausschnitt derselben Skriptseite auf derselben
+ * Höhe, an die die App ihn gelegt hat. Findet sich keiner (verschoben oder schon entfernt), geht nur die Marke.
+ * Alles andere auf der Seite bleibt, wie es ist. Liefert null, wenn es die Marke nicht gibt.
+ */
+export function ohneMarkeImBuch(s: BuchSeite, verweisId: string): BuchSeite | null {
+  const v = s.verweise.find((w) => w.id === verweisId)
+  if (!v || v.marke === undefined) return null
+  const gehoert = v.bild !== undefined
+    ? (b: BuchBild) => b.id === v.bild
+    : (b: BuchBild) => b.bereich !== undefined && b.anhang === v.anhang && b.seite === v.seite && Math.abs(b.y - v.y) < 0.5
+  const bild = s.bilder.find(gehoert)
+  return {
+    ...s,
+    bilder: bild ? s.bilder.filter((b) => b !== bild) : s.bilder,
+    verweise: s.verweise.filter((w) => w !== v)
+  }
 }
 
 /** Platz für ein Bild auf einer Buchseite (unter dem untersten Bild), wie bei den Blättern */

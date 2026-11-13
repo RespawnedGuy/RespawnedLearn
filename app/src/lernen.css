@@ -370,6 +370,11 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 }
 .verweis.aus-markierung { background: var(--gelb-weich); border-color: var(--gelb-rand); color: var(--gelb-text); }
 .verweis:hover { border-color: var(--akzent); }
+.marke-huelle { position: absolute; left: 0; right: 2px; z-index: 5; }
+.marke-huelle .verweis { position: static; width: 100%; }
+.marke-menue { top: calc(100% + 4px); left: 0; width: 220px; padding: 6px; gap: 2px; }
+[data-schreibhand='links'] .marke-menue { left: auto; right: 0; }
+.buch-zeile.gefahr { color: var(--rot-text); }
 :root { --verweis-grund: #efeafb; --verweis-rand: #d9d0f3; --verweis-text: #4b35a0; }
 @media (prefers-color-scheme: dark) { :root { --verweis-grund: #2c2640; --verweis-rand: #4a3f70; --verweis-text: #d4caf5; } }
 .buch-menue { width: 320px; max-height: 70vh; overflow-y: auto; }
