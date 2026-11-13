@@ -8,6 +8,9 @@ Die fertigen Pakete stehen unter **Releases** (rechte Spalte auf der Startseite 
 | `RespawnedLearn_<version>_x64_en-US.msi` | Windows-Installer für verwaltete Rechner |
 | `RespawnedLearn_<version>_arm64.apk` | Android (Handys und Tablets mit 64-Bit-ARM, also fast alle) |
 | `SHA256SUMS.txt` | Prüfsummen aller Dateien |
+| `*.sig`, `latest.json` | Signaturen und Versionsliste für die Updates in der App ([aktualisieren.md](aktualisieren.md)) |
+
+Ab Version 0.20.0 sucht die App selbst nach neuen Versionen; installieren musst du nur einmal.
 
 ## Prüfsumme kontrollieren (freiwillig, aber sinnvoll)
 

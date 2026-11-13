@@ -1,6 +1,7 @@
 //! RespawnedLearn als Tauri-App: Die Oberfläche (React) spricht über diese Befehle mit dem Datenordner.
 //! Kein Server, kein Netz nötig. Den Abgleich zwischen Geräten macht Syncthing auf dem Ordner.
 
+mod aktualisieren;
 mod kopien;
 mod ordner;
 mod tresor;
@@ -226,6 +227,9 @@ pub fn run() {
         .manage(Zustand::default())
         .setup(|app| {
             let h = app.handle();
+            // Updates nur am PC; der öffentliche Schlüssel kommt beim Bau in die Konfiguration (aktualisieren.rs)
+            #[cfg(desktop)]
+            h.plugin(tauri_plugin_updater::Builder::new().build())?;
             let z = app.state::<Zustand>();
             if let Ok(datei) = einstellungs_datei(h) {
                 if let Some(e) = std::fs::read(&datei).ok().and_then(|b| serde_json::from_slice::<Einstellungen>(&b).ok()) {
@@ -239,7 +243,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

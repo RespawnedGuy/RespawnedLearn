@@ -4,6 +4,8 @@
 interface AndroidBruecke {
   vorhanden(): boolean
   anfragen(): void
+  /** ab v0.20.0: öffnet eine Release-Adresse dieses Repos im Browser (Download der neuen APK) */
+  oeffnen?(adresse: string): void
 }
 
 const bruecke = (): AndroidBruecke | undefined =>
@@ -18,4 +20,11 @@ export function dateizugriff(): boolean | null {
 /** Öffnet ab Android 11 die Seite „Zugriff auf alle Dateien“, bis Android 10 den Systemdialog */
 export function dateizugriffAnfragen(): void {
   bruecke()?.anfragen()
+}
+
+/** Öffnet den Download einer neuen APK im Browser; Android prüft beim Installieren, dass die Signatur passt */
+export function oeffneDownload(adresse: string): void {
+  const b = bruecke()
+  if (b?.oeffnen) b.oeffnen(adresse)
+  else window.open(adresse, '_blank', 'noopener')
 }

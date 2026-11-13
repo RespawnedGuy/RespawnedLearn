@@ -1,0 +1,19 @@
+{
+  "version": "9.9.9",
+  "notes": "Probe-Release für die Tests",
+  "pub_date": "2026-11-13T20:00:00Z",
+  "platforms": {
+    "android-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSNCtCMGxCNDh4WWZvS1lqUGRiTzMwV000VlUrczZLbzBTSmpVbmtydXJXbTBQSEsxWVBUK3lYeHNaekkrb2xsUkNBT1ZJemxEcXRvRm9UN2ZJT05ncENMd253NUsyTVEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NjAwODU3CWZpbGU6UmVzcGF3bmVkTGVhcm5fOS45LjlfYXJtNjQuYXBrCnRMNHhtWHlWUVBaTDROMUI3ZVl5VEtxRDU0UlhVQzdJQ0h3MThFcGpoT05OWnQyaFRyKzNlSjgzbWJuTlVqUSsyaGZiTXh2MXZrQzBhdHNTbzR4NUJ3PT0K",
+      "url": "https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_arm64.apk"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSNCtCMGxCNDh4WWNhMHluZ0dwenVWSnQ1SlV0NDRTOTYyc3FnNEluMkdmYmJKY3RwWUJRUEtrQmVTTkFJYm01S2RtYmVhcDVKQ3BYcXJ2UnNBVForK0t2RHE0ZDFUbmdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NjAwODU3CWZpbGU6UmVzcGF3bmVkTGVhcm5fOS45LjlfeDY0LXNldHVwLmV4ZQpZSWtlUWNHM0htcXRCWitrblNCNmJvZ3VXUENuL3o2UUV2dkFlQ0JqUHMzamU1RFRaYTdDQm1oQWhsYzAzS09kSVFBMnliS2duc0g0WStDd3NYbkxCQT09Cg==",
+      "url": "https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_x64-setup.exe"
+    },
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSNCtCMGxCNDh4WWNhMHluZ0dwenVWSnQ1SlV0NDRTOTYyc3FnNEluMkdmYmJKY3RwWUJRUEtrQmVTTkFJYm01S2RtYmVhcDVKQ3BYcXJ2UnNBVForK0t2RHE0ZDFUbmdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NjAwODU3CWZpbGU6UmVzcGF3bmVkTGVhcm5fOS45LjlfeDY0LXNldHVwLmV4ZQpZSWtlUWNHM0htcXRCWitrblNCNmJvZ3VXUENuL3o2UUV2dkFlQ0JqUHMzamU1RFRaYTdDQm1oQWhsYzAzS09kSVFBMnliS2duc0g0WStDd3NYbkxCQT09Cg==",
+      "url": "https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_x64-setup.exe"
+    }
+  }
+}

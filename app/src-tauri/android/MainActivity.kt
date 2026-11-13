@@ -2,7 +2,7 @@
 // Die App liest und schreibt ihren Datenordner direkt im gemeinsamen Speicher, damit Syncthing ihn abgleicht.
 // Dafür braucht sie wie Obsidian „Zugriff auf alle Dateien“. Sie fragt erst, nachdem die Ordnerwahl erklärt hat, wofür
 // (Android: Erlaubnis im Zusammenhang anfragen). Die Oberfläche erreicht die beiden Funktionen unten als
-// `window.RespawnedAndroid`; wry hängt seine eigene Brücke („ipc“) an derselben Stelle an (WryActivity.onWebViewCreate).
+// `window.RespawnedAndroid`; dazu `oeffnen` für den Download einer neuen APK (docs/aktualisieren.md). wry hängt seine eigene Brücke („ipc“) an derselben Stelle an (WryActivity.onWebViewCreate).
 package PAKET
 
 import android.Manifest
@@ -16,6 +16,8 @@ import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+
+private const val RELEASES = "https://github.com/RespawnedGuy/RespawnedLearn/releases/download/"
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +56,19 @@ class MainActivity : TauriActivity() {
     @JavascriptInterface
     fun anfragen() {
       runOnUiThread { zugriffAnfragen() }
+    }
+
+    /** Nur Releases dieses Repos, im Browser; das Installieren bestätigt der Nutzer im System (Signatur muss passen) */
+    @JavascriptInterface
+    fun oeffnen(adresse: String) {
+      if (!adresse.startsWith(RELEASES) || adresse.contains("..")) return
+      runOnUiThread {
+        try {
+          startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(adresse)))
+        } catch (e: Exception) {
+          // kein Browser installiert: nichts tun statt abstürzen
+        }
+      }
     }
   }
 }

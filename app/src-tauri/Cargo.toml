@@ -28,6 +28,14 @@ argon2 = { version = "=0.6.0", default-features = false, features = ["alloc"] }
 chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 getrandom = "=0.4.3"
 
+# Updates der App (aktualisieren.rs, docs/aktualisieren.md): nur am PC, Android kann sich nicht selbst ersetzen.
+# Lädt den Installer aus dem neuesten GitHub-Release und installiert ihn nur mit gültiger Signatur des Update-Schlüssels.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "=2.14.1"
+# prüfen den eingebauten öffentlichen Schlüssel vorab (dieselben Crates und Versionen, die der Updater ohnehin nutzt)
+minisign-verify = "=0.3.0"
+base64 = "=0.23.1"
+
 [dev-dependencies]
 tempfile = "=3.27.0"
 

@@ -3,6 +3,9 @@
 # Signaturen hängen nur an Secrets, nie am Repo:
 #   ANDROID_KEY_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD  → APK mit eigenem Schlüssel (sonst Debug-APK)
 #   WINDOWS_PFX_BASE64, WINDOWS_PFX_PASSWORT                      → signierter Installer (sonst unsigniert + Signierprobe)
+#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD → Updates: signierte Installer und APK, latest.json
+#     dazu die Variable (kein Secret) TAURI_UPDATER_PUBKEY, der öffentliche Schlüssel, der in die App kommt
+#     (docs/aktualisieren.md, Anleitung in docs/signieren.md)
 name: Bauen
 
 on:
@@ -43,6 +46,7 @@ jobs:
     runs-on: windows-2022
     env:
       HAT_ZERTIFIKAT: ${{ secrets.WINDOWS_PFX_BASE64 != '' }}
+      HAT_UPDATE: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     defaults:
       run: { shell: pwsh }
     steps:
@@ -59,16 +63,38 @@ jobs:
           $skript = Join-Path $env:GITHUB_WORKSPACE 'tools\windows-signieren.ps1'
           @{ bundle = @{ windows = @{ signCommand = @{ cmd = 'powershell'; args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $skript, '%1') } } } } |
             ConvertTo-Json -Depth 6 | Set-Content (Join-Path $env:RUNNER_TEMP 'signieren.json') -Encoding utf8
+      # Mit Update-Schlüssel schreibt Tauri zu jedem Installer eine .sig (createUpdaterArtifacts); ohne ihn wie bisher
+      # Der öffentliche Schlüssel kommt in die Konfiguration der App (plugins.updater.pubkey, aktualisieren.rs)
+      - name: Update-Signatur vorbereiten
+        if: env.HAT_UPDATE == 'true'
+        env:
+          UPDATE_SCHLUESSEL: ${{ vars.TAURI_UPDATER_PUBKEY }}
+        run: |
+          $schluessel = ($env:UPDATE_SCHLUESSEL -replace '\s', '')
+          if (-not $schluessel) {
+            Write-Host "::error::Secret TAURI_SIGNING_PRIVATE_KEY ist gesetzt, die Variable TAURI_UPDATER_PUBKEY fehlt (docs/signieren.md)"
+            exit 1
+          }
+          @{ bundle = @{ createUpdaterArtifacts = $true }; plugins = @{ updater = @{ pubkey = $schluessel } } } |
+            ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:RUNNER_TEMP 'aktualisieren.json') -Encoding utf8
       - name: Installer bauen
         env:
           WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
           WINDOWS_PFX_PASSWORT: ${{ secrets.WINDOWS_PFX_PASSWORT }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          if ($env:HAT_ZERTIFIKAT -eq 'true') { npm run tauri -- build --config (Join-Path $env:RUNNER_TEMP 'signieren.json') }
-          else { npm run tauri -- build }
+          $konfig = @()
+          if ($env:HAT_ZERTIFIKAT -eq 'true') { $konfig += '--config', (Join-Path $env:RUNNER_TEMP 'signieren.json') }
+          if ($env:HAT_UPDATE -eq 'true') { $konfig += '--config', (Join-Path $env:RUNNER_TEMP 'aktualisieren.json') }
+          npm run tauri -- build @konfig
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory ausgabe | Out-Null
           Copy-Item app/src-tauri/target/release/bundle/nsis/*.exe, app/src-tauri/target/release/bundle/msi/*.msi ausgabe/
+          if ($env:HAT_UPDATE -eq 'true') {
+            Copy-Item app/src-tauri/target/release/bundle/nsis/*.exe.sig, app/src-tauri/target/release/bundle/msi/*.msi.sig ausgabe/
+            if ((Get-ChildItem ausgabe/*.sig).Count -ne 2) { throw 'Zu jedem Installer gehört eine .sig' }
+          }
           Get-ChildItem ausgabe | ForEach-Object { Write-Host $_.Name }
       - name: Signatur prüfen
         if: env.HAT_ZERTIFIKAT == 'true'
@@ -100,6 +126,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       HAT_SCHLUESSEL: ${{ secrets.ANDROID_KEY_BASE64 != '' }}
+      HAT_UPDATE: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -160,6 +187,16 @@ jobs:
             echo "Release-APK trägt den Debug-Schlüssel"; exit 1
           fi
           mkdir -p ausgabe && cp "$apk" "ausgabe/$name"
+      # Gleiche Update-Signatur wie am PC, damit latest.json für jede Datei eine trägt; installieren prüft Android selbst
+      - name: Update-Signatur der APK
+        if: env.HAT_UPDATE == 'true' && env.HAT_SCHLUESSEL == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          apk=$(ls ausgabe/*.apk)
+          npx tauri signer sign "$apk"
+          test -s "$apk.sig"
       - uses: actions/upload-artifact@v4
         with:
           name: respawnedlearn-android
@@ -191,8 +228,11 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           HINWEIS: ${{ github.event.head_commit.message }}
+          UPDATE_SCHLUESSEL: ${{ vars.TAURI_UPDATER_PUBKEY }}
         run: |
           cd ausgabe
+          # latest.json für die Updates (nur mit .sig-Dateien); prüft vorher jede Signatur gegen den Schlüssel der App
+          UPDATE_SCHLUESSEL="$UPDATE_SCHLUESSEL" node ../tools/neueste.mjs bau . "$VERSION" "$GITHUB_REPOSITORY" "$(printf '%s' "$HINWEIS" | head -n 1)"
           sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           {
@@ -200,12 +240,15 @@ jobs:
             echo "Installieren und Warnungen von Windows, Browser und Android: [docs/installieren.md](https://github.com/$GITHUB_REPOSITORY/blob/v$VERSION/docs/installieren.md)."
             echo "Prüfsummen (SHA-256) stehen in \`SHA256SUMS.txt\`."
           } > ../notizen.md
-          vorab=""; case "$VERSION" in 0.*) vorab="--prerelease";; esac
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "RespawnedLearn $VERSION" --notes-file ../notizen.md $vorab -- *
+          # Normaler Release (ab v0.20.0, Nils 13.11.): nur dann zeigt …/releases/latest/download/latest.json auf ihn
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "RespawnedLearn $VERSION" --notes-file ../notizen.md --latest -- *
       # Gegenprobe: was jetzt im Release liegt, muss zu den Prüfsummen passen
       - name: Release gegen Prüfsummen prüfen
         if: steps.version.outputs.neu == 'true'
+        env:
+          UPDATE_SCHLUESSEL: ${{ vars.TAURI_UPDATER_PUBKEY }}
         run: |
           mkdir geladen && cd geladen
           gh release download "v${{ steps.version.outputs.version }}" --repo "$GITHUB_REPOSITORY"
           sha256sum -c SHA256SUMS.txt
+          node ../tools/neueste.mjs pruefe .

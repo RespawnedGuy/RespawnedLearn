@@ -4,6 +4,7 @@ import { inTauri, ordnerStand, ortLink, setzeOrdner, useDaten, Version, type Ord
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
+import { EinstellungenAktualisierung } from './Aktualisierung'
 
 /** `#/einstellungen`: Datenordner, KI-Zugang dieses Geräts, Anweisungen an die KI */
 export function Einstellungen() {
@@ -15,6 +16,7 @@ export function Einstellungen() {
       <Schreiben />
       <EinstellungenKi />
       <EinstellungenPrompts />
+      <EinstellungenAktualisierung />
       <section className="einstellungen-teil">
         <h2>Über die App</h2>
         <p className="klein-leise">

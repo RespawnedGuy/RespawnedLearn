@@ -1,6 +1,8 @@
 // Rückfallebene für Sync-Fehler (Vertrag Lernen, Grundlagen 8): Ist eine Datei lesbar, und lässt sich eine Konfliktkopie
 // ohne Menschen auflösen, weil dabei nichts verloren gehen kann? Rein, ohne Oberfläche und ohne Ordner.
 
+import { VERTRAG_PFAD, liesVertrag, vergleicheVersionen } from './aktualisierung'
+
 /** Byte-Order-Mark und Zeilenenden sind kein inhaltlicher Unterschied (Editoren und Sync-Programme ändern sie) */
 function eben(t: string): string {
   return t.replace(/^﻿/, '').replace(/\r\n/g, '\n')
@@ -67,10 +69,15 @@ function protokollZusammen(a: string, b: string): string | null {
 /**
  * Lässt sich der Konflikt ohne Menschen lösen, ohne dass Inhalt verloren geht? null = nein, die Konfliktansicht zeigt ihn.
  * Regeln: gleicher Inhalt; eine Seite leer; eine Seite halb übertragen (unlesbar und Anfang der anderen);
- * Protokolle `reviews/*.jsonl` werden zeilenweise vereinigt.
+ * Protokolle `reviews/*.jsonl` werden zeilenweise vereinigt; bei der Vertragsmarke gilt die höhere Version (Lernen 1.6).
  */
 export function automatisch(pfad: string, original: string | undefined, kopie: string): Automatik | null {
   if (original === undefined) return null
+  if (pfad === VERTRAG_PFAD) {
+    const o = liesVertrag(original)
+    const k = liesVertrag(kopie)
+    if (o && k) return vergleicheVersionen(k, o) > 0 ? { art: 'uebernehmen' } : { art: 'weg' }
+  }
   const o = eben(original)
   const k = eben(kopie)
   if (o === k || leer(kopie)) return { art: 'weg' }

@@ -10,6 +10,8 @@ import { usePlus } from './plus'
 import { faellige } from './wissen'
 import { useEffect } from 'react'
 import { verbindeOrdner } from './kianbieter/zugang'
+import { AppHinweise } from './Aktualisierung'
+import { useNeuererVertrag } from './vertragsmarke'
 
 /** Lern-App: drei Bereiche. Sie kennt keine Projekte. */
 export function App() {
@@ -17,6 +19,8 @@ export function App() {
   const { bestand, speicher } = useDaten()
   // Gemeinsamer KI-Zugang im Datenordner: Änderungen von anderen Geräten gelten ohne Neustart
   useEffect(() => verbindeOrdner(speicher), [speicher])
+  // Vertragsmarke im Datenordner (Lernen 1.6): warnt, wenn ein anderes Gerät eine neuere App hat
+  const neuererVertrag = useNeuererVertrag(speicher)
   const bereich = ort[0] ?? 'sammeln'
   const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' && ort[1] !== 'mitschrift' ? bestand.dokumente.get(ort[1]) : undefined
   const mitschrift = bereich === 'sammeln' && ort[1] === 'mitschrift' && ort[2] ? bestand.dokumente.get(ort[2]) : undefined
@@ -71,6 +75,7 @@ export function App() {
       />
       {/* Stürzt eine Ansicht ab, bleiben Kopf und Leiste bedienbar */}
       <main id="inhalt">
+      <AppHinweise neuererVertrag={neuererVertrag} inEinstellungen={bereich === 'einstellungen'} />
       <Fehlergrenze ort={ort.join('/')}>
         {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       </Fehlergrenze>

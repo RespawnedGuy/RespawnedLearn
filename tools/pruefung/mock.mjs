@@ -59,6 +59,10 @@ export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'
           case 'tresor_kennung': return null;
           case 'ki_zugang_lesen': return null;
           case 'ki_zugang_setzen': return null;
+          // Updates: eine erfundene neuere Version, damit Hinweis und Einstellungen sichtbar sind
+          case 'aktualisierung_eingerichtet': return true;
+          case 'aktualisierung_abrufen': return JSON.stringify({ version: '9.9.9', notes: 'Probe: neue Funktionen und Fehlerbehebungen.', pub_date: '2026-11-13T20:00:00Z', platforms: { 'windows-x86_64': { signature: '', url: 'https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_x64-setup.exe' }, 'android-aarch64': { signature: '', url: 'https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_arm64.apk' } } });
+          case 'aktualisierung_installieren': return null;
           case 'plugin:event|listen': return 1;
           case 'plugin:event|unlisten': return null;
           default: console.warn('mock: unbekannt', cmd); return null;

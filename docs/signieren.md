@@ -26,6 +26,32 @@ installierte Apps nie mehr aktualisieren, Nutzer müssten deinstallieren. Fehlen
 Prüfen: Die Action zeigt im Schritt „Signatur prüfen“ das Zertifikat (`apksigner verify --print-certs`) und bricht ab, wenn
 eine Release-APK den Debug-Schlüssel trägt.
 
+## Updates: eigener Update-Schlüssel (kostenlos)
+
+Damit sich installierte Apps selbst aktualisieren ([aktualisieren.md](aktualisieren.md)), signiert die Action jeden
+Installer und jede APK zusätzlich mit einem Update-Schlüssel (minisign). Einmalig auf dem eigenen Rechner im Repo-Ordner
+nach `npm ci`:
+
+```
+npx tauri signer generate -w respawnedlearn-update.key
+```
+
+Ein Passwort ist freiwillig, empfohlen ist eins. Es entstehen zwei Dateien: `respawnedlearn-update.key` (geheim) und
+`respawnedlearn-update.key.pub` (öffentlich). Dann in Settings → Secrets and variables → Actions:
+
+| Wo | Name | Inhalt |
+|---|---|---|
+| Secret | `TAURI_SIGNING_PRIVATE_KEY` | Inhalt von `respawnedlearn-update.key` |
+| Secret | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | das Passwort (leer lassen, wenn keins) |
+| Variable (Reiter „Variables“) | `TAURI_UPDATER_PUBKEY` | Inhalt von `respawnedlearn-update.key.pub` |
+
+Der öffentliche Schlüssel kommt beim Bau in die App, er ist nicht geheim. **Sichere die `.key`-Datei und das Passwort an
+zwei Orten.** Ohne sie bekommt keine installierte App mehr Updates, Nutzer müssten den neuen Installer von Hand laden.
+
+Prüfen: Die Action bricht ab, wenn das Secret ohne die Variable gesetzt ist, und prüft vor und nach dem Hochladen jede
+Signatur in `latest.json` selbst gegen `TAURI_UPDATER_PUBKEY` nach (`tools/neueste.mjs`, Ed25519 über `node:crypto`).
+Passen Schlüssel und Variable nicht zusammen, entsteht kein Release.
+
 ## Windows: Schalter für später
 
 Mit den Secrets `WINDOWS_PFX_BASE64` (Zertifikat als PFX, Base64) und `WINDOWS_PFX_PASSWORT` signiert Tauri App-EXE und
