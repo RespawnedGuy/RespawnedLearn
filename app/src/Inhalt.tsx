@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import katex from 'katex'
-import { ankerParameter, findeLinks, liesMarken, pfade, type Bestand } from '@rl/kern'
+import { ankerParameter, calloutName, findeLinks, liesMarken, pfade, type Bestand } from '@rl/kern'
 import { ausschnitt, ortLink, useDaten } from '@rl/oberflaeche'
 
 /** Bild einer markierten Stelle im Skript */
@@ -94,7 +94,7 @@ export function Inhalt({ text, abrufeZeigen = true }: { text: string; abrufeZeig
       while (i + 1 < zeilen.length && zeilen[i + 1].startsWith('>')) innen.push(zeilen[++i].replace(/^>\s?/, ''))
       bloecke.push(
         <details key={bloecke.length} className={`callout callout-${callout[1].toLowerCase()}`} open={callout[2] !== '-'}>
-          <summary>{callout[3] || callout[1]}</summary>
+          <summary>{callout[3] || calloutName(callout[1])}</summary>
           <Inhalt text={innen.join('\n')} abrufeZeigen={abrufeZeigen} />
         </details>
       )

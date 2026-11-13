@@ -1,7 +1,7 @@
 // Darstellung im Editor: Markdown bleibt der gespeicherte Text, angezeigt wird es ruhig und direkt bedienbar.
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { EditorState, StateEffect, type Extension, type Range, type Text } from '@codemirror/state'
-import { ankerParameter, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rl/kern'
+import { ankerParameter, calloutName, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rl/kern'
 import { dekoriereZeile, tabellenBedienung, tabellenZeilen } from './tabelle'
 
 export interface DarstellungHilfen {
@@ -402,7 +402,7 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
         const zeichen = /^>\s?/.exec(t)![0].length
         deko.push(Decoration.replace({}).range(zeile.from, zeile.from + zeichen))
         const art = /^\[!(\w+)\][+-]?\s?/.exec(t.slice(zeichen))
-        if (art) deko.push(Decoration.replace({ widget: new StatusMarke(art[1].toLowerCase()) }).range(zeile.from + zeichen, zeile.from + zeichen + art[0].length))
+        if (art) deko.push(Decoration.replace({ widget: new StatusMarke(art[1].toLowerCase(), calloutName(art[1])) }).range(zeile.from + zeichen, zeile.from + zeichen + art[0].length))
         const feld = /^(Wenn|Dann|Prüfen|Pruefen):/i.exec(t.slice(zeichen))
         if (feld) deko.push(Decoration.mark({ class: 'cm-feld' }).range(zeile.from + zeichen, zeile.from + zeichen + feld[0].length))
       }
@@ -412,7 +412,9 @@ function baue(view: EditorView, h: DarstellungHilfen): DecorationSet {
     if (u) {
       const ebene = u[1].length
       deko.push(Decoration.line({ class: `cm-h${ebene}` }).range(zeile.from))
-      deko.push(Decoration.mark({ class: 'cm-zeichen' }).range(zeile.from, zeile.from + ebene))
+      // `##` nur in der Zeile mit dem Cursor zeigen, sonst wirkt die Mitschrift wie Quelltext (Design-Prüfung Kl6)
+      if (roh) deko.push(Decoration.mark({ class: 'cm-zeichen' }).range(zeile.from, zeile.from + ebene))
+      else deko.push(Decoration.replace({}).range(zeile.from, zeile.from + ebene + u[2].length))
       if (ebene === 1) {
         const tag = /^#[\p{L}\d_][\p{L}\d_/-]*/u.exec(u[3])
         if (tag && tag[0].toLowerCase() !== '#wichtig') {

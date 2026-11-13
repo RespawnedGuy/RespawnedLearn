@@ -41,6 +41,7 @@ export function Start() {
   const eingabe = useRef<HTMLInputElement>(null)
   const [neu, setNeu] = useState(false)
   const [heft, setHeft] = useState(false)
+  const [auswahl, setAuswahl] = useState(false)
   const [suche, setSuche] = useState('')
   const alle = lernziele(bestand)
   const w = suche.trim().toLowerCase()
@@ -52,14 +53,18 @@ export function Start() {
       <div className="seite-kopf">
         <h1>Was lerne ich gerade?</h1>
         <span style={{ flex: 1 }} />
-        <button type="button" className="knopf" onClick={() => setNeu(true)}>
+        {/* Am PC drei Knöpfe nebeneinander, am Handy ein „+ Neu“ mit Erklärung je Möglichkeit (Design-Prüfung Kl5) */}
+        <button type="button" className="knopf nur-breit" onClick={() => setNeu(true)}>
           Neues Modul
         </button>
-        <button type="button" className="knopf" onClick={() => setHeft(true)} title="Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern">
+        <button type="button" className="knopf nur-breit" onClick={() => setHeft(true)} title="Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern">
           Buch ohne PDF
         </button>
-        <button type="button" className="knopf haupt" onClick={() => eingabe.current?.click()}>
+        <button type="button" className="knopf haupt nur-breit" onClick={() => eingabe.current?.click()}>
           Buch hinzufügen
+        </button>
+        <button type="button" className="knopf haupt nur-schmal" onClick={() => setAuswahl(true)}>
+          + Neu
         </button>
         <input
           ref={eingabe}
@@ -78,7 +83,7 @@ export function Start() {
           }}
         />
       </div>
-      <p className="klein-leise" style={{ marginTop: 0 }}>
+      <p className="klein-leise nur-breit start-erklaerung">
         Ein Modul bündelt mehrere PDFs zu einem Ziel, ein Buch ist ein Modul mit einem PDF. Du liest und schreibst selbst heraus, was wichtig ist.
       </p>
       {alle.length > 8 && (
@@ -95,6 +100,34 @@ export function Start() {
         <div className="leer">Nichts gefunden.</div>
       )}
       {heft && <NeuesHeft onZu={() => setHeft(false)} />}
+      {auswahl && (
+        <Dialog titel="Was möchtest du anlegen?" onZu={() => setAuswahl(false)}>
+          <div className="neu-auswahl">
+            {(
+              [
+                ['Buch hinzufügen', 'Ein PDF, das du durcharbeitest, z. B. ein Skript oder Fachbuch.', () => eingabe.current?.click()],
+                ['Neues Modul', 'Mehrere PDFs und Mitschriften zu einem Ziel, z. B. ein Lehrgang.', () => setNeu(true)],
+                ['Buch ohne PDF', 'Für ein Buch auf Papier: leeres Heft mit großer Zeichenfläche, Kamera und Bildern.', () => setHeft(true)]
+              ] as const
+            ).map(([titel, text, tu]) => (
+              <button
+                key={titel}
+                type="button"
+                className="knopf neu-option"
+                onClick={(e) => {
+                  // Erst das modale Fenster schließen: solange es offen ist, ist die Seite dahinter (Dateiwahl) gesperrt
+                  e.currentTarget.closest('dialog')?.close()
+                  setAuswahl(false)
+                  tu()
+                }}
+              >
+                <b>{titel}</b>
+                <span>{text}</span>
+              </button>
+            ))}
+          </div>
+        </Dialog>
+      )}
       {neu && (
         <NeuesModul
           onZu={() => setNeu(false)}

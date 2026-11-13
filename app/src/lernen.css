@@ -342,3 +342,9 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 /* Große Schrift (Text auf 200 %, WCAG 1.4.4): Knöpfe in umbrechenden Reihen dürfen ihren Text umbrechen, statt aus dem
    Bildschirm zu ragen. Erst wenn ein Knopf allein breiter als die Zeile wäre, greift das (flex-wrap bricht vorher um). */
 .reihe .knopf, .konflikt-fassung .knopf { max-width: 100%; white-space: normal; text-align: start; }
+
+/* Startseite: Erklärung mit Abstand zu den Knöpfen; am Handy „+ Neu“ mit Auswahl (Kl5) */
+.start-erklaerung { margin: 8px 0 0; }
+.neu-auswahl { display: grid; gap: 8px; }
+.neu-option { height: auto; min-height: 64px; padding: 10px 14px; flex-direction: column; align-items: flex-start; gap: 2px; white-space: normal; text-align: start; }
+.neu-option span { font-weight: 400; font-size: 0.8125rem; color: var(--leise); }
