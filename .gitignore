@@ -11,3 +11,6 @@ app/src-tauri/gen/
 *.keystore
 *.pfx
 keystore.properties
+# Prüfungen im Browser (tools/pruefung)
+/daten/
+/ansehen/
