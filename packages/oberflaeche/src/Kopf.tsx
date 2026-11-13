@@ -59,6 +59,7 @@ export function Kopf({
               <a key={z.ziel} className={`kopf-reiter-knopf${z.aktiv ? ' aktiv' : ''}`} href={z.ziel} aria-current={z.aktiv ? 'page' : undefined}>
                 <span className="kopf-reiter-text">{z.titel}</span>
                 {!!z.zahl && <span className="kopf-zahl">{z.zahl}</span>}
+                {z.aktiv && <span className="kopf-strich" aria-hidden="true" />}
               </a>
             ))}
           </nav>

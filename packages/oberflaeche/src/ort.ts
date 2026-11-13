@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { mitUebergang, richtung } from './uebergang'
 
 // Navigation über den Hash (#/journal/2026-10-19): funktioniert offline und ohne Server-Regeln.
 function lesen(): string[] {
@@ -8,11 +9,14 @@ function lesen(): string[] {
 let cache = location.hash
 let teile = lesen()
 
+// Wer die Adresse liest, hört hier statt direkt am hashchange: so kann der Wechsel in einem Übergang laufen (uebergang.ts)
+const hoerer = new Set<() => void>()
+
 export function useOrt(): string[] {
   return useSyncExternalStore(
     (f) => {
-      addEventListener('hashchange', f)
-      return () => removeEventListener('hashchange', f)
+      hoerer.add(f)
+      return () => hoerer.delete(f)
     },
     () => {
       if (location.hash !== cache) {
@@ -37,6 +41,9 @@ export function ortLink(...ziel: (string | number)[]): string {
 const STAPEL = `rvx-verlauf-${location.pathname}`
 let stapel: string[] = []
 let stelle = 0
+/** Für den Übergang: Adresse vor dem letzten Wechsel und ob er im Verlauf zurück ging */
+let vorigerHash = typeof location === 'undefined' ? '' : location.hash
+let zurueckGegangen = false
 
 function stapelLesen(): string[] {
   try {
@@ -59,9 +66,11 @@ function merken() {
   const s = (history.state as { rvxStelle?: unknown } | null)?.rvxStelle
   if (typeof s === 'number' && stapel[s] === location.hash) {
     // Vor oder zurück im Browser: nur die Stelle wechselt
+    zurueckGegangen = s < stelle
     stelle = s
     return
   }
+  zurueckGegangen = false
   stelle = typeof s === 'number' ? s : stapel.length ? stelle + 1 : 0
   stapel = stapel.slice(0, stelle)
   stapel[stelle] = location.hash
@@ -78,6 +87,12 @@ if (typeof window !== 'undefined') {
     merken()
   }
   addEventListener('hashchange', merken)
+  // Nach merken(), damit die Richtung den neuen Stand im Verlauf kennt
+  addEventListener('hashchange', () => {
+    const r = richtung(vorigerHash, location.hash, zurueckGegangen)
+    vorigerHash = location.hash
+    mitUebergang(r, () => hoerer.forEach((f) => f()))
+  })
 }
 
 /** Dieselbe Ansicht, nur woanders darin (Seite im Buch, Zeile im Journal): zählt für „Zurück“ nicht */
@@ -112,6 +127,7 @@ export function ersetzeOrt(...ziel: (string | number)[]) {
   const hash = ortLink(...ziel)
   if (hash === location.hash) return
   history.replaceState(history.state, '', hash)
+  vorigerHash = hash
   stapel[stelle] = hash
   stapelSichern()
 }

@@ -13,7 +13,10 @@ node tools/pruefung/ansehen.mjs                        # alle Ansichten, oder z.
 ```
 
 - Ausgabe: `./ansehen/<ansicht>-<handy|pc>-<hell|dunkel>.png` und `ergebnis.json` (seitliches Überlaufen,
-  Konsolenfehler und Antworten ≥ 400). Exit-Code 1 bei Konsolenfehlern.
+  Konsolenfehler und Antworten ≥ 400, Kontrast auf Glas). Dazu `start-handy-reduziert.png` mit „Bewegung reduzieren“
+  und „Transparenz reduzieren“ (über CDP). Exit-Code 1 bei Konsolenfehlern, Schrift auf Glas unter 4,5:1
+  (`glaskontrast.mjs`: Glas über Schwarz und Weiß gerechnet, weil axe durchsichtige Flächen nicht kennt) oder wenn
+  das Glas mit reduzierter Transparenz nicht deckend wird.
 - Umgebung: `DATEN`, `AUS`, `URL`, `PLAYWRIGHT` (Pfad zum Paket, falls nicht auflösbar), `AXE` (Pfad zu
   `axe.min.js`; ohne die Datei läuft keine WCAG-Prüfung, axe-core ist bewusst keine Abhängigkeit).
 - Fallen: `npm run dev -- --port …` reicht die Schalter nicht an Vite weiter (leere Seite, 404 auf `/`), darum

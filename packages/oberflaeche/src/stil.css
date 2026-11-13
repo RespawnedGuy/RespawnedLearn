@@ -431,37 +431,7 @@ button.marke { padding: 0; }
   .cm-tooltip.cm-tooltip-autocomplete > ul > li { padding: 12px 12px !important; font-size: 1rem; }
 }
 
-/* ---------- Daumenleiste (Handy): feste Ziele unten (beide Apps) ---------- */
-.daumenleiste { display: none; }
-@media (max-width: 720px) {
-  body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-  .daumenleiste {
-    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 32;
-    background: var(--glas-dicht); backdrop-filter: saturate(1.4) blur(12px);
-    border-top: 1px solid var(--linie); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-  }
-  /* Tastatur offen (Arbeit): nur „+“ bleibt, an derselben Stelle über der Tastatur */
-  .daumenleiste.tastatur { background: transparent; backdrop-filter: none; border: none; bottom: var(--tastatur, 0px); pointer-events: none; padding-bottom: 8px; }
-  .daumenleiste.tastatur > * { pointer-events: auto; }
-  .daumenleiste.tastatur .daumen-zeile { pointer-events: none; }
-  .daumenleiste.tastatur .daumen-plus { pointer-events: auto; }
-  /* Werkzeuge für PDF und Blatt schweben über der Leiste, nicht auf ihr */
-  body:has(.daumenleiste:not(.tastatur)) .werkzeug { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
-}
-.daumen-zeile { height: 64px; display: flex; align-items: center; justify-content: space-around; padding: 0 4px; }
-.daumen-ziel {
-  flex: 1 1 0; min-width: 0; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--leise); text-decoration: none; border-radius: 12px; font-size: 0.6875rem; font-weight: 600; touch-action: manipulation;
-}
-.daumen-ziel:active { background: var(--mulde-hell); }
-.daumen-ziel.aktiv { color: var(--akzent-dunkel); font-weight: 800; }
-.daumen-ziel.aktiv .daumen-symbol { background: var(--akzent-weich); }
-.daumen-symbol { position: relative; width: 52px; height: 30px; border-radius: 15px; display: grid; place-items: center; }
-.daumen-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.daumen-zahl {
-  position: absolute; top: -3px; left: 30px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  background: var(--akzent); color: #fff; font-size: 0.6875rem; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
-}
+/* Daumenleiste (Handy): steht als schwebende Glaspille in glas.css */
 
 /* Tabellen im Editor (editor/tabelle.ts): jede Zeile ein Raster, die Striche sind unsichtbar */
 .cm-line.cm-tabelle-zeile {

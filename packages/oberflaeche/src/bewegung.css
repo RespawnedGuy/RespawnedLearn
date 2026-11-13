@@ -1,0 +1,70 @@
+/* Bewegung bei der Bedienung: kurz (120–260 ms), nur transform und opacity (laufen auf der Grafikkarte, auch neben
+   der Unschärfe in der Android-WebView). Ansichtswechsel über View Transitions (uebergang.ts setzt data-uebergang):
+   tiefer kommt von rechts, zurück von links, ein anderer Bereich blendet über. Kopf und Daumenmenü bleiben stehen;
+   die Wölbung im Daumenmenü gleitet per CSS-Übergang auf `d`, die Unterstreichung im Kopf per View Transition. „Bewegung reduzieren“: nur Überblenden, nichts gleitet. */
+
+:root {
+  --feder: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --dauer: 240ms;
+}
+
+/* ---------- Ansichtswechsel ---------- */
+.kopf { view-transition-name: kopf; }
+.kopf-strich { view-transition-name: reiter-strich; }
+@media (max-width: 720px) {
+  .daumen-zeile { view-transition-name: daumen; }
+  /* Die Kontur zeigt im Übergang nur ihren lebenden neuen Stand, so gleitet die Wölbung und erscheint nicht doppelt */
+  .daumen-kontur { view-transition-name: daumen-kontur; }
+}
+::view-transition-old(daumen-kontur) { display: none; }
+::view-transition-new(daumen-kontur) { animation: none; }
+::view-transition-group(daumen-kontur) { animation: none; }
+::view-transition-group(*) { animation-duration: var(--dauer); animation-timing-function: var(--feder); }
+/* Stehende Ebenen blenden nur ihren Inhalt über, die Fläche bewegt sich nicht */
+::view-transition-old(kopf), ::view-transition-new(kopf), ::view-transition-old(daumen), ::view-transition-new(daumen) { animation-duration: 160ms; }
+
+html[data-uebergang='tiefer']::view-transition-old(root) { animation: ue-raus-links var(--dauer) var(--feder) both; }
+html[data-uebergang='tiefer']::view-transition-new(root) { animation: ue-rein-rechts var(--dauer) var(--feder) both; }
+html[data-uebergang='zurueck']::view-transition-old(root) { animation: ue-raus-rechts var(--dauer) var(--feder) both; }
+html[data-uebergang='zurueck']::view-transition-new(root) { animation: ue-rein-links var(--dauer) var(--feder) both; }
+html[data-uebergang='wechsel']::view-transition-old(root) { animation: ue-aus 140ms ease-out both; }
+html[data-uebergang='wechsel']::view-transition-new(root) { animation: ue-auftauchen var(--dauer) var(--feder) both; }
+
+@keyframes ue-raus-links { to { opacity: 0; transform: translateX(-28px); } }
+@keyframes ue-rein-rechts { from { opacity: 0; transform: translateX(40px); } }
+@keyframes ue-raus-rechts { to { opacity: 0; transform: translateX(28px); } }
+@keyframes ue-rein-links { from { opacity: 0; transform: translateX(-40px); } }
+@keyframes ue-aus { to { opacity: 0; } }
+@keyframes ue-ein { from { opacity: 0; } }
+@keyframes ue-auftauchen { from { opacity: 0; transform: translateY(8px) scale(0.995); } }
+
+/* ---------- Druck: Knöpfe geben nach ---------- */
+.knopf, .daumen-ziel, .kopf-reiter-knopf, .kopf-zahnrad, .zurueck-pfeil, .werkzeug button, .segmente button, .daumen-plus {
+  transition: transform 120ms var(--feder), background-color 150ms ease, color 150ms ease;
+}
+.knopf:active:not(:disabled), .kopf-reiter-knopf:active, .kopf-zahnrad:active, .zurueck-pfeil:active:not(:disabled), .werkzeug button:active, .segmente button:active {
+  transform: scale(0.96);
+}
+.daumen-ziel:active .daumen-symbol { transform: scale(0.9); }
+
+/* ---------- Daumenmenü: klein und groß ---------- */
+.daumen-zeile { transition: transform 300ms var(--feder); }
+.daumen-text { transition: opacity 180ms ease; }
+.daumen-symbol { transition: transform 300ms var(--feder); }
+.daumen-kontur path { transition: d 380ms var(--feder); }
+.werkzeug { transition: translate 300ms var(--feder); }
+
+/* ---------- Dialoge kommen von unten ---------- */
+.dialog-huelle[open] .dialog { animation: ue-auftauchen-dialog 260ms var(--feder) both; }
+.dialog-huelle[open]::backdrop { animation: ue-ein 200ms ease-out both; }
+@keyframes ue-auftauchen-dialog { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+
+/* ---------- Bewegung reduzieren ---------- */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*) { animation: none; }
+  .daumen-kontur path { transition: none; }
+  html[data-uebergang]::view-transition-old(root) { animation: ue-aus 150ms ease-out both; }
+  html[data-uebergang]::view-transition-new(root) { animation: ue-ein 150ms ease-out both; }
+  .knopf:active:not(:disabled), .kopf-reiter-knopf:active, .kopf-zahnrad:active, .zurueck-pfeil:active:not(:disabled), .werkzeug button:active, .segmente button:active,
+  .daumen-ziel:active .daumen-symbol { transform: none; }
+}

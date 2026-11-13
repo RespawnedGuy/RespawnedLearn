@@ -55,7 +55,7 @@ export function App() {
         ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : bereich === 'konflikte' ? 'Konflikte' : bereich === 'einstellungen' ? 'Einstellungen' : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'}
         ziele={ziele}
         rechts={
-          <a className={`kopf-zahnrad${bereich === 'einstellungen' ? ' aktiv' : ''}`} href={ortLink('einstellungen')} aria-label="Einstellungen" title="Einstellungen">
+          <a className={`kopf-zahnrad nur-breit${bereich === 'einstellungen' ? ' aktiv' : ''}`} href={ortLink('einstellungen')} aria-label="Einstellungen" title="Einstellungen">
             <Symbol name="zahnrad" groesse={20} />
           </a>
         }
@@ -66,7 +66,13 @@ export function App() {
         {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
       </main>
-      <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
+      {/* Am Handy sitzt das Zahnrad mit im Daumenmenü statt oben rechts, wo der Daumen nicht hinkommt. Im Skript wird die Pille beim Lesen klein */}
+      <Daumenleiste
+        ziele={[...ziele, { titel: 'Einstellungen', symbol: 'zahnrad', ziel: ortLink('einstellungen'), aktiv: bereich === 'einstellungen' }]}
+        mitte={plus ? <PlusKnopf ziel={plus} /> : undefined}
+        nurMitte={!!plus && tastatur}
+        einklappen={!!quelle}
+      />
       <Meldungen />
     </>
   )

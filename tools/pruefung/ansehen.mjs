@@ -9,6 +9,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { initSkript } from './mock.mjs'
+import { glasKontrast } from './glaskontrast.mjs'
 
 const require = createRequire(import.meta.url)
 function ladePlaywright() {
@@ -69,8 +70,13 @@ for (const [gname, g] of Object.entries(GERAETE)) {
         })
       }
       const ueberlauf = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-      ergebnis[`${aname}|${gname}|${schema}`] = { axe: ax, ueberlauf }
-      console.log(datei, 'überlauf', ueberlauf, ax ? 'axe: ' + (ax.map((v) => `${v.id}(${v.anzahl})`).join(' ') || '–') : '')
+      // Schrift auf Glas über Schwarz und Weiß: unter 4,5:1 zählt als Fehler
+      const glas = await page.evaluate(glasKontrast)
+      const schwach = glas.filter((g) => Math.min(g.schwarz, g.weiss) < 4.5)
+      const glasMin = glas.length ? Math.min(...glas.map((g) => Math.min(g.schwarz, g.weiss))) : null
+      fehler += schwach.length
+      ergebnis[`${aname}|${gname}|${schema}`] = { axe: ax, ueberlauf, glasMin, glasSchwach: schwach }
+      console.log(datei, 'überlauf', ueberlauf, 'glas min', glasMin, schwach.length ? 'ZU SCHWACH: ' + schwach.map((g) => `${g.ort}/${g.text} ${g.schwarz}|${g.weiss}`).join(', ') : '', ax ? 'axe: ' + (ax.map((v) => `${v.id}(${v.anzahl})`).join(' ') || '–') : '')
     }
     const k = [...new Set(konsole)]
     ergebnis[`konsole|${gname}|${schema}`] = k
@@ -78,6 +84,27 @@ for (const [gname, g] of Object.entries(GERAETE)) {
     for (const z of k) console.log(`konsole ${gname}/${schema}:`, z)
     await ctx.close()
   }
+}
+// Systemeinstellungen: „Bewegung reduzieren“ und „Transparenz reduzieren“ (die zweite kennt Playwright nur über CDP)
+if (!nur || nur.includes('start')) {
+  const ctx = await browser.newContext({ ...GERAETE.handy, reducedMotion: 'reduce', locale: 'de-DE' })
+  await ctx.addInitScript(initSkript())
+  const page = await ctx.newPage()
+  const cdp = await ctx.newCDPSession(page)
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
+  await page.goto(URL + ANSICHTEN.start)
+  await page.waitForTimeout(1200)
+  const st = await page.evaluate(() => {
+    const z = getComputedStyle(document.querySelector('.daumen-zeile'))
+    return { backdrop: z.backdropFilter, grund: z.backgroundColor, uebergang: getComputedStyle(document.querySelector('.daumen-kontur path')).transitionDuration }
+  })
+  const deckend = st.backdrop === 'none' && !/rgba\(.*,\s*0?\.\d+\)/.test(st.grund)
+  const ruhig = st.uebergang.split(',').every((d) => parseFloat(d) < 0.02)
+  if (!deckend || !ruhig) fehler++
+  ergebnis['reduziert|handy'] = { ...st, deckend, ruhig }
+  console.log('reduziert: Glas deckend', deckend, '· Kontur gleitet nicht', ruhig, JSON.stringify(st))
+  await page.screenshot({ path: path.join(AUS, 'start-handy-reduziert.png') })
+  await ctx.close()
 }
 writeFileSync(path.join(AUS, 'ergebnis.json'), JSON.stringify(ergebnis, null, 1))
 await browser.close()
