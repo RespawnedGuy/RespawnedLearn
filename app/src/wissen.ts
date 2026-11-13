@@ -156,9 +156,10 @@ async function aendere(speicher: Speicher, pfad: string, f: (t: string) => strin
 /** Stelle im Skript markieren und daraus eine Karte machen */
 export async function karteAusStelle(
   speicher: Speicher,
-  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string }
+  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link' | 'nur'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string; markeId?: string }
 ): Promise<string> {
-  const markeId = kurzId()
+  // „nur“: nur markieren, ohne Karte (Vertrag Lernen 1.3, 5.4); die Markierung kann ins Notizbuch gehen
+  const markeId = p.markeId ?? kurzId()
   const ausschnitt = stellenLink(p.quelle.id, p.seite, markeId, `${p.quelle.titel}, S. ${p.seite}`)
   const jetzt = zeitstempel()
   let karteId = p.ziel?.id ?? ''

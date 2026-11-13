@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { tag, type Bereich, type Eintrag } from '@rl/kern'
+import { kurzId, tag, type Bereich, type Eintrag } from '@rl/kern'
 import { Dialog, melde, ortLink, useDaten } from '@rl/oberflaeche'
 import { erklaere, stelleLesen, type StelleZumErklaeren } from './ki'
 import { kiBlock, type ChatZeile } from './kiBlock'
@@ -10,7 +10,22 @@ import { karteAusStelle } from './wissen'
  * „Erklären“ zu einer markierten Stelle im Skript: Die KI erklärt sie in einfachen Worten, Rückfragen gehen im selben
  * Fenster. Gespeichert wird nichts, außer Nils behält die Erklärung als Wissenskarte (Vertrag 5.5 und 5.8).
  */
-export function ErklaerFenster({ quelle, seite, bereich, farbe, onZu }: { quelle: Eintrag; seite: number; bereich: Bereich; farbe: string | null; onZu: (behalten: boolean) => void }) {
+export function ErklaerFenster({
+  quelle,
+  seite,
+  bereich,
+  farbe,
+  onMarke,
+  onZu
+}: {
+  quelle: Eintrag
+  seite: number
+  bereich: Bereich
+  farbe: string | null
+  /** die Markierung ist gespeichert (mit der Wissenskarte) */
+  onMarke?: (markeId: string) => void
+  onZu: (behalten: boolean) => void
+}) {
   const { speicher } = useDaten()
   const [stelle, setStelle] = useState<StelleZumErklaeren | null>(null)
   const [verlauf, setVerlauf] = useState<ChatZeile[]>([])
@@ -69,7 +84,9 @@ export function ErklaerFenster({ quelle, seite, bereich, farbe, onZu }: { quelle
     setSpeichert(true)
     // eine unbeantwortete Rückfrage am Ende gehört nicht auf die Karte
     const fertig = verlauf.at(-1)?.von === 'ich' ? verlauf.slice(0, -1) : verlauf
-    await karteAusStelle(speicher, { quelle, seite, bereich, art: 'wissen', titel: begriff || 'Stelle', farbe, ki: kiBlock(fertig, tag()) })
+    const markeId = kurzId()
+    await karteAusStelle(speicher, { quelle, seite, bereich, art: 'wissen', titel: begriff || 'Stelle', farbe, ki: kiBlock(fertig, tag()), markeId })
+    onMarke?.(markeId)
     melde('Wissenskarte angelegt, mit der Erklärung eingeklappt darunter')
     onZu(true)
   }

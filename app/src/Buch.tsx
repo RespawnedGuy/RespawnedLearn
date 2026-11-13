@@ -8,8 +8,10 @@ import {
   buchSeiteJson,
   buchSeitenNummern,
   linkZiel,
+  liesTinte,
   liesBuchSeite,
   pfade,
+  platzFuerMarkierung,
   platzImBuch,
   setzeFeld,
   strichLage,
@@ -17,6 +19,7 @@ import {
   verweiseBeimSchreiben,
   SEITE_BREITE,
   type BlattBild,
+  type Bereich,
   type BuchBild,
   type BuchSeite,
   type Eintrag,
@@ -89,6 +92,40 @@ export async function bildInsBuch(speicher: Speicher, id: string, bild: Pick<Buc
   melde('Bild liegt im Buch. Mit „Lesen“ verschieben, vergrößern oder entfernen.')
 }
 
+/**
+ * Markierung ins Buch (Vertrag Lernen 1.3, 5.3): der Ausschnitt unter die letzte Zeile der Seite, auf der zuletzt
+ * geschrieben wurde, dazu ein Verweis ✦ mit der Markierung. Passt er dort nicht mehr hin, oben auf die nächste Seite.
+ */
+export async function markierungInsBuch(
+  speicher: Speicher,
+  id: string,
+  nr: number,
+  m: { anhang: string; seite: number; bereich: Bereich; marke: string },
+  src: string
+): Promise<void> {
+  const verhaeltnis = await verhaeltnisVon(src)
+  const lage = (n: number) =>
+    platzFuerMarkierung(
+      liesBuchSeite(speicher.text(pfade.buchSeite(id, n))).bilder,
+      liesTinte(speicher.text(pfade.buchTinte(id, n)) ?? '').map(strichLage),
+      m.bereich.b,
+      verhaeltnis,
+      blattFormat(speicher.text(pfade.buchTinte(id, n)))
+    )
+  let platz = lage(nr)
+  if (!platz) {
+    nr += 1
+    platz = lage(nr) ?? platzFuerMarkierung([], [], m.bereich.b, verhaeltnis, A4)!
+  }
+  const p = platz
+  const kurz = () => ulid().slice(-8).toLowerCase()
+  await aendereSeite(speicher, id, nr, (s) => ({
+    ...s,
+    bilder: [...s.bilder, { id: kurz(), anhang: m.anhang, seite: m.seite, bereich: m.bereich, ...p }],
+    verweise: [...s.verweise, { id: kurz(), y: p.y, anhang: m.anhang, seite: m.seite, marke: m.marke, am: new Date().toISOString() }]
+  }))
+}
+
 export async function fotosInsBuch(speicher: Speicher, id: string, dateien: Iterable<File>) {
   for (const f of dateien) {
     if (!f.type.startsWith('image/')) continue
@@ -123,7 +160,22 @@ function scrolleZu(el: HTMLElement, anteil: number) {
  * Ein Notizbuch: alle Seiten untereinander. Mit `ziel` (die Skriptseite, die gerade offen ist) entstehen beim
  * Schreiben Randmarken (kern/randmarken.ts); ohne Skript keine.
  */
-export function BuchAnsicht({ id, werkzeug, farbe, ziel = null, sprung }: { id: string; werkzeug: Werkzeug; farbe: Farbe; ziel?: Ziel | null; sprung?: BuchSprung | null }) {
+export function BuchAnsicht({
+  id,
+  werkzeug,
+  farbe,
+  ziel = null,
+  sprung,
+  onGeschrieben
+}: {
+  id: string
+  werkzeug: Werkzeug
+  farbe: Farbe
+  ziel?: Ziel | null
+  sprung?: BuchSprung | null
+  /** nach jedem Strich, mit der Buchseite (macht das Buch zum aktiven für Markierungen) */
+  onGeschrieben?: (nr: number) => void
+}) {
   const { speicher, bestand } = useDaten()
   const ref = useRef<HTMLDivElement>(null)
   const [hervor, setHervor] = useState<{ nr: number; y: number } | null>(null)
@@ -145,7 +197,7 @@ export function BuchAnsicht({ id, werkzeug, farbe, ziel = null, sprung }: { id: 
   return (
     <div className="buch-seiten" ref={ref}>
       {seitenVon(speicher, id).map((nr) => (
-        <BuchBlatt key={nr} id={id} nr={nr} lineatur={lineatur} werkzeug={werkzeug} farbe={farbe} ziel={ziel} hervor={hervor?.nr === nr ? hervor.y : null} />
+        <BuchBlatt key={nr} id={id} nr={nr} lineatur={lineatur} werkzeug={werkzeug} farbe={farbe} ziel={ziel} hervor={hervor?.nr === nr ? hervor.y : null} onGeschrieben={onGeschrieben} />
       ))}
     </div>
   )
@@ -165,7 +217,25 @@ function markeNachStrich(speicher: Speicher, id: string, nr: number, neu: Strich
   })
 }
 
-function BuchBlatt({ id, nr, lineatur, werkzeug, farbe, ziel, hervor }: { id: string; nr: number; lineatur: Lineatur; werkzeug: Werkzeug; farbe: Farbe; ziel: Ziel | null; hervor: number | null }) {
+function BuchBlatt({
+  id,
+  nr,
+  lineatur,
+  werkzeug,
+  farbe,
+  ziel,
+  hervor,
+  onGeschrieben
+}: {
+  id: string
+  nr: number
+  lineatur: Lineatur
+  werkzeug: Werkzeug
+  farbe: Farbe
+  ziel: Ziel | null
+  hervor: number | null
+  onGeschrieben?: (nr: number) => void
+}) {
   const { speicher, bestand } = useDaten()
   const [gewaehlt, setGewaehlt] = useState<string | null>(null)
   const tinte = pfade.buchTinte(id, nr)
@@ -211,7 +281,11 @@ function BuchBlatt({ id, nr, lineatur, werkzeug, farbe, ziel, hervor }: { id: st
             }}
           />
         ))}
-        <TintenEbene pfad={tinte} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} onStrich={(neu, alle) => markeNachStrich(speicher, id, nr, neu, alle, ziel)} />
+        <TintenEbene pfad={tinte} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} onStrich={(neu, alle) => {
+            markeNachStrich(speicher, id, nr, neu, alle, ziel)
+            onGeschrieben?.(nr)
+          }}
+        />
       </div>
     </div>
   )

@@ -104,3 +104,36 @@ export function rueckwege(dateien: Iterable<string>, text: (pfad: string) => str
   for (const l of out.values()) l.sort((a, b) => a.buch.localeCompare(b.buch) || a.nr - b.nr || a.y - b.y)
   return out
 }
+
+/** Abstand zum Seitenrand und unter der letzten Zeile, wie bei den Bildern auf den Blättern */
+const RAND = 48
+
+/**
+ * Platz für den Ausschnitt einer Markierung (Vertrag Lernen 1.3, 5.3): unter der letzten Zeile der Buchseite, also
+ * unter dem untersten Strich und dem untersten Bild. Die Breite folgt der Breite im Skript (beide Seiten sind 1000
+ * breit), damit Schrift im Ausschnitt so groß bleibt wie im Skript.
+ *
+ * @param verhaeltnis Höhe/Breite des Ausschnitts
+ * @param format Höhe/Breite der Buchseite
+ * @returns Lage des Bilds, oder null, wenn es auf dieser Seite keinen Platz mehr hat (dann oben auf die nächste)
+ */
+export function platzFuerMarkierung(
+  bilder: { y: number; h: number }[],
+  striche: StrichLage[],
+  breiteImSkript: number,
+  verhaeltnis: number,
+  format: number
+): { x: number; y: number; b: number; h: number } | null {
+  const v = Number.isFinite(verhaeltnis) && verhaeltnis > 0 ? verhaeltnis : 0.5
+  const hoehe = 1000 * format
+  let b = Math.min(1000 - 2 * RAND, Math.max(240, (Number.isFinite(breiteImSkript) ? breiteImSkript : 0.7) * 1000))
+  let h = b * v
+  if (h > hoehe - 2 * RAND) {
+    h = hoehe - 2 * RAND
+    b = h / v
+  }
+  const unten = Math.max(0, ...bilder.map((x) => x.y + x.h), ...striche.map((s) => s.unten))
+  const y = unten ? unten + RAND / 2 : RAND
+  if (y + h > hoehe - RAND / 2) return null
+  return { x: RAND, y, b, h }
+}

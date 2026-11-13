@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buchSeiteJson, ohneVerwaiste, rueckwege, strichLage, verweiseBeimSchreiben, ZEILE, type Verweis } from '../src'
+import { buchSeiteJson, ohneVerwaiste, platzFuerMarkierung, rueckwege, strichLage, verweiseBeimSchreiben, ZEILE, type Verweis } from '../src'
 
 const A = '01JBEXAMP000000000SKRPT001'
 const B = '01JBEXAMP000000000SKRPT002'
@@ -89,5 +89,22 @@ describe('Rückweg vom Skript ins Buch', () => {
     ])
     expect(r.get(13)).toHaveLength(1)
     expect(r.has(14)).toBe(false)
+  })
+})
+
+describe('Platz für eine Markierung im Buch', () => {
+  it('leere Seite: oben, Breite wie im Skript', () => {
+    expect(platzFuerMarkierung([], [], 0.5, 0.2, 1.414)).toEqual({ x: 48, y: 48, b: 500, h: 100 })
+  })
+  it('unter dem untersten Strich und dem untersten Bild', () => {
+    expect(platzFuerMarkierung([{ y: 100, h: 200 }], [lage(350, 380)], 0.5, 0.2, 1.414)?.y).toBe(380 + 24)
+    expect(platzFuerMarkierung([{ y: 100, h: 400 }], [lage(350, 380)], 0.5, 0.2, 1.414)?.y).toBe(500 + 24)
+  })
+  it('passt es nicht mehr auf die Seite: null (dann auf die nächste)', () => {
+    expect(platzFuerMarkierung([], [lage(1200, 1300)], 0.5, 0.4, 1.414)).toBeNull()
+  })
+  it('sehr schmale und sehr breite Stellen bleiben lesbar und auf der Seite', () => {
+    expect(platzFuerMarkierung([], [], 0.05, 0.2, 1.414)?.b).toBe(240)
+    expect(platzFuerMarkierung([], [], 1, 0.2, 1.414)?.b).toBe(904)
   })
 })

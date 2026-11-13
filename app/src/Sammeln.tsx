@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, geheZu, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
-import { naechsteSeite, type Rueckweg } from '@rl/kern'
+import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -10,7 +10,7 @@ import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
 import { AnsichtKopf, BildKnoepfe, Trenner, useAnordnung } from './Blaetter'
-import { BuchAnsicht, bildInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
+import { BuchAnsicht, bildInsBuch, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
 import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
 import { hebeAn } from './anheben'
@@ -101,6 +101,22 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return () => clearTimeout(t)
   }, [seite])
   const ziel = skriptZu ? null : { anhang: quelle.id, seite: stabil }
+
+  // Aktives Buch: offen und in den letzten 15 Minuten beschrieben. Dorthin geht jede neue Markierung als Ausschnitt.
+  const aktiv = useRef<{ id: string; nr: number; zeit: number } | null>(null)
+  const aktivesBuch = () => {
+    const a = aktiv.current
+    if (!a || Date.now() - a.zeit > 15 * 60_000) return null
+    return ansichten.anordnung.ansichten.some((v) => v.id === a.id && !v.zu) ? a : null
+  }
+  const markierungAuchInsBuch = async (m: { seite: number; bereich: Bereich; marke: string }) => {
+    const a = aktivesBuch()
+    if (!a) return
+    const src = await ausschnitt(speicher, String(quelle.felder.datei ?? ''), m.seite, m.bereich, 1400)
+    if (!src) return
+    await markierungInsBuch(speicher, a.id, a.nr, { anhang: quelle.id, ...m }, src)
+    melde(`Steht auch in „${bestand.dokumente.get(a.id)?.titel ?? 'Notizbuch'}“.`)
+  }
 
   // Rückweg: „✎ n“ auf der Skriptseite öffnet die Stelle im Buch
   const wege = useRueckwege(quelle.id)
@@ -231,11 +247,13 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return () => removeEventListener('paste', einfuegen)
   })
 
-  const fertig = async (art: 'wissen' | 'frage' | 'link', ziel?: Eintrag) => {
+  const fertig = async (art: 'wissen' | 'frage' | 'link' | 'nur', ziel?: Eintrag) => {
     if (!auswahl) return
     const eigen = titel.trim()
-    const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
-    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null })
+    const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : art === 'nur' ? 'Markiert' : 'Stelle')
+    const markeId = kurzId()
+    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null, markeId })
+    void markierungAuchInsBuch({ seite: auswahl.seite, bereich: auswahl.bereich, marke: markeId })
     // Selbst getippte Fragen: Schreibfehler nachträglich korrigieren, die Karte ist schon da
     if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(speicher, eigen).then((neu) => {
         if (neu) void korrigiereFrage(speicher, id, eigen, neu)
@@ -274,6 +292,9 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
               <div className="schwebe" style={{ left: Math.max(8, auswahl.punkt.x - 150), top: auswahl.punkt.y + 12 }}>
                 {modus === 'wahl' && (
                   <div className="reihe">
+                    <button type="button" className="knopf klein" onClick={() => void fertig('nur')} title="Die Stelle markieren, ohne Karte; ist ein Notizbuch aktiv, steht sie auch dort">
+                      Nur markieren
+                    </button>
                     <button type="button" className="knopf haupt klein" onClick={() => setModus('wissen')}>
                       Wissenskarte
                     </button>
@@ -403,7 +424,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 onVerschiebe={(r) => ansichten.verschiebe(v.id, r)}
                 onSchliesse={() => ansichten.schliesse(v.id)}
               />
-              {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} ziel={ziel} sprung={buchSprung?.id === v.id ? buchSprung : null} /> : null}
+              {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} ziel={ziel} sprung={buchSprung?.id === v.id ? buchSprung : null} onGeschrieben={(nr) => (aktiv.current = { id: v.id, nr, zeit: Date.now() })} /> : null}
             </section>
           </Fragment>
         ))}
@@ -436,6 +457,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           seite={auswahl.seite}
           bereich={auswahl.bereich}
           farbe={FARBE_MARKE[farbe] ?? null}
+          onMarke={(marke) => void markierungAuchInsBuch({ seite: auswahl.seite, bereich: auswahl.bereich, marke })}
           onZu={(behalten) => {
             // ohne Behalten bleibt die Auswahl stehen, um daraus doch noch eine Karte zu machen
             if (behalten) setAuswahl(null)
