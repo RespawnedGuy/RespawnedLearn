@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
+import { pfade, sichtbareSeite, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { ladePdf, seitenFormat, zeichneSeite, zeichneText, type PdfDokument } from './pdf'
 import { TintenEbene, type Werkzeug } from './Tinte'
@@ -25,8 +25,12 @@ export interface PdfAnsichtProps {
   onSeiten?: (n: number) => void
   /** zusätzlicher Inhalt pro Seite (z. B. Schwebe-Dialog an der Auswahl) */
   zusatz?: (seite: number) => ReactNode
-  /** springt zu dieser Seite, sobald sie gezeichnet ist */
-  springeZu?: number
+  /** springt zu dieser Seite, sobald die Seitenformate bekannt sind; `mal` zählt hoch, damit derselbe Sprung wiederholbar ist */
+  springeZu?: { seite: number; mal: number; sanft?: boolean }
+  /** meldet beim Scrollen die Seite mit dem größten sichtbaren Anteil (alle Seiten untereinander) */
+  onSeite?: (nr: number) => void
+  /** das Element, das scrollt; ohne Angabe das Fenster. Danach richten sich Vorzeichnen und Freigeben der Seiten. */
+  scrollFlaeche?: HTMLElement | null
   /** Zoomen mit zwei Fingern (Faktor gegenüber dem bisherigen Zoom) */
   onZoom?: (faktor: number) => void
   /** Text, wenn das PDF nicht im Ordner liegt */
@@ -40,12 +44,16 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   // pdf.js zeichnet die Seiten im Gerät; undefined = lädt noch, null = PDF fehlt
   const [quelle, setQuelle] = useState<PdfDokument | null | undefined>(undefined)
   const [formate, setFormate] = useState<number[]>([])
+  // erst wenn alle Formate gelesen sind, stehen die Seiten an ihrer endgültigen Stelle (wichtig für Sprünge)
+  const [formateFertig, setFormateFertig] = useState(false)
   const [breite, setBreite] = useState(0)
   const huelle = useRef<HTMLDivElement>(null)
+  const seitenEl = useRef(new Map<number, HTMLDivElement>())
 
   useEffect(() => {
     let weg = false
     setQuelle(undefined)
+    setFormateFertig(false)
     void (async () => {
       const d = await ladePdf(speicher, p.pfad).catch(() => null)
       if (weg) return
@@ -57,7 +65,9 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
       if (weg) return
       setFormate(Array.from({ length: d.numPages }, () => erstes))
       const alle = await Promise.all(Array.from({ length: d.numPages }, (_, i) => seitenFormat(d, i + 1)))
-      if (!weg) setFormate(alle)
+      if (weg) return
+      setFormate(alle)
+      setFormateFertig(true)
     })()
     return () => {
       weg = true
@@ -76,6 +86,52 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
 
   useZweiFingerZoom(huelle, p.onZoom, quelle)
 
+  // Sichtbare Seite melden (gedrosselt auf ein Bild pro Frame)
+  const onSeite = useRef(p.onSeite)
+  onSeite.current = p.onSeite
+  const melden = !!p.onSeite && !p.nurSeite
+  useEffect(() => {
+    if (!melden || !quelle || !breite) return
+    const flaeche = p.scrollFlaeche ?? null
+    let frame = 0
+    let zuletzt = 0
+    const pruefen = () => {
+      frame = 0
+      const r = flaeche?.getBoundingClientRect()
+      const oben = r ? Math.max(0, r.top) : 0
+      const unten = r ? Math.min(innerHeight, r.bottom) : innerHeight
+      const lagen = [...seitenEl.current].map(([nr, el]) => {
+        const b = el.getBoundingClientRect()
+        return { nr, oben: b.top, unten: b.bottom }
+      })
+      const nr = sichtbareSeite(lagen, oben, unten)
+      if (nr && nr !== zuletzt) {
+        zuletzt = nr
+        onSeite.current?.(nr)
+      }
+    }
+    const planen = () => {
+      if (!frame) frame = requestAnimationFrame(pruefen)
+    }
+    const ziel: HTMLElement | Window = flaeche ?? window
+    ziel.addEventListener('scroll', planen, { passive: true })
+    addEventListener('resize', planen)
+    planen()
+    return () => {
+      ziel.removeEventListener('scroll', planen)
+      removeEventListener('resize', planen)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [melden, quelle, breite, formate, p.scrollFlaeche])
+
+  // Sprung zu einer Seite (Lesestand, Inhaltsverzeichnis, Tasten)
+  const sprung = p.springeZu
+  useEffect(() => {
+    if (!sprung || !formateFertig || !breite) return
+    seitenEl.current.get(sprung.seite)?.scrollIntoView({ block: 'start', behavior: sprung.sanft ? 'smooth' : 'auto' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprung?.seite, sprung?.mal, formateFertig, breite > 0])
+
   if (quelle === undefined) return <div className="leer">PDF wird geladen …</div>
   if (quelle === null) return <div className="leer">{p.ohnePdf ?? 'Das PDF liegt (noch) nicht im Datenordner. Bringt Syncthing es gerade, erscheint es gleich.'}</div>
 
@@ -87,14 +143,25 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
       <div className="pdf-seiten" data-zoomflaeche style={p.nurSeite ? { padding: 0 } : undefined}>
         {breite > 0 &&
           nummern.map((nr) => (
-            <Seite key={nr} {...p} doc={quelle} nr={nr} format={formate[nr - 1] ?? 1.414} breite={seitenBreite} />
+            <Seite
+              key={nr}
+              {...p}
+              doc={quelle}
+              nr={nr}
+              format={formate[nr - 1] ?? 1.414}
+              breite={seitenBreite}
+              anmelden={(el) => (el ? seitenEl.current.set(nr, el) : seitenEl.current.delete(nr))}
+            />
           ))}
       </div>
     </div>
   )
 }
 
-function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: number; breite: number }) {
+/** Bildpunkte weit außerhalb der Sicht freigeben (lange Skripte, Speicher am Handy); weit = so viel über und unter der Sicht */
+const FREIGEBEN_AB = '4000px'
+
+function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: number; breite: number; anmelden: (el: HTMLDivElement | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const text = useRef<HTMLDivElement>(null)
   const doc = p.doc
@@ -103,10 +170,32 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
 
   useEffect(() => {
     // In beide Richtungen: Weggescrollte Seiten werden nach einem Zoom erst neu gezeichnet, wenn sie wieder auftauchen
-    const io = new IntersectionObserver((e) => setSichtbar(e[e.length - 1].isIntersecting), { rootMargin: '600px' })
-    if (el.current) io.observe(el.current)
-    return () => io.disconnect()
-  }, [])
+    // Die Wurzel muss das scrollende Element sein, sonst schneidet es die Seiten ab und der Vorlauf greift nicht
+    const root = p.scrollFlaeche ?? null
+    const io = new IntersectionObserver((e) => setSichtbar(e[e.length - 1].isIntersecting), { root, rootMargin: '600px' })
+    // Weit weg: Leinwand leeren, beim Wiederkommen zeichnet die Seite neu
+    const weit = new IntersectionObserver(
+      (e) => {
+        const c = canvas.current
+        if (e[e.length - 1].isIntersecting || !c || !gezeichnet.current) return
+        c.width = 0
+        c.height = 0
+        gezeichnet.current = null
+      },
+      { root, rootMargin: FREIGEBEN_AB }
+    )
+    if (el.current) {
+      io.observe(el.current)
+      weit.observe(el.current)
+    }
+    p.anmelden(el.current)
+    return () => {
+      io.disconnect()
+      weit.disconnect()
+      p.anmelden(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.scrollFlaeche])
 
   // Gezeichnet wird für die Breite, auf die schon einmal gezeichnet wurde, nicht noch einmal (z. B. beim Zurückscrollen)
   const gezeichnet = useRef<{ doc: PdfDokument; breite: number } | null>(null)
@@ -141,10 +230,6 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
       z?.abbrechen()
     }
   }, [sichtbar, doc, p.nr, p.breite])
-
-  useEffect(() => {
-    if (p.springeZu === p.nr) el.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }, [p.springeZu, p.nr])
 
   const marken = p.marken.filter((m) => m.seite === p.nr)
   const alleNummern = new Map(p.marken.map((m, i) => [m.id, i + 1]))

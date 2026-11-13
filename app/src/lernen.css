@@ -348,3 +348,14 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .neu-auswahl { display: grid; gap: 8px; }
 .neu-option { height: auto; min-height: 64px; padding: 10px 14px; flex-direction: column; align-items: flex-start; gap: 2px; white-space: normal; text-align: start; }
 .neu-option span { font-weight: 400; font-size: 0.8125rem; color: var(--leise); }
+
+/* Skript scrollt (Notizbücher, Schritt 1): am PC scrollen Skript und Blätter je für sich in der Höhe bis unten */
+@media (min-width: 901px) {
+  .uebungsplatz { height: calc(100dvh - var(--platz-oben, 130px)); padding-bottom: 0; align-items: stretch; }
+  .platz-ansicht { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 110px; }
+  .platz-skript { padding-bottom: 0; }
+  .platz-ansicht .ansicht-kopf { position: sticky; top: 0; z-index: 3; background: var(--grund); }
+  .platz-skript .pdf-seite { scroll-margin-top: 40px; }
+}
+.handy-ansichten { margin: 0 8px 10px; }
+.handy-ansichten button { flex: 1; }

@@ -103,3 +103,15 @@ export function zurueck(oben?: string | null) {
   if (n !== null) history.go(n)
   else if (oben && oben !== location.hash) location.hash = oben
 }
+
+/**
+ * Stelle in derselben Ansicht festhalten, ohne neu zu navigieren (z. B. die sichtbare Seite beim Scrollen im Skript):
+ * kein hashchange, kein neuer Eintrag im Verlauf; „Zurück“ und Neuladen landen trotzdem an dieser Stelle.
+ */
+export function ersetzeOrt(...ziel: (string | number)[]) {
+  const hash = ortLink(...ziel)
+  if (hash === location.hash) return
+  history.replaceState(history.state, '', hash)
+  stapel[stelle] = hash
+  stapelSichern()
+}
