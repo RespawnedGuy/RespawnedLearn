@@ -1,0 +1,47 @@
+# Signieren (für Betreuer)
+
+Die GitHub Action (`.github/workflows/build.yml`) signiert nur, wenn die passenden **Repository-Secrets** gesetzt sind
+(Settings → Secrets and variables → Actions). Schlüssel und Passwörter gehören nie ins Repo.
+
+## Android: eigener Schlüssel (kostenlos)
+
+Einmalig auf dem eigenen Rechner (`keytool` gehört zu jedem JDK, auch zu Android Studio):
+
+```
+keytool -genkeypair -v -keystore respawnedlearn.jks -alias respawnedlearn -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Nimm ein langes Passwort **nur aus Buchstaben und Ziffern** (es landet in einer Properties-Datei) und dasselbe für Schlüssel
+und Keystore. Dann die Secrets setzen:
+
+| Secret | Inhalt |
+|---|---|
+| `ANDROID_KEY_BASE64` | die Datei als Base64: PowerShell `[Convert]::ToBase64String([IO.File]::ReadAllBytes("respawnedlearn.jks"))` |
+| `ANDROID_KEY_ALIAS` | `respawnedlearn` |
+| `ANDROID_KEY_PASSWORD` | das Passwort |
+
+**Sichere `respawnedlearn.jks` und das Passwort an zwei Orten** (z. B. Passwortmanager). Ohne diesen Schlüssel lassen sich
+installierte Apps nie mehr aktualisieren, Nutzer müssten deinstallieren. Fehlen die Secrets, baut die Action eine Debug-APK.
+
+Prüfen: Die Action zeigt im Schritt „Signatur prüfen“ das Zertifikat (`apksigner verify --print-certs`) und bricht ab, wenn
+eine Release-APK den Debug-Schlüssel trägt.
+
+## Windows: Schalter für später
+
+Mit den Secrets `WINDOWS_PFX_BASE64` (Zertifikat als PFX, Base64) und `WINDOWS_PFX_PASSWORT` signiert Tauri App-EXE und
+beide Installer über `tools/windows-signieren.ps1` (signtool, SHA-256, Zeitstempel). Ohne Secrets baut die Action
+unsigniert und probt den ganzen Weg bei jedem Lauf mit einem Wegwerf-Zertifikat (`tools/windows-signierprobe.ps1`,
+Prüfung mit `signtool verify /pa`), damit das Einschalten später nicht scheitert.
+
+Wege zu einem echten Zertifikat (Stand November 2026, laut
+[Microsoft](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options) und
+[SignPath](https://signpath.org/terms)):
+
+| Weg | Kosten | Bedingungen |
+|---|---|---|
+| SignPath Foundation | 0 € | Open Source mit OSI-Lizenz (AGPL passt), Freigabe jedes Releases von Hand, MFA, Abschnitt „Code signing policy“ auf der Download-Seite; Herausgeber im Zertifikat ist „SignPath Foundation“. Signiert über die eigene GitHub-Aktion von SignPath, braucht eine kleine Anpassung statt des PFX-Schalters. |
+| Azure Artifact Signing | ca. 9,99 $/Monat | Einzelpersonen nur in USA und Kanada, in der EU nur Organisationen. Läuft über `signCommand` mit eigenem Werkzeug, ebenfalls kleine Anpassung. |
+| OV-Zertifikat einer CA | ca. 150–300 $/Jahr | Schlüssel seit 2023 nur auf Hardware-Token oder in einer Cloud-HSM; ein Token lässt sich nicht als PFX exportieren, für die Action braucht es dann die Cloud-Variante der CA. |
+
+Keiner dieser Wege lässt die SmartScreen-Warnung sofort verschwinden (seit 2024 auch EV nicht mehr): Vertrauen wächst über
+mehrere Releases mit derselben Signatur.

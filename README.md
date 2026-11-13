@@ -11,9 +11,9 @@ Zeichenblätter neben dem Skript und auf Wunsch KI-Fragen zum Kapitel, das du ge
 
 ## Installieren
 
-Die Pakete baut die GitHub Action bei jedem Push (Reiter „Actions“, Artefakte `respawnedlearn-windows` und
-`respawnedlearn-android`). Unter Android fragt die App beim ersten Start nach „Zugriff auf alle Dateien“, damit sie im
-Syncthing-Ordner schreiben darf.
+Windows-Installer und Android-APK stehen unter **Releases**, mit Prüfsummen. Was bei den Warnungen von Windows, Browser und
+Android zu tun ist, steht in [docs/installieren.md](docs/installieren.md). Wie die Pakete signiert werden:
+[docs/signieren.md](docs/signieren.md).
 
 ## Entwickeln
 

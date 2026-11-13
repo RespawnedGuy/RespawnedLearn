@@ -6,3 +6,8 @@ dist/
 app/src-tauri/target/
 app/src-tauri/gen/
 /HANDOFF.md
+# Signaturschlüssel nie einchecken
+*.jks
+*.keystore
+*.pfx
+keystore.properties

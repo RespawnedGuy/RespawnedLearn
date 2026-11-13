@@ -1,7 +1,8 @@
 // Nach `tauri android init`: Berechtigungen für den Datenordner im gemeinsamen Speicher eintragen und die eigene
-// MainActivity einsetzen (siehe app/src-tauri/android/MainActivity.kt). Läuft in der GitHub Action vor dem Android-Build.
+// MainActivity einsetzen (siehe app/src-tauri/android/MainActivity.kt), bei vorhandenem Schlüssel die Release-Signatur. Läuft in der GitHub Action vor dem Android-Build.
 import fs from 'node:fs'
 import path from 'node:path'
+import { signaturEintragen } from './android-signatur.mjs'
 
 const gen = path.resolve('app/src-tauri/gen/android/app/src/main')
 const manifestPfad = path.join(gen, 'AndroidManifest.xml')
@@ -27,4 +28,9 @@ const paket = /^package\s+([\w.]+)/m.exec(fs.readFileSync(altPfad, 'utf8'))?.[1]
 if (!paket) throw new Error('Paketzeile in MainActivity.kt fehlt')
 const neu = fs.readFileSync('app/src-tauri/android/MainActivity.kt', 'utf8').replace('package PAKET', `package ${paket}`)
 fs.writeFileSync(altPfad, neu)
-console.log(`Android angepasst: ${path.relative('.', manifestPfad)}, ${path.relative('.', altPfad)} (${paket})`)
+// Release-Signatur nur, wenn die Action aus ihren Secrets gen/android/keystore.properties geschrieben hat
+const gradlePfad = path.resolve('app/src-tauri/gen/android/app/build.gradle.kts')
+const signiert = fs.existsSync(path.resolve('app/src-tauri/gen/android/keystore.properties'))
+if (signiert) fs.writeFileSync(gradlePfad, signaturEintragen(fs.readFileSync(gradlePfad, 'utf8')))
+
+console.log(`Android angepasst: ${path.relative('.', manifestPfad)}, ${path.relative('.', altPfad)} (${paket})${signiert ? ', Release-Signatur eingetragen' : ', ohne Release-Signatur'}`)
