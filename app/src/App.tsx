@@ -8,11 +8,15 @@ import { linkZiel, lernziele, modulVon } from '@rl/kern'
 import { PlusKnopf, useTastaturOffen } from './PlusKnopf'
 import { usePlus } from './plus'
 import { faellige } from './wissen'
+import { useEffect } from 'react'
+import { verbindeOrdner } from './kianbieter/zugang'
 
 /** Lern-App: drei Bereiche. Sie kennt keine Projekte. */
 export function App() {
   const ort = useOrt()
-  const { bestand } = useDaten()
+  const { bestand, speicher } = useDaten()
+  // Gemeinsamer KI-Zugang im Datenordner: Änderungen von anderen Geräten gelten ohne Neustart
+  useEffect(() => verbindeOrdner(speicher), [speicher])
   const bereich = ort[0] ?? 'sammeln'
   const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' && ort[1] !== 'mitschrift' ? bestand.dokumente.get(ort[1]) : undefined
   const mitschrift = bereich === 'sammeln' && ort[1] === 'mitschrift' && ort[2] ? bestand.dokumente.get(ort[2]) : undefined

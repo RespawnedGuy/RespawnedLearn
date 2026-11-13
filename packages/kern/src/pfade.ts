@@ -45,6 +45,8 @@ export const pfade = {
   vorfragen: (datum: string) => `lernen/vorfragen/${datum}.json`,
   /** Eigene KI-Anweisungen, nur Abweichungen vom Standard (Vertrag Lernen 1.1, 5.8) */
   kiPrompts: () => 'lernen/einstellungen/ki-prompts.json',
+  /** KI-Zugang aller eigenen Geräte, mit Passwort verschlüsselt (Vertrag Lernen 1.2, 5.8) */
+  kiZugang: () => 'lernen/einstellungen/ki-zugang.verschluesselt.json',
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 

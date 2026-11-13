@@ -22,6 +22,17 @@ tauri-plugin-http = "=2.8.3"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 notify = "=8.2.1"
+# KI-Zugang verschlüsselt im Datenordner (tresor.rs): Argon2id nach RFC 9106 leitet aus dem Passwort einen Schlüssel ab,
+# XChaCha20-Poly1305 verschlüsselt (RustCrypto); getrandom liefert Salz, Nonce und Datenschlüssel aus dem Betriebssystem
+argon2 = { version = "=0.6.0", default-features = false, features = ["alloc"] }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
+getrandom = "=0.4.3"
 
 [dev-dependencies]
 tempfile = "=3.27.0"
+
+# Argon2id rechnet im Debug-Bau sonst zehnmal langsamer (cargo test, tauri dev)
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3

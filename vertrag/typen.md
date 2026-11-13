@@ -158,3 +158,16 @@ Der Erzeuger der Fragen (Grundlagen 6) erzeugt Fragen zu dem Kapitel, in dem ger
 {"prompts": {"erklaeren": "Du erklärst …", "rueckmeldung": "…"}}
 ```
 Schlüssel: `erklaeren`, `rueckmeldung`, `vorschlag`, `korrektur`, `kapitel_stueck`, `kapitel_ganz`, `kapitel_rechnen`, `vorfragen`. Unbekannte Schlüssel bleiben beim Schreiben erhalten. `modell` in Fragen- und Vorfragen-Dateien (5.7, 5.8) nennt seit Lernen 1.1 Anbieter und Modell, z. B. `"anthropic/claude-opus-5-5"` (früher nur `"sonnet"`).
+
+**Gemeinsamer KI-Zugang** `lernen/einstellungen/ki-zugang.verschluesselt.json` (seit Lernen 1.2, freiwillig): derselbe KI-Zugang auf allen eigenen Geräten, verschlüsselt mit einem Passwort. Umschlagverfahren: Ein zufälliger Datenschlüssel (32 Byte) verschlüsselt den Inhalt mit XChaCha20-Poly1305; aus dem Passwort leitet Argon2id (RFC 9106, Version 0x13) einen Schlüssel ab, der nur den Datenschlüssel einhüllt. Alle Bytes stehen als Kleinbuchstaben-Hex.
+```json
+{"schema": 1, "verfahren": "argon2id+xchacha20poly1305", "kennung": "<16 Byte>",
+ "passwort": {"m_kib": 65536, "t": 3, "p": 1, "salz": "<16 Byte>", "nonce": "<24 Byte>", "schluessel": "<Datenschlüssel + 16 Byte Prüfsumme>"},
+ "inhalt": {"nonce": "<24 Byte>", "daten": "<verschlüsselter Inhalt + 16 Byte Prüfsumme>"}}
+```
+- Zusätzliche Daten (an die Verschlüsselung gebunden, damit jede Änderung am Kopf auffällt): für den Datenschlüssel `respawnedlearn ki-zugang 1|passwort|<kennung>|<m_kib>|<t>|<p>|<salz>`, für den Inhalt `respawnedlearn ki-zugang 1|inhalt|<kennung>`.
+- Kosten: Standard 64 MiB, 3 Durchgänge, 1 Bahn. Eine Datei außerhalb von 19 MiB bis 512 MiB, 2 bis 16 Durchgängen, 1 bis 8 Bahnen wird nicht geöffnet.
+- Inhalt (entschlüsselt) ist JSON: `{"anbieter": "anthropic", "zugaenge": {"anthropic": {"schluessel": "…", "modell": "…"}, "ollama": {"adresse": "http://…:11434", "modell": "…"}}}`. Unbekannte Felder und Anbieter bleiben beim Schreiben erhalten.
+- Jede Änderung (neuer Schlüssel, anderes Modell) verschlüsselt nur den Inhalt neu; `kennung` und `passwort` bleiben gleich, andere Geräte lesen ohne neue Eingabe weiter. „Passwort ändern“ und „Neu anfangen“ (Passwort vergessen) legen die Datei mit neuem Datenschlüssel und neuer `kennung` an; Geräte mit der alten Kennung fragen dann einmal nach dem Passwort.
+- Ein Gerät tritt mit dem Passwort bei; was nur dieses Gerät kannte (Anbieter ohne Eintrag in der Datei), kommt dazu, sonst gilt die Datei. Wer auf einem Gerät nicht mehr teilt, behält eine Kopie nur auf diesem Gerät; die Datei bleibt.
+- Konfliktkopien (8) zeigt die App entschlüsselt, Schlüssel nur mit den letzten vier Zeichen.

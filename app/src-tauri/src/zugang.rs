@@ -1,4 +1,5 @@
-//! KI-Zugang des Geräts: gewählter Anbieter, Modelle, Schlüssel, Adresse eines eigenen KI-Rechners.
+//! KI-Zugang des Geräts: gewählter Anbieter, Modelle, Schlüssel, Adresse eines eigenen KI-Rechners. Dieselbe Ablage
+//! hält auch den Datenschlüssel des gemeinsamen, verschlüsselten Zugangs (tresor.rs, Datei ki-tresor.json).
 //! Liegt im Konfigurationsordner der App (unter Android im privaten Speicher der App), nie im Datenordner,
 //! damit Syncthing keine Schlüssel verteilt (Vertrag Lernen 1.1, Grundlagen 8). Rust kennt den Inhalt nicht,
 //! es speichert nur ein JSON-Objekt; was darin steht, bestimmt die Oberfläche (app/src/ki/zugang.ts).
@@ -28,7 +29,8 @@ pub fn setzen(datei: &Path, wert: Option<&Value>) -> Result<(), String> {
     }
     let ordner = datei.parent().ok_or("Kein Ordner für den KI-Zugang")?;
     fs::create_dir_all(ordner).map_err(|e| e.to_string())?;
-    let zwischen = ordner.join(".ki-zugang.tmp");
+    let name = datei.file_name().and_then(|n| n.to_str()).ok_or("Kein Dateiname für den KI-Zugang")?;
+    let zwischen = ordner.join(format!(".{name}.tmp"));
     {
         let mut o = fs::OpenOptions::new();
         o.write(true).create(true).truncate(true);
@@ -58,7 +60,7 @@ mod tests {
         setzen(&datei, Some(&w)).unwrap();
         assert_eq!(lesen(&datei).unwrap(), w);
         // keine Zwischendatei bleibt liegen
-        assert!(!d.path().join("konfig").join(".ki-zugang.tmp").exists());
+        assert!(!d.path().join("konfig").join(".ki-zugang.json.tmp").exists());
         let w2 = json!({"anbieter": "ollama"});
         setzen(&datei, Some(&w2)).unwrap();
         assert_eq!(lesen(&datei).unwrap(), w2);

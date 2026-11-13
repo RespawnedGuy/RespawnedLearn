@@ -26,6 +26,7 @@ Dateinamen und Unterordner sind frei wählbar, weil Links über IDs laufen. Die 
 │  ├─ fragen-stand/<geraet>.json   welche Kapitelfragen ein Gerät erledigt hat
 │  ├─ vorfragen/<datum>.json       Vorfragen eines Tages (5.8)
 │  ├─ einstellungen/ki-prompts.json eigene KI-Anweisungen, nur Abweichungen vom Standard (5.8)
+│  ├─ einstellungen/ki-zugang.verschluesselt.json KI-Zugang, verschlüsselt, für alle eigenen Geräte (5.8)
 │  ├─ markierungen/<anhang-id>.md  Stellen in Skripten
 │  ├─ tinte/<anhang-id>/S001.svg   Handschrift im Skript
 │  └─ blaetter/<anhang-id>/        Zeichenblätter: anordnung.json, S001.svg, S001-<blatt>.svg, S001-bilder.json
@@ -96,7 +97,7 @@ Eine App ändert nur die Felder, die sie bearbeiten will, den Rest schreibt sie 
 - **Nur anhängen, und zwar pro Gerät:** Protokoll (`reviews/JJJJ-MM.<geraet>.jsonl`), Lesestand und Fragen-Stand hat jedes Gerät in einer eigenen Datei, damit gleichzeitiges Arbeiten auf zwei Geräten gar nicht erst Konflikte erzeugt.
 - **Originale** (PDF, Foto) legt die App nur neu an; existiert der Pfad schon, schreibt sie nicht.
 - **Keine Statusfelder mit hoher Änderungsrate im Frontmatter**, damit Syncthing nicht ständig ganze Notizen verteilt.
-- **Keine Geheimnisse im Ordner:** KI-Schlüssel, die Adresse eines eigenen KI-Rechners und das gewählte Modell merkt sich jedes Gerät selbst (im Konfigurationsordner der App). Sie stehen nie im Datenordner, damit Syncthing sie nicht verteilt.
+- **Geheimnisse nur verschlüsselt im Ordner:** KI-Schlüssel, die Adresse eines eigenen KI-Rechners und das gewählte Modell merkt sich jedes Gerät selbst (im Konfigurationsordner der App). Wer sie auf allen eigenen Geräten nutzen will, legt sie mit einem Passwort verschlüsselt in `lernen/einstellungen/ki-zugang.verschluesselt.json` ab (5.8); im Klartext stehen sie nie im Datenordner. Das Passwort steht nirgends, jedes Gerät behält nach der ersten Eingabe nur den Datenschlüssel in seinem Konfigurationsordner.
 
 ## 10. Offene Punkte
 

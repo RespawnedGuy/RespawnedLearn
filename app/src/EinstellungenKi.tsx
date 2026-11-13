@@ -3,13 +3,15 @@ import { ANBIETER, anbieterInfo, type AnbieterInfo } from './kianbieter/anbieter
 import { kiModelle, kiProbe } from './kianbieter/frage'
 import { OLLAMA_STANDARD } from './kianbieter/ollama'
 import { KiFehler, type AnbieterId, type AnbieterZugang, type ModellInfo } from './kianbieter/typen'
+import { EinstellungenTeilen } from './EinstellungenTeilen'
 import { aktiverZugang, speichereZugang, useKiZugang, type KiZugang } from './kianbieter/zugang'
 
 const fehlerText = (e: unknown) => (e instanceof KiFehler ? e.message : String((e as Error)?.message ?? e))
 
 /**
  * Einstellungen › KI: Anbieter wählen, eigenen Schlüssel (bei Ollama die Adresse) eintragen, Modell aus der Liste des
- * Anbieters wählen, Verbindung testen. Gespeichert wird nur auf diesem Gerät, nie im Datenordner.
+ * Anbieters wählen, Verbindung testen. Gespeichert wird auf diesem Gerät; wer will, teilt den Zugang mit einem Passwort
+ * verschlüsselt über den Datenordner mit seinen anderen Geräten (EinstellungenTeilen).
  */
 export function EinstellungenKi() {
   const zugang = useKiZugang()
@@ -49,6 +51,7 @@ export function EinstellungenKi() {
           </div>
         ))}
       </div>
+      <EinstellungenTeilen />
     </section>
   )
 }

@@ -16,8 +16,32 @@ Eingerichtet wird unter **Einstellungen (Zahnrad oben rechts) › KI**:
 ## Wo der Schlüssel liegt
 
 Der Schlüssel bleibt **auf dem Gerät**, im Konfigurationsordner der App (unter Android im privaten Speicher der App).
-Er liegt nie im Datenordner. Syncthing verteilt ihn also nicht. Auf jedem Gerät trägst du ihn einmal ein.
+Im Klartext liegt er nie im Datenordner.
 Wer den Schlüssel loswerden will, tippt „Schlüssel entfernen“ und löscht ihn zusätzlich beim Anbieter.
+
+### Auf allen Geräten nutzen
+
+Damit du nicht auf jedem Gerät einen eigenen Schlüssel brauchst (und alle erneuern musst, wenn sie verfallen), kannst
+du den Zugang unter **Einstellungen › KI › Auf allen Geräten** mit einem Passwort verschlüsselt in den Datenordner legen.
+
+1. Auf dem ersten Gerät den Schlüssel eintragen, dann „Einrichten“ und ein Passwort vergeben. Am besten ein Satz aus
+   mehreren Wörtern, aufbewahrt in deinem Passwortmanager.
+2. Auf jedem weiteren Gerät, sobald Syncthing den Ordner gebracht hat, unter Einstellungen › KI einmal das Passwort
+   eingeben.
+3. Einen neuen Schlüssel trägst du danach auf irgendeinem Gerät ein; die anderen übernehmen ihn ohne Neustart.
+
+So ist es geschützt: Die Datei `lernen/einstellungen/ki-zugang.verschluesselt.json` ist mit XChaCha20-Poly1305
+verschlüsselt, der Schlüssel dazu mit Argon2id (64 MB Speicher je Versuch) aus deinem Passwort abgeleitet. Wer nur den
+Ordner oder ein Backup hat, kommt ohne Passwort nicht an deine Schlüssel. Das Passwort selbst speichert die App
+nirgends; jedes Gerät merkt sich nur den daraus geöffneten Datenschlüssel.
+
+- **Passwort ändern:** Deine anderen Geräte fragen danach einmal nach dem neuen Passwort. Das ist auch der Weg, wenn
+  ein Gerät verloren geht; erneuere dann zusätzlich den Schlüssel beim Anbieter.
+- **Passwort vergessen:** Es gibt keine Hintertür. „Passwort vergessen?“ ersetzt den gemeinsamen Zugang durch den
+  Zugang dieses Geräts mit einem neuen Passwort.
+- **Gleichzeitig auf zwei Geräten geändert:** Unter „Konflikte“ stehen beide Fassungen, Schlüssel nur mit den letzten
+  vier Zeichen. Du entscheidest, welche gilt.
+- Die Adresse eines Ollama-Rechners wird mitgeteilt; das passt, wenn alle Geräte ihn im selben Netz erreichen.
 
 ## Die Anbieter
 

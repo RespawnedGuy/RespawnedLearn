@@ -2,6 +2,7 @@
 //! Kein Server, kein Netz nötig. Den Abgleich zwischen Geräten macht Syncthing auf dem Ordner.
 
 mod ordner;
+mod tresor;
 mod zugang;
 
 use notify::{RecursiveMode, Watcher};
@@ -139,6 +140,65 @@ fn ki_zugang_setzen(app: AppHandle, wert: Option<serde_json::Value>) -> Result<(
     zugang::setzen(&zugang_datei(&app)?, wert.as_ref())
 }
 
+fn tresor_datei(app: &AppHandle) -> Result<PathBuf, String> {
+    let d = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(d.join("ki-tresor.json"))
+}
+
+fn geraeteschluessel(app: &AppHandle) -> Result<tresor::Geraeteschluessel, String> {
+    let v = zugang::lesen(&tresor_datei(app)?).ok_or("kein-schluessel")?;
+    serde_json::from_value(v).map_err(|_| "kein-schluessel".to_string())
+}
+
+fn merke_geraeteschluessel(app: &AppHandle, g: &tresor::Geraeteschluessel) -> Result<(), String> {
+    zugang::setzen(&tresor_datei(app)?, Some(&serde_json::to_value(g).map_err(|e| e.to_string())?))
+}
+
+/// Argon2id rechnet absichtlich lange und mit viel Speicher; das darf die Oberfläche nicht anhalten
+async fn im_hintergrund<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+}
+
+/// Kennung des Datenschlüssels, den dieses Gerät kennt (nicht der Schlüssel selbst); `null` = tritt nicht bei
+#[tauri::command]
+fn tresor_kennung(app: AppHandle) -> Result<Option<String>, String> {
+    Ok(geraeteschluessel(&app).ok().map(|g| g.kennung))
+}
+
+/// Neue verschlüsselte Datei (Einschalten, Passwort ändern, neu anfangen); merkt sich den Datenschlüssel, liefert den Dateitext
+#[tauri::command]
+async fn tresor_anlegen(app: AppHandle, passwort: String, klartext: String) -> Result<String, String> {
+    let (datei, g) = im_hintergrund(move || tresor::anlegen(&passwort, &klartext).map_err(|e| e.wort())).await?;
+    merke_geraeteschluessel(&app, &g)?;
+    Ok(datei)
+}
+
+/// Mit dem Passwort beitreten: merkt sich den Datenschlüssel, liefert den Inhalt
+#[tauri::command]
+async fn tresor_beitreten(app: AppHandle, datei: String, passwort: String) -> Result<String, String> {
+    let (klartext, g) = im_hintergrund(move || tresor::beitreten(&datei, &passwort).map_err(|e| e.wort())).await?;
+    merke_geraeteschluessel(&app, &g)?;
+    Ok(klartext)
+}
+
+/// Inhalt mit dem Datenschlüssel des Geräts lesen
+#[tauri::command]
+fn tresor_oeffnen(app: AppHandle, datei: String) -> Result<String, String> {
+    tresor::oeffnen(&datei, &geraeteschluessel(&app)?).map_err(|e| e.wort())
+}
+
+/// Neuen Inhalt verschlüsseln (ohne Passwort), liefert den neuen Dateitext
+#[tauri::command]
+fn tresor_schreiben(app: AppHandle, datei: String, klartext: String) -> Result<String, String> {
+    tresor::schreiben(&datei, &geraeteschluessel(&app)?, &klartext).map_err(|e| e.wort())
+}
+
+/// Dieses Gerät vergisst den Datenschlüssel (Teilen auf diesem Gerät beenden)
+#[tauri::command]
+fn tresor_vergessen(app: AppHandle) -> Result<(), String> {
+    zugang::setzen(&tresor_datei(&app)?, None)
+}
+
 /// encodeURIComponent rückwärts (Kopfzeilen dürfen nur ASCII enthalten, Dateinamen haben Umlaute)
 fn url_dekodieren(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
@@ -178,7 +238,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }
