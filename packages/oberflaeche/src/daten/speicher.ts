@@ -1,58 +1,26 @@
-// Offline-Kopie des Datenordners im Browser (IndexedDB) und Abgleich mit dem Server.
-// Jede Änderung wird zuerst lokal gespeichert und später mit dem Stand (Hash) hochgeladen, auf dem sie beruht.
-// Lehnt der Server ab (409), weil ein anderes Gerät inzwischen geändert hat, entsteht eine Konfliktkopie
-// `*.sync-conflict-*` (Vertrag 8), und die Fassung des Servers wird übernommen. Es geht nie etwas verloren.
-import { istText, zerlege } from '@rl/kern'
+// Der Datenordner ist die einzige Wahrheit (Vertrag Lernen, Grundlagen 1 und 8). Der Speicher hält alle Textdateien im
+// Arbeitsspeicher, damit die Ansichten sofort reagieren, und schreibt Änderungen nach kurzer Ruhe atomar in den Ordner.
+// Syncthing gleicht den Ordner zwischen den Geräten ab. Hat Syncthing eine Datei ersetzt, während hier noch etwas
+// ungespeichert war, entsteht eine Konfliktkopie `*.sync-conflict-*`: Es geht nie etwas verloren, ein Mensch entscheidet.
+import { istKonfliktkopie, istText, konfliktOriginal } from '@rl/kern'
+import { ablageImSpeicher } from './ablageImSpeicher'
+import { inTauri, tauriAblage, type Ablage, type OrdnerEintrag, type TextDatei } from './ordner'
 
 interface TextEintrag {
-  pfad: string
   text: string
-  /** Hash des Server-Stands, auf dem der Text beruht; null = auf dem Server noch nicht vorhanden */
-  basis: string | null
-  lokal: boolean
-  geloescht?: boolean
-  /**
-   * Fassungen, die schon hochgeschickt wurden, ohne dass eine Antwort kam (höchstens drei). Steht eine davon auf
-   * dem Server, hat der Server die eigene Fassung und es ist kein Konflikt (Antwort im Funkloch verloren).
-   */
-  gesendet?: string[]
+  /** Stempel des Stands auf der Platte, auf dem der Text beruht; null = dort noch nicht vorhanden */
+  stempel: string | null
+  /** Text weicht vom Stand auf der Platte ab und wartet aufs Schreiben */
+  offen: boolean
 }
 
-interface BinaerEintrag {
-  pfad: string
-  blob: Blob
-  basis: string | null
-  lokal: boolean
-  /** Wann die Datei auf diesem Gerät zuletzt gebraucht wurde (ms); fehlt bei älteren Einträgen */
-  zuletzt?: number
-}
-
-const TAG_MS = 24 * 3600_000
-
-export type SyncZustand = 'bereit' | 'laeuft' | 'offline' | 'fehler'
-
-/** Antwort von /api/demo: läuft dieser Server als Demo, und wo liegt die andere Fassung (echt ↔ Demo) */
-export interface DemoInfo {
-  demo: boolean
-  /** Zeitpunkt des letzten Zurücksetzens (nur in der Demo) */
-  stand?: string
-  wechsel: string
-  /** Instanz für jemand anderen als Nils (GAST=1): keine Einrichtungshinweise für Nils' Quellen */
-  gast?: boolean
-}
+export type SyncZustand = 'bereit' | 'fehler'
 
 export interface SpeicherOptionen {
-  app: string
-  /** Welche Textdateien diese App abgleicht (die Lern-App braucht z. B. `arbeit/` nicht) */
-  filter: (pfad: string) => boolean
-  api?: string
-}
-
-function anfrage<T>(r: IDBRequest<T>): Promise<T> {
-  return new Promise((ok, fehler) => {
-    r.onsuccess = () => ok(r.result)
-    r.onerror = () => fehler(r.error)
-  })
+  /** Fehlt: im Tauri-Fenster der echte Ordner, sonst eine Ablage im Arbeitsspeicher */
+  ablage?: Ablage | (() => Promise<Ablage>)
+  /** Ruhezeit vor dem Schreiben in ms (so wird nicht jeder Tastendruck eine Dateiänderung, die Syncthing verteilt) */
+  wartezeit?: number
 }
 
 export function geraet(): string {
@@ -69,51 +37,74 @@ export function geraet(): string {
   }
 }
 
+/** Name der Konfliktkopie wie bei Syncthing: `<name>.sync-conflict-<JJJJMMTT>-<HHMMSS>-<gerät>.<endung>` (Ortszeit) */
 export function konfliktPfad(pfad: string, g: string, d = new Date()): string {
-  const st = d.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)
+  const z = (n: number) => String(n).padStart(2, '0')
+  const st = `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`
+  const name = pfad.lastIndexOf('/')
   const punkt = pfad.lastIndexOf('.')
-  return punkt > pfad.lastIndexOf('/') ? `${pfad.slice(0, punkt)}.sync-conflict-${st}-${g}${pfad.slice(punkt)}` : `${pfad}.sync-conflict-${st}-${g}`
+  return punkt > name + 1 ? `${pfad.slice(0, punkt)}.sync-conflict-${st}-${g}${pfad.slice(punkt)}` : `${pfad}.sync-conflict-${st}-${g}`
 }
 
-let hochladenLaeuft = 0
+/** Texte, die die App liest. `arbeit/` und Kontakte aus RespawnedNotes VX dürfen im selben Ordner liegen, gehören aber nicht dazu (Vertrag Lernen, Grundlagen 2). */
+const liestText = (p: string) => istText(p) && !p.startsWith('arbeit/') && !p.startsWith('gemeinsam/kontakte/')
 
-/** Lädt gerade ein Original (PDF, Foto) hoch? Dann wartet das automatische Neuladen (aktualisierung.ts). */
-export const laedtHoch = () => hochladenLaeuft > 0
+const TYPEN: Record<string, string> = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml' }
 
 export class Speicher {
-  private db!: IDBDatabase
+  private ablage!: Ablage
   private texte = new Map<string, TextEintrag>()
-  private fern = new Map<string, string>()
+  /** Alle Dateien im Ordner mit Größe und Zeit (auch Binärdateien), für den Vergleich mit der nächsten Liste */
+  private staende = new Map<string, OrdnerEintrag>()
   private hoerer = new Set<() => void>()
-  private timer: ReturnType<typeof setTimeout> | null = null
-  private laeuft: Promise<void> | null = null
-  private nochmal = false
+  private uhren = new Map<string, ReturnType<typeof setTimeout>>()
+  /** Abfragen und Schreiben laufen nacheinander, damit ein eigener Schreibvorgang nie als fremde Änderung erscheint */
+  private reihe: Promise<unknown> = Promise.resolve()
+  private abfrageLaeuft = false
+  private abfrageNochmal = false
+  private aufraeumen: (() => void)[] = []
   zustand: SyncZustand = 'bereit'
   letzterFehler = ''
   version = 0
-  /** Zeit des letzten vollständigen Abgleichs (0 = seit dem Start noch keiner): erst dann ist der Stand des Servers bekannt */
-  abgeglichen = 0
-  /** Demomodus, sobald der Server geantwortet hat (null = noch unbekannt) */
-  demo: DemoInfo | null = null
+  /** false in der Vorschau im Browser: nichts bleibt erhalten */
+  dauerhaft = true
 
-  constructor(private o: SpeicherOptionen) {}
+  constructor(private o: SpeicherOptionen = {}) {}
 
   async oeffne(): Promise<void> {
-    const r = indexedDB.open(`rvx-${this.o.app}`, 1)
-    r.onupgradeneeded = () => {
-      r.result.createObjectStore('texte', { keyPath: 'pfad' })
-      r.result.createObjectStore('binaer', { keyPath: 'pfad' })
-      r.result.createObjectStore('meta')
+    const a = this.o.ablage
+    this.ablage = typeof a === 'function' ? await a() : a ?? (inTauri() ? await tauriAblage() : ablageImSpeicher(undefined, { dauerhaft: false }))
+    this.dauerhaft = this.ablage.dauerhaft
+    const liste = await this.ablage.dateien()
+    for (const e of liste) this.staende.set(e.pfad, e)
+    for (const d of await this.ablage.texteLesen(liste.filter((e) => liestText(e.pfad)).map((e) => e.pfad))) {
+      this.texte.set(d.pfad, { text: d.text, stempel: d.stempel, offen: false })
+      this.staende.set(d.pfad, d)
     }
-    this.db = await anfrage(r)
-    const alle = await anfrage(this.db.transaction('texte').objectStore('texte').getAll() as IDBRequest<TextEintrag[]>)
-    for (const e of alle) this.texte.set(e.pfad, e)
-    const f = (await anfrage(this.db.transaction('meta').objectStore('meta').get('fern'))) as [string, string][] | undefined
-    if (f) this.fern = new Map(f)
+    this.aufraeumen.push(await this.ablage.beobachte(() => void this.abfragen()))
+    if (this.ablage.abfrageMs > 0) {
+      const uhr = setInterval(() => void this.abfragen(), this.ablage.abfrageMs)
+      this.aufraeumen.push(() => clearInterval(uhr))
+    }
+    if (typeof document !== 'undefined') {
+      // In den Hintergrund: sofort schreiben (Android beendet Apps dort ohne Vorwarnung). Zurück: nachsehen, was kam.
+      const sichtbar = () => (document.visibilityState === 'hidden' ? void this.speichereAlles() : void this.abfragen())
+      const weg = () => void this.speichereAlles()
+      document.addEventListener('visibilitychange', sichtbar)
+      addEventListener('pagehide', weg)
+      this.aufraeumen.push(() => {
+        document.removeEventListener('visibilitychange', sichtbar)
+        removeEventListener('pagehide', weg)
+      })
+    }
     this.melde()
-    addEventListener('online', () => this.planen(0))
-    setInterval(() => this.planen(0), 30_000)
-    this.planen(0)
+  }
+
+  /** Beendet Überwachung und Uhren (Tests); Ungespeichertes wird vorher geschrieben */
+  async schliesse(): Promise<void> {
+    await this.speichereAlles()
+    for (const f of this.aufraeumen) f()
+    this.aufraeumen = []
   }
 
   abonniere(f: () => void): () => void {
@@ -126,51 +117,40 @@ export class Speicher {
     for (const f of this.hoerer) f()
   }
 
-  /** Alle sichtbaren Textdateien (ohne gelöschte) */
+  /** Alle Textdateien, auch Konfliktkopien (der Bestand überspringt sie selbst) */
   alleTexte(): Map<string, string> {
     const m = new Map<string, string>()
-    for (const e of this.texte.values()) if (!e.geloescht) m.set(e.pfad, e.text)
+    for (const [p, e] of this.texte) m.set(p, e.text)
     return m
   }
 
   text(pfad: string): string | undefined {
-    const e = this.texte.get(pfad)
-    return e && !e.geloescht ? e.text : undefined
+    return this.texte.get(pfad)?.text
   }
 
-  /** Pfade aller Dateien, die der Server kennt oder die lokal neu sind (auch Binärdateien) */
+  /** Pfade aller Dateien im Ordner und der noch nicht geschriebenen (auch Binärdateien) */
   pfade(): string[] {
-    const s = new Set(this.fern.keys())
-    for (const e of this.texte.values()) if (!e.geloescht) s.add(e.pfad)
+    const s = new Set(this.staende.keys())
+    for (const p of this.texte.keys()) s.add(p)
     return [...s].sort()
   }
 
   ungesichert(): number {
     let n = 0
-    for (const e of this.texte.values()) if (e.lokal) n++
+    for (const e of this.texte.values()) if (e.offen) n++
     return n
   }
 
   konflikte(): string[] {
-    return [...this.texte.keys()].filter((p) => p.includes('.sync-conflict-') && !this.texte.get(p)!.geloescht)
-  }
-
-  private async speichereEintrag(e: TextEintrag) {
-    this.texte.set(e.pfad, e)
-    await anfrage(this.db.transaction('texte', 'readwrite').objectStore('texte').put(e))
-  }
-
-  private async entferneEintrag(pfad: string) {
-    this.texte.delete(pfad)
-    await anfrage(this.db.transaction('texte', 'readwrite').objectStore('texte').delete(pfad))
+    return this.pfade().filter(istKonfliktkopie)
   }
 
   async schreibe(pfad: string, text: string): Promise<void> {
     const alt = this.texte.get(pfad)
-    if (alt && !alt.geloescht && alt.text === text) return
-    await this.speichereEintrag({ pfad, text, basis: alt?.basis ?? null, lokal: true, gesendet: alt?.gesendet })
+    if (alt?.text === text) return
+    this.texte.set(pfad, { text, stempel: alt?.stempel ?? null, offen: true })
     this.melde()
-    this.planen(1500)
+    this.planeSchreiben(pfad, this.o.wartezeit ?? 1000)
   }
 
   /** Ändert eine Datei anhand ihres aktuellen Stands (verhindert, dass zwei Änderungen sich überschreiben) */
@@ -180,305 +160,189 @@ export class Speicher {
     if (neu !== alt) await this.schreibe(pfad, neu)
   }
 
-  async loesche(pfad: string): Promise<void> {
-    const alt = this.texte.get(pfad)
-    if (!alt) return
-    if (alt.basis === null) await this.entferneEintrag(pfad)
-    else await this.speichereEintrag({ ...alt, geloescht: true, lokal: true })
-    this.melde()
-    this.planen(1500)
+  private planeSchreiben(pfad: string, ms: number) {
+    clearTimeout(this.uhren.get(pfad))
+    this.uhren.set(pfad, setTimeout(() => void this.speichereJetzt(pfad), ms))
   }
 
-  async hochladen(pfad: string, blob: Blob): Promise<void> {
-    await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ pfad, blob, basis: null, lokal: true } satisfies BinaerEintrag))
-    this.melde()
-    this.planen(0)
+  /** Schreibt alles Ungespeicherte sofort (beim Wechsel in den Hintergrund) */
+  async speichereAlles(): Promise<void> {
+    const offen = [...this.texte].filter(([, e]) => e.offen).map(([p]) => p)
+    await Promise.all(offen.map((p) => this.speichereJetzt(p)))
   }
 
-  /** Binärdatei (PDF, Foto): aus dem Cache oder vom Server, danach offline verfügbar */
-  async binaer(pfad: string): Promise<Blob | null> {
-    const e = (await anfrage(this.db.transaction('binaer').objectStore('binaer').get(pfad))) as BinaerEintrag | undefined
-    const fernHash = this.fern.get(pfad)
-    if (e && (e.lokal || !fernHash || e.basis === fernHash || !navigator.onLine)) {
-      // Für das Aufräumen merken, dass die Datei gebraucht wird (höchstens einmal am Tag schreiben)
-      if (!e.zuletzt || Date.now() - e.zuletzt > TAG_MS) await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ ...e, zuletzt: Date.now() }))
-      return e.blob
-    }
-    try {
-      const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`)
-      if (!r.ok) return e?.blob ?? null
-      const blob = await r.blob()
-      await anfrage(
-        this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ pfad, blob, basis: r.headers.get('x-hash'), lokal: false, zuletzt: Date.now() } satisfies BinaerEintrag)
-      )
-      return blob
-    } catch {
-      return e?.blob ?? null
-    }
-  }
-
-  /** Original auf dem Server und hier löschen (nur für Anhänge ohne eingehende Links, Vertrag 7) */
-  async entferneOriginal(pfad: string): Promise<boolean> {
-    const basis = this.fern.get(pfad)
-    if (basis) {
-      const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`, { method: 'DELETE', headers: { 'x-basis': basis } }).catch(() => null)
-      if (!r?.ok) return false
-      this.fern.delete(pfad)
-    }
-    await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').delete(pfad))
-    return true
-  }
-
-  /** Liegt die Datei schon auf diesem Gerät, und zwar im Stand des Servers? */
-  async hatBinaer(pfad: string): Promise<boolean> {
-    const e = (await anfrage(this.db.transaction('binaer').objectStore('binaer').get(pfad))) as BinaerEintrag | undefined
-    const fernHash = this.fern.get(pfad)
-    return !!e && (e.lokal || !fernHash || e.basis === fernHash)
-  }
-
-  /**
-   * Räumt Originale vom Gerät, die länger als `tage` nicht gebraucht wurden. Sie liegen weiter auf dem Server
-   * und kommen beim nächsten Öffnen von dort. Nie gelöscht wird, was noch nicht hochgeladen ist oder in
-   * `behalten` steht (Pläne der Projekte mit Stern). Gibt die frei gewordenen Bytes zurück.
-   */
-  async aufraeumen(behalten: Set<string>, tage = 90): Promise<number> {
-    const grenze = Date.now() - tage * TAG_MS
-    const alle = (await anfrage(this.db.transaction('binaer').objectStore('binaer').getAll() as IDBRequest<BinaerEintrag[]>)) ?? []
-    let frei = 0
-    for (const e of alle) {
-      if (e.lokal || behalten.has(e.pfad)) continue
-      const store = this.db.transaction('binaer', 'readwrite').objectStore('binaer')
-      // Ältere Einträge ohne Zeit zählen ab heute, damit nichts sofort verschwindet
-      if (!e.zuletzt) await anfrage(store.put({ ...e, zuletzt: Date.now() }))
-      else if (e.zuletzt < grenze) {
-        await anfrage(store.delete(e.pfad))
-        frei += e.blob.size
+  /** Schreibt eine Datei, falls sie wartet. Nur auf dem bekannten Stand, sonst Konfliktkopie. */
+  speichereJetzt(pfad: string): Promise<void> {
+    clearTimeout(this.uhren.get(pfad))
+    this.uhren.delete(pfad)
+    return this.inReihe(async () => {
+      const e = this.texte.get(pfad)
+      if (!e?.offen) return
+      const text = e.text
+      try {
+        const r = await this.ablage.schreibeWenn(pfad, text, e.stempel)
+        if (r.art === 'ok') {
+          this.staende.set(pfad, { pfad, groesse: r.groesse, geaendert: r.geaendert })
+          const jetzt = this.texte.get(pfad)!
+          // Während des Schreibens kann weitergetippt worden sein; dann bleibt die Datei offen
+          this.texte.set(pfad, { text: jetzt.text, stempel: r.stempel, offen: jetzt.text !== text })
+          if (jetzt.text !== text) this.planeSchreiben(pfad, this.o.wartezeit ?? 1000)
+        } else {
+          const [d] = await this.ablage.texteLesen([pfad])
+          if (d) await this.vergleiche(d)
+          else this.texte.set(pfad, { ...this.texte.get(pfad)!, stempel: null }) // inzwischen gelöscht: neu anlegen
+          if (this.texte.get(pfad)?.offen) this.planeSchreiben(pfad, 0)
+        }
+        this.fehlerWeg()
+      } catch (x) {
+        this.fehler(x)
+        this.planeSchreiben(pfad, 5000)
       }
-    }
-    return frei
+      this.melde()
+    })
   }
 
-  /**
-   * Adresse eines Seitenbilds, das der Server aus dem PDF rechnet (schnell auch für riesige Pläne).
-   * Nur wenn das PDF schon auf dem Server liegt und das Gerät online ist; der Hash in der Adresse
-   * sorgt dafür, dass ein ersetztes PDF neue Bilder bekommt.
-   */
-  seitenbild(pfad: string, seite: number, breite: number): string | null {
-    const hash = this.fern.get(pfad)
-    if (!hash || !navigator.onLine || this.zustand === 'fehler') return null
-    return `${this.api}/seitenbild?pfad=${encodeURIComponent(pfad)}&seite=${seite}&breite=${breite}&v=${hash.slice(0, 12)}`
-  }
-
-  private infos = new Map<string, Promise<{ seiten: number; formate: number[] } | null>>()
-
-  /** Seitenzahl und Formate eines PDFs vom Server, ohne das PDF selbst zu laden; null, wenn das nicht geht */
-  pdfInfo(pfad: string): Promise<{ seiten: number; formate: number[] } | null> {
-    const hash = this.fern.get(pfad)
-    if (!hash || !navigator.onLine || this.zustand === 'fehler') return Promise.resolve(null)
-    const k = `${pfad}|${hash}`
-    let p = this.infos.get(k)
-    if (!p) {
-      p = fetch(`${this.api}/pdfinfo?pfad=${encodeURIComponent(pfad)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((i) => (i && i.seiten > 0 ? i : null))
-        .catch(() => null)
-      void p.then((i) => !i && this.infos.delete(k))
-      this.infos.set(k, p)
-    }
+  private inReihe<T>(f: () => Promise<T>): Promise<T> {
+    const p = this.reihe.then(f, f)
+    this.reihe = p.catch(() => undefined)
     return p
   }
 
-  private get api() {
-    return this.o.api ?? '/api'
-  }
-
-  planen(ms: number) {
-    if (this.timer) clearTimeout(this.timer)
-    this.timer = setTimeout(() => void this.sync(), ms)
-  }
-
-  async sync(): Promise<void> {
-    if (this.laeuft) {
-      this.nochmal = true
-      return this.laeuft
+  /**
+   * Vergleicht die Dateiliste mit dem letzten Stand und liest geänderte Texte neu. Läuft nach jeder Meldung der
+   * Dateiüberwachung, regelmäßig (Android alle 10 s) und wenn die App wieder in den Vordergrund kommt.
+   */
+  async abfragen(): Promise<void> {
+    if (this.abfrageLaeuft) {
+      this.abfrageNochmal = true
+      return
     }
-    this.laeuft = this.abgleich().finally(() => {
-      this.laeuft = null
-      if (this.nochmal) {
-        this.nochmal = false
-        this.planen(0)
-      }
-    })
-    return this.laeuft
-  }
-
-  private async put(pfad: string, inhalt: BodyInit, basis: string | null): Promise<{ ok: true; hash: string } | { ok: false }> {
-    const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`, { method: 'PUT', headers: { 'x-basis': basis ?? 'neu' }, body: inhalt })
-    if (r.status === 409) return { ok: false }
-    if (!r.ok) throw new Error(`Hochladen fehlgeschlagen (${r.status})`)
-    return { ok: true, hash: ((await r.json()) as { hash: string }).hash }
-  }
-
-  private async originaleHochladen() {
-    const binaer = (await anfrage(this.db.transaction('binaer').objectStore('binaer').getAll() as IDBRequest<BinaerEintrag[]>)).filter((b) => b.lokal)
-    if (!binaer.length) return
-    hochladenLaeuft++
-    this.melde() // Tinte und Notizen der anderen Geräte sind jetzt schon da
+    this.abfrageLaeuft = true
     try {
-      for (const b of binaer) {
-        const r = await this.put(b.pfad, b.blob, b.basis)
-        // Originale sind unveränderlich (Vertrag 1.5): ein Konflikt heißt, die Datei gibt es schon
-        await anfrage(this.db.transaction('binaer', 'readwrite').objectStore('binaer').put({ ...b, lokal: false, basis: r.ok ? r.hash : null }))
-      }
+      do {
+        this.abfrageNochmal = false
+        await this.inReihe(() => this.abfrageEinmal())
+      } while (this.abfrageNochmal)
     } finally {
-      hochladenLaeuft--
+      this.abfrageLaeuft = false
     }
   }
 
-  private async holeText(pfad: string): Promise<{ text: string; hash: string } | null> {
-    const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(pfad)}`)
-    if (r.status === 404) return null
-    if (!r.ok) throw new Error(`Laden fehlgeschlagen (${r.status})`)
-    return { text: await r.text(), hash: r.headers.get('x-hash') ?? '' }
-  }
-
-  private async abgleich(): Promise<void> {
-    if (!navigator.onLine) {
-      this.zustand = 'offline'
+  private async abfrageEinmal(): Promise<void> {
+    let liste: OrdnerEintrag[]
+    try {
+      liste = await this.ablage.dateien()
+    } catch (x) {
+      this.fehler(x)
       this.melde()
       return
     }
-    this.zustand = 'laeuft'
-    this.melde()
-    try {
-      // 0. Demo zurückgesetzt? Dann nichts Altes hochladen, sondern leer neu anfangen
-      if (await this.demoPruefen()) return
-      // 1. Eigene Änderungen hochladen. Jeder Eintrag wird frisch gelesen: Während eines Uploads kann weitergeschrieben werden.
-      for (const pfad of [...this.texte.values()].filter((x) => x.lokal).map((x) => x.pfad)) {
-        const e = this.texte.get(pfad)
-        if (!e?.lokal) continue
-        if (e.geloescht) {
-          const r = await fetch(`${this.api}/datei?pfad=${encodeURIComponent(e.pfad)}`, { method: 'DELETE', headers: { 'x-basis': e.basis ?? '' } })
-          if (!r.ok && r.status !== 409) continue
-          const jetzt = this.texte.get(e.pfad)
-          // bei 409 kommt die neuere Fassung gleich wieder; wurde inzwischen neu geschrieben, bleibt das stehen
-          if (jetzt?.geloescht) await this.entferneEintrag(e.pfad)
-          else if (jetzt && r.ok) await this.speichereEintrag({ ...jetzt, basis: null })
-          continue
-        }
-        if (!e.gesendet?.includes(e.text)) await this.speichereEintrag({ ...e, gesendet: [...(e.gesendet ?? []), e.text].slice(-3) })
-        const r = await this.put(e.pfad, e.text, e.basis)
-        if (r.ok) {
-          // Inzwischen weitergeschrieben oder gelöscht? Dann bleibt die Datei lokal geändert, nur der Stand rückt nach.
-          const jetzt = this.texte.get(e.pfad) ?? { ...e, geloescht: true }
-          await this.speichereEintrag({ ...jetzt, basis: r.hash, lokal: !!jetzt.geloescht || jetzt.text !== e.text, gesendet: undefined })
-        } else await this.konflikt(e)
-      }
-      // 2. Stand des Servers holen
-      const r = await fetch(`${this.api}/liste`)
-      if (!r.ok) throw new Error(`Server antwortet nicht (${r.status})`)
-      const liste = (await r.json()) as { pfad: string; hash: string }[]
-      this.fern = new Map(liste.map((x) => [x.pfad, x.hash]))
-      await anfrage(this.db.transaction('meta', 'readwrite').objectStore('meta').put([...this.fern], 'fern'))
-      let gemeldet = Date.now()
-      for (const { pfad, hash } of liste) {
-        if (!istText(pfad) || !this.o.filter(pfad)) continue
-        const e = this.texte.get(pfad)
-        if (e?.lokal || e?.basis === hash) continue
-        const t = await this.holeText(pfad)
-        // Während des Ladens weitergeschrieben? Dann bleibt das Getippte, der nächste Abgleich klärt den Konflikt.
-        if (t && !this.texte.get(pfad)?.lokal) await this.speichereEintrag({ pfad, text: t.text, basis: t.hash, lokal: false })
-        // Beim ersten Abgleich sind es viele Dateien: Was schon da ist, gleich zeigen
-        if (Date.now() - gemeldet > 1000) {
-          gemeldet = Date.now()
-          this.melde()
-        }
-      }
-      // 3. Auf dem Server gelöschte Dateien auch hier entfernen (nur unveränderte)
-      for (const pfad of [...this.texte.keys()]) {
-        const e = this.texte.get(pfad)
-        if (e && !e.lokal && e.basis !== null && !this.fern.has(pfad)) await this.entferneEintrag(pfad)
-      }
-      // 4. Neue Originale (PDF, Foto) zuletzt hochladen: Ein großes PDF dauert, und bricht es ab (Netz weg,
-      // Seite neu geladen), sollen Tinte und Notizen der anderen Geräte trotzdem schon angekommen sein.
-      await this.originaleHochladen()
-
-      this.zustand = 'bereit'
-      this.letzterFehler = ''
-      this.abgeglichen = Date.now()
-    } catch (err) {
-      this.zustand = navigator.onLine ? 'fehler' : 'offline'
-      this.letzterFehler = String((err as Error)?.message ?? err)
+    let geaendert = false
+    const neu = new Map(liste.map((e) => [e.pfad, e]))
+    const lesen: string[] = []
+    for (const e of liste) {
+      const alt = this.staende.get(e.pfad)
+      if (alt && alt.groesse === e.groesse && alt.geaendert === e.geaendert) continue
+      if (liestText(e.pfad)) lesen.push(e.pfad)
+      else geaendert = true
     }
-    this.melde()
+    for (const p of this.staende.keys()) {
+      if (neu.has(p)) continue
+      geaendert = true
+      const t = this.texte.get(p)
+      // Von außen gelöscht. Ungespeicherter Text geht nicht verloren: Die Datei entsteht neu.
+      if (t?.offen) {
+        this.texte.set(p, { ...t, stempel: null })
+        this.planeSchreiben(p, this.o.wartezeit ?? 1000)
+      } else this.texte.delete(p)
+    }
+    this.staende = neu
+    for (const d of await this.ablage.texteLesen(lesen)) if (await this.vergleiche(d)) geaendert = true
+    this.fehlerWeg()
+    if (geaendert) this.melde()
   }
 
-  /**
-   * Demomodus: Wurde die Demo zurückgesetzt (anderer `stand`), leert dieses Gerät seinen Speicher und lädt neu,
-   * statt alte Demo-Änderungen in die frischen Demodaten hochzuladen. Außerhalb der Demo passiert hier nichts.
-   */
-  private async demoPruefen(): Promise<boolean> {
-    const r = await fetch(`${this.api}/demo`).catch(() => null)
-    if (!r?.ok) return false
-    const d = (await r.json().catch(() => null)) as DemoInfo | null
-    if (!d) return false
-    if (JSON.stringify(d) !== JSON.stringify(this.demo)) {
-      this.demo = d
-      this.melde()
+  /** Übernimmt eine gelesene Datei. Liefert true, wenn sich etwas Sichtbares geändert hat. */
+  private async vergleiche(d: TextDatei): Promise<boolean> {
+    this.staende.set(d.pfad, { pfad: d.pfad, groesse: d.groesse, geaendert: d.geaendert })
+    const e = this.texte.get(d.pfad)
+    if (e?.stempel === d.stempel) return false
+    if (!e || !e.offen || e.text === d.text) {
+      this.texte.set(d.pfad, { text: d.text, stempel: d.stempel, offen: false })
+      return e?.text !== d.text
     }
-    if (!d.demo || !d.stand) return false
-    const bekannt = (await anfrage(this.db.transaction('meta').objectStore('meta').get('demo-stand'))) as string | undefined
-    if (bekannt === d.stand) return false
-    if (bekannt === undefined && !this.texte.size) {
-      await anfrage(this.db.transaction('meta', 'readwrite').objectStore('meta').put(d.stand, 'demo-stand'))
-      return false
-    }
-    const t = this.db.transaction(['texte', 'binaer', 'meta'], 'readwrite')
-    for (const name of ['texte', 'binaer', 'meta']) t.objectStore(name).clear()
-    t.objectStore('meta').put(d.stand, 'demo-stand')
-    await new Promise<void>((ok, fehler) => {
-      t.oncomplete = () => ok()
-      t.onerror = () => fehler(t.error)
-    })
-    location.reload()
+    // Hier ungespeichert, dort anders: der eigene Text wird Konfliktkopie, die Datei behält den fremden Stand
+    const kopie = konfliktPfad(d.pfad, geraet())
+    this.texte.set(kopie, { text: e.text, stempel: null, offen: true })
+    this.texte.set(d.pfad, { text: d.text, stempel: d.stempel, offen: false })
+    this.planeSchreiben(kopie, 0)
     return true
   }
 
-  /** Demo zurücksetzen (nur in der Demo): Der Server legt die Demodaten neu an, danach fängt dieses Gerät leer an */
-  async demoZuruecksetzen(): Promise<void> {
-    const r = await fetch(`${this.api}/demo/zuruecksetzen`, { method: 'POST' })
-    if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { fehler?: string }).fehler ?? `Zurücksetzen fehlgeschlagen (${r.status})`)
-    await this.sync()
+  private fehler(x: unknown) {
+    this.zustand = 'fehler'
+    this.letzterFehler = String((x as Error)?.message ?? x)
   }
 
-  /**
-   * Ein anderes Gerät war schneller. Ein Tagesjournal, das auf zwei Geräten offline neu entstand, wird
-   * zusammengeführt (der eigene Text kommt unten an). Alles andere bekommt eine Konfliktkopie.
-   * Steht auf dem Server eine eigene frühere Fassung (Antwort verloren), ist es kein Konflikt.
-   */
-  private async konflikt(e: TextEintrag) {
-    const server = await this.holeText(e.pfad)
-    // Was jetzt auf dem Gerät steht: Während Upload und Laden kann weitergeschrieben worden sein
-    const jetzt = this.texte.get(e.pfad)
-    const eigen = jetzt && !jetzt.geloescht ? jetzt : e
-    if (!server) return this.speichereEintrag({ ...eigen, basis: null })
-    if (server.text === eigen.text || eigen.gesendet?.includes(server.text)) {
-      await this.speichereEintrag({ ...eigen, basis: server.hash, lokal: server.text !== eigen.text, gesendet: undefined })
-      if (server.text !== eigen.text) this.nochmal = true
-      return
+  private fehlerWeg() {
+    this.zustand = 'bereit'
+    this.letzterFehler = ''
+  }
+
+  /** Legt ein Original (PDF, Foto) im Ordner ab. Eine vorhandene Datei wird nie ersetzt. */
+  async hochladen(pfad: string, blob: Blob): Promise<void> {
+    const r = await this.inReihe(async () => this.ablage.schreibeWenn(pfad, new Uint8Array(await blob.arrayBuffer()), null))
+    if (r.art !== 'ok') throw new Error(`${pfad} gibt es schon`)
+    this.staende.set(pfad, { pfad, groesse: r.groesse, geaendert: r.geaendert })
+    this.melde()
+  }
+
+  /** Binärdatei (PDF, Foto) aus dem Ordner; null, wenn sie fehlt (z. B. von Syncthing noch nicht gebracht) */
+  async binaer(pfad: string): Promise<Blob | null> {
+    try {
+      const b = await this.ablage.leseDatei(pfad)
+      const typ = TYPEN[pfad.slice(pfad.lastIndexOf('.') + 1).toLowerCase()] ?? ''
+      return new Blob([b as Uint8Array<ArrayBuffer>], { type: typ })
+    } catch {
+      return null
     }
-    if (e.basis === null && e.pfad.startsWith('arbeit/journal/')) {
-      const rumpf = zerlege(eigen.text).rumpf.trim()
-      const text = rumpf ? `${server.text.replace(/\n*$/, '')}\n\n${rumpf}\n` : server.text
-      await this.speichereEintrag({ pfad: e.pfad, text, basis: server.hash, lokal: text !== server.text })
-      return
+  }
+
+  /** Seitenbilder rechnete der Server; ohne Server zeichnet pdf.js die Seiten selbst */
+  seitenbild(_pfad: string, _seite: number, _breite: number): string | null {
+    return null
+  }
+
+  pdfInfo(_pfad: string): Promise<{ seiten: number; formate: number[] } | null> {
+    return Promise.resolve(null)
+  }
+
+  /** Die Kopie ersetzt das Original; danach verschwindet die Kopie */
+  async uebernehmeKonflikt(kopie: string): Promise<void> {
+    const original = konfliktOriginal(kopie)
+    if (!original) return
+    const text = this.text(kopie)
+    if (text !== undefined) {
+      await this.schreibe(original, text)
+      await this.speichereJetzt(original)
+      // Kam dabei selbst ein Konflikt heraus, bleibt die Kopie, damit nichts verloren geht
+      if (this.text(original) !== text || this.texte.get(original)?.offen) return
+    } else {
+      const b = await this.ablage.leseDatei(kopie)
+      const stempel = (await this.ablage.texteLesen([original]))[0]?.stempel ?? null
+      const r = await this.inReihe(() => this.ablage.schreibeWenn(original, b, stempel))
+      if (r.art !== 'ok') return
     }
-    const kopie = konfliktPfad(e.pfad, geraet())
-    // Beide Einträge im selben Takt setzen, damit dazwischen nichts Getipptes überschrieben wird
-    await Promise.all([
-      this.speichereEintrag({ pfad: kopie, text: eigen.text, basis: null, lokal: true }),
-      this.speichereEintrag({ pfad: e.pfad, text: server.text, basis: server.hash, lokal: false })
-    ])
-    this.nochmal = true
+    await this.verwerfeKonflikt(kopie)
+  }
+
+  /** Die Kopie wird gelöscht, das Original bleibt (Syncthings Versionierung behält die Kopie noch eine Weile) */
+  async verwerfeKonflikt(kopie: string): Promise<void> {
+    if (!istKonfliktkopie(kopie)) return
+    clearTimeout(this.uhren.get(kopie))
+    await this.inReihe(() => this.ablage.konfliktLoeschen(kopie))
+    this.texte.delete(kopie)
+    this.staende.delete(kopie)
+    this.melde()
   }
 }

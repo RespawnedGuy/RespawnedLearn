@@ -11,8 +11,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Fehlergrenze ganz>
       <OrdnerWahl>
-        {/* Bis Schritt 2 gleicht der Speicher noch wie bisher ab; danach liest er den Ordner */}
-        <DatenAnbieter optionen={{ app: 'lernen', filter: (p) => !p.startsWith('arbeit/') && !p.startsWith('gemeinsam/kontakte/') }}>
+        {/* Liest und schreibt den gewählten Datenordner (im Browser ohne Tauri: Vorschau im Arbeitsspeicher) */}
+        <DatenAnbieter>
           <App />
         </DatenAnbieter>
       </OrdnerWahl>

@@ -99,6 +99,28 @@ fn datei_schreiben(z: State<Zustand>, request: Request<'_>) -> Result<(), String
     ordner::schreiben(&wurzel(&z)?, &pfad, inhalt)
 }
 
+/// Liest viele Textdateien auf einmal (beim Start und nach Änderungen von außen)
+#[tauri::command]
+fn texte_lesen(z: State<Zustand>, pfade: Vec<String>) -> Result<Vec<ordner::TextDatei>, String> {
+    Ok(ordner::texte_lesen(&wurzel(&z)?, &pfade))
+}
+
+/// Schreibt nur, wenn die Datei noch den erwarteten Stand hat (Kopf `erwartet`: Stempel, fehlt = darf nicht existieren)
+#[tauri::command]
+fn datei_schreiben_wenn(z: State<Zustand>, request: Request<'_>) -> Result<ordner::Geschrieben, String> {
+    let kopf = |n: &str| request.headers().get(n).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let pfad = url_dekodieren(&kopf("pfad").ok_or("Kopf „pfad“ fehlt")?)?;
+    let erwartet = kopf("erwartet");
+    let InvokeBody::Raw(inhalt) = request.body() else { return Err("Inhalt muss als Bytes kommen".into()) };
+    ordner::schreiben_wenn(&wurzel(&z)?, &pfad, inhalt, erwartet.as_deref())
+}
+
+/// Löscht eine Konfliktkopie (und nur eine solche), nachdem ein Mensch entschieden hat
+#[tauri::command]
+fn konflikt_loeschen(z: State<Zustand>, pfad: String) -> Result<(), String> {
+    ordner::konflikt_loeschen(&wurzel(&z)?, &pfad)
+}
+
 /// encodeURIComponent rückwärts (Kopfzeilen dürfen nur ASCII enthalten, Dateinamen haben Umlaute)
 fn url_dekodieren(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
@@ -137,7 +159,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

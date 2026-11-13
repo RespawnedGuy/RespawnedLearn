@@ -274,3 +274,15 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .ordner-wahl input { font: inherit; padding: 0.6rem; min-height: 44px; }
 .ordner-fehler { color: var(--rot, #b3261e); }
 .ordner-wahl > .knopf, .ordner-wahl form .knopf { justify-self: start; }
+
+/* Konflikte: zwei Fassungen nebeneinander, am Handy untereinander */
+.konflikte { display: grid; gap: 16px; }
+.konflikt { padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.konflikt h2 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
+.konflikt-fassungen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.konflikt-fassung { min-width: 0; }
+.konflikt-fassung h3 { margin: 0 0 4px; font-weight: 600; }
+.konflikt-fassung pre { margin: 0; padding: 8px; background: var(--grund, transparent); border: 1px solid var(--linie, #ddd); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8125rem; max-height: 50vh; overflow: auto; }
+.konflikt-fassung .nur-hier { background: color-mix(in srgb, var(--akzent) 22%, transparent); }
+.konflikt-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 720px) { .konflikt-fassungen { grid-template-columns: 1fr; } }

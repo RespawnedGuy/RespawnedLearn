@@ -60,3 +60,20 @@ export function dateiname(name: string): string {
 export function istText(pfad: string): boolean {
   return /\.(md|svg|json|jsonl|txt|vcf)$/i.test(pfad)
 }
+
+/**
+ * Konfliktkopien heißen wie bei Syncthing `<name>.sync-conflict-<JJJJMMTT>-<HHMMSS>-<Gerät>.<endung>` (Vertrag Lernen,
+ * Grundlagen 8). Das Gerät ist bei Syncthing eine siebenstellige Kennung, bei dieser App der Gerätename.
+ */
+const KONFLIKT = /\.sync-conflict-\d{8}-\d{6}-[^./]+/
+
+export function istKonfliktkopie(pfad: string): boolean {
+  return KONFLIKT.test(pfad.slice(pfad.lastIndexOf('/') + 1))
+}
+
+/** Pfad der Datei, von der die Konfliktkopie stammt; null, wenn es keine Konfliktkopie ist */
+export function konfliktOriginal(pfad: string): string | null {
+  const i = pfad.lastIndexOf('/') + 1
+  const name = pfad.slice(i)
+  return KONFLIKT.test(name) ? pfad.slice(0, i) + name.replace(KONFLIKT, '') : null
+}

@@ -10,7 +10,7 @@ interface Daten {
 
 const Kontext = createContext<Daten | null>(null)
 
-export function DatenAnbieter({ optionen, children }: { optionen: SpeicherOptionen; children: ReactNode }) {
+export function DatenAnbieter({ optionen = {}, children }: { optionen?: SpeicherOptionen; children: ReactNode }) {
   const [speicher] = useState(() => new Speicher(optionen))
   const [bereit, setBereit] = useState(false)
   const [fehler, setFehler] = useState('')
@@ -23,7 +23,7 @@ export function DatenAnbieter({ optionen, children }: { optionen: SpeicherOption
   )
   // Der Index wird bei jeder Änderung neu gebaut: einfach und für einige tausend Dateien schnell genug
   const bestand = useMemo(() => new Bestand(speicher.alleTexte()), [speicher, version])
-  if (fehler) return <div className="leer">Lokaler Speicher nicht verfügbar: {fehler}</div>
+  if (fehler) return <div className="leer">Der Datenordner lässt sich nicht lesen: {fehler}</div>
   if (!bereit) return null
   return <Kontext.Provider value={{ speicher, bestand, version }}>{children}</Kontext.Provider>
 }

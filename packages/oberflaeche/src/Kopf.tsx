@@ -1,8 +1,7 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import logo from './logo.png'
 import { useDaten } from './daten/DatenKontext'
-import { laedtHoch } from './daten/speicher'
-import { kannZurueck, zurueck } from './ort'
+import { kannZurueck, ortLink, zurueck } from './ort'
 
 /** Ein festes Ziel im Kopf (am Handy in der Daumenleiste) */
 export interface KopfZiel {
@@ -45,13 +44,12 @@ export function Kopf({
   oben?: string | null
 }) {
   const ref = useRef<HTMLElement>(null)
-  const { speicher } = useDaten()
   useKopfHoehe(ref)
   useEffect(() => {
     document.title = `${ort} · RespawnedLearn`
   }, [ort])
   return (
-    <header className={`kopf${speicher.demo?.demo ? ' mit-demo' : ''}`} ref={ref}>
+    <header className="kopf" ref={ref}>
       <div className="kopf-zeile">
         <div className="kopf-links">
           <ZurueckPfeil oben={oben} />
@@ -66,7 +64,6 @@ export function Kopf({
           </nav>
         </div>
         <div className="kopf-rechts">
-          <DemoSchild />
           {rechts}
           <SyncAnzeige />
           <Version />
@@ -103,31 +100,21 @@ export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null
   )
 }
 
-/** In der Demo immer sichtbar: Schild „Demo“, ein Tipp führt zur selben Ansicht in den echten Daten (falls eingerichtet) */
-function DemoSchild() {
-  const { speicher } = useDaten()
-  const d = speicher.demo
-  if (!d?.demo) return null
-  const titel = 'Demo mit erfundenen Daten. Nichts davon gelangt in deine echten Daten.'
-  if (!d.wechsel) return <span className="chip demo-schild" title={titel}>Demo</span>
-  return (
-    <a className="chip demo-schild" href={`${d.wechsel}${location.pathname}${location.hash}`} title={`${titel} Tippen: zu den echten Daten`}>
-      Demo<span className="nur-breit"> · zu echt</span>
-    </a>
-  )
-}
-
 export function SyncAnzeige() {
   const { speicher } = useDaten()
   const n = speicher.ungesichert()
   const k = speicher.konflikte().length
   const z = speicher.zustand
-  const text =
-    z === 'laeuft' ? (laedtHoch() ? 'lädt Datei hoch' : 'gleicht ab') : z === 'offline' ? (n ? `offline · ${n} lokal` : 'offline') : z === 'fehler' ? 'Server nicht erreichbar' : n ? `${n} lokal` : 'gesichert'
+  // Die Daten liegen im Ordner; Syncthing gleicht ab. Hier steht nur, ob alles auf der Platte ist.
+  const text = !speicher.dauerhaft ? 'Vorschau, nichts wird gespeichert' : z === 'fehler' ? 'Ordner nicht beschreibbar' : n ? 'speichert …' : 'gesichert'
   return (
     <span className={`sync ${z}${n ? ' ungesichert' : ''}`} title={speicher.letzterFehler || undefined}>
       <span className="nur-breit">{text}</span>
-      {k > 0 && <span className="chip rot">{k} Konflikt{k > 1 ? 'e' : ''}</span>}
+      {k > 0 && (
+        <a className="chip rot" href={ortLink('konflikte')} title="Syncthing hat zwei Fassungen gefunden, du entscheidest">
+          {k} Konflikt{k > 1 ? 'e' : ''}
+        </a>
+      )}
     </span>
   )
 }

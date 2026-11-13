@@ -4,7 +4,9 @@
 //! Alles in diesem Modul ist frei von Tauri, damit es sich mit `cargo test` gegen ein temporäres Verzeichnis prüfen lässt.
 
 use serde::Serialize;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::Hasher;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -91,8 +93,7 @@ fn sammle(wurzel: &Path, ordner: &Path, out: &mut Vec<Eintrag>) -> std::io::Resu
             sammle(wurzel, &e.path(), out)?;
         } else if typ.is_file() {
             let m = e.metadata()?;
-            let geaendert = m.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64).unwrap_or(0);
-            out.push(Eintrag { pfad: relativ(wurzel, &e.path()), groesse: m.len(), geaendert });
+            out.push(Eintrag { pfad: relativ(wurzel, &e.path()), groesse: m.len(), geaendert: ms(&m) });
         }
     }
     Ok(())
@@ -107,6 +108,95 @@ pub fn ist_zwischendatei(name: &str) -> bool {
 pub fn relativ(wurzel: &Path, p: &Path) -> String {
     let r = p.strip_prefix(wurzel).unwrap_or(p);
     r.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/")
+}
+
+/// Fingerabdruck eines Dateistands: Größe, Änderungszeit (ns) und Prüfsumme des Inhalts. Die Oberfläche gibt ihn beim
+/// Schreiben zurück; passt er nicht mehr, hat jemand anderes (meist Syncthing) die Datei inzwischen ersetzt.
+/// `DefaultHasher::new()` ist innerhalb eines Programmlaufs fest; der Stempel wird nie gespeichert, nur verglichen.
+pub fn stempel_von(inhalt: &[u8], m: &fs::Metadata) -> String {
+    let mut h = DefaultHasher::new();
+    h.write(inhalt);
+    let ns = m.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_nanos()).unwrap_or(0);
+    format!("{}:{}:{:016x}", inhalt.len(), ns, h.finish())
+}
+
+fn ms(m: &fs::Metadata) -> u64 {
+    m.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// Eine gelesene Textdatei mit ihrem Stand
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TextDatei {
+    pub pfad: String,
+    pub groesse: u64,
+    pub geaendert: u64,
+    pub stempel: String,
+    pub text: String,
+}
+
+/// Liest viele Textdateien in einem Aufruf (ein Aufruf über die Brücke zur Oberfläche statt tausend). Fehlende oder
+/// unlesbare Dateien fehlen im Ergebnis: Syncthing kann sie zwischen Liste und Lesen entfernt haben.
+pub fn texte_lesen(wurzel: &Path, pfade: &[String]) -> Vec<TextDatei> {
+    let mut out = Vec::with_capacity(pfade.len());
+    for rel in pfade {
+        let Ok(p) = sicherer_pfad(wurzel, rel) else { continue };
+        let Ok(inhalt) = fs::read(&p) else { continue };
+        let Ok(m) = fs::metadata(&p) else { continue };
+        let stempel = stempel_von(&inhalt, &m);
+        out.push(TextDatei { pfad: rel.clone(), groesse: m.len(), geaendert: ms(&m), stempel, text: String::from_utf8_lossy(&inhalt).into_owned() });
+    }
+    out
+}
+
+/// Stand einer Datei; None, wenn es sie nicht gibt
+pub fn stand_von(wurzel: &Path, rel: &str) -> Result<Option<(Eintrag, String)>, String> {
+    let p = sicherer_pfad(wurzel, rel)?;
+    let Ok(inhalt) = fs::read(&p) else { return Ok(None) };
+    let m = fs::metadata(&p).map_err(|e| format!("{rel}: {e}"))?;
+    Ok(Some((Eintrag { pfad: rel.to_string(), groesse: m.len(), geaendert: ms(&m) }, stempel_von(&inhalt, &m))))
+}
+
+/// Was beim Schreiben herauskam
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "art", rename_all = "lowercase")]
+pub enum Geschrieben {
+    /// Geschrieben; neuer Stand
+    Ok { groesse: u64, geaendert: u64, stempel: String },
+    /// Nicht geschrieben, weil die Datei nicht mehr dem erwarteten Stand entspricht
+    Geaendert,
+}
+
+/// Schreibt nur, wenn die Datei noch so ist, wie die Oberfläche sie kennt: `erwartet` ist der Stempel des bekannten
+/// Stands, `None` heißt „darf noch nicht existieren“. So überschreibt die App nie still, was Syncthing gerade
+/// gebracht hat; die Oberfläche legt dann eine Konfliktkopie an. Zwischen Prüfen und Umbenennen bleibt ein Fenster
+/// von Mikrosekunden, das ohne Sperren im Dateisystem nicht zu schließen ist; Syncthing selbst arbeitet genauso.
+pub fn schreiben_wenn(wurzel: &Path, rel: &str, inhalt: &[u8], erwartet: Option<&str>) -> Result<Geschrieben, String> {
+    let jetzt = stand_von(wurzel, rel)?.map(|(_, s)| s);
+    if jetzt.as_deref() != erwartet {
+        return Ok(Geschrieben::Geaendert);
+    }
+    schreiben(wurzel, rel, inhalt)?;
+    let (e, stempel) = stand_von(wurzel, rel)?.ok_or_else(|| format!("{rel}: nach dem Schreiben verschwunden"))?;
+    Ok(Geschrieben::Ok { groesse: e.groesse, geaendert: e.geaendert, stempel })
+}
+
+/// Konfliktkopie von Syncthing oder dieser App?
+pub fn ist_konfliktkopie(rel: &str) -> bool {
+    rel.rsplit('/').next().is_some_and(|n| n.contains(".sync-conflict-"))
+}
+
+/// Löscht eine Konfliktkopie, nachdem ein Mensch entschieden hat. Andere Dateien löscht die App nie (sie löscht kein
+/// Wissen); Syncthings Versionierung behält auch die gelöschte Kopie noch eine Weile.
+pub fn konflikt_loeschen(wurzel: &Path, rel: &str) -> Result<(), String> {
+    if !ist_konfliktkopie(rel) {
+        return Err(format!("{rel} ist keine Konfliktkopie, die App löscht nur Konfliktkopien"));
+    }
+    let p = sicherer_pfad(wurzel, rel)?;
+    match fs::remove_file(&p) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("{rel}: {e}")),
+    }
 }
 
 /// Prüft, ob die App im Ordner schreiben darf (unter Android erst nach „Zugriff auf alle Dateien“)
@@ -178,5 +268,77 @@ mod tests {
         pruefe_schreibbar(d.path()).unwrap();
         assert!(liste(d.path()).unwrap().is_empty());
         assert!(pruefe_schreibbar(&d.path().join("fehlt")).is_err());
+    }
+    #[test]
+    fn liest_viele_texte_mit_stand_und_ueberspringt_fehlende() {
+        let d = ordner();
+        schreiben(d.path(), "lernen/karten/a.md", "Ä".as_bytes()).unwrap();
+        schreiben(d.path(), "lernen/b.json", b"{}").unwrap();
+        let t = texte_lesen(d.path(), &["lernen/karten/a.md".into(), "fehlt.md".into(), "../x.md".into(), "lernen/b.json".into()]);
+        assert_eq!(t.iter().map(|t| t.pfad.as_str()).collect::<Vec<_>>(), ["lernen/karten/a.md", "lernen/b.json"]);
+        assert_eq!(t[0].text, "Ä");
+        assert_eq!(t[0].groesse, 2);
+        assert!(t[0].stempel.starts_with("2:"));
+    }
+
+    #[test]
+    fn schreibt_nur_auf_dem_erwarteten_stand() {
+        let d = ordner();
+        // Neu anlegen gelingt nur, wenn die Datei noch fehlt
+        let Geschrieben::Ok { stempel: s1, .. } = schreiben_wenn(d.path(), "k.md", b"eins", None).unwrap() else { panic!() };
+        assert_eq!(schreiben_wenn(d.path(), "k.md", b"doppelt", None).unwrap(), Geschrieben::Geaendert);
+        // Auf dem bekannten Stand weiterschreiben
+        let Geschrieben::Ok { stempel: s2, .. } = schreiben_wenn(d.path(), "k.md", b"zwei", Some(&s1)).unwrap() else { panic!() };
+        assert_ne!(s1, s2);
+        // Syncthing ersetzt die Datei (gleiche Größe!), danach scheitert der alte Stempel, die fremde Fassung bleibt
+        schreiben(d.path(), "k.md", b"drei").unwrap();
+        assert_eq!(schreiben_wenn(d.path(), "k.md", b"vier", Some(&s2)).unwrap(), Geschrieben::Geaendert);
+        assert_eq!(lesen(d.path(), "k.md").unwrap(), b"drei");
+        // Gelöscht, während die Oberfläche noch einen Stand kennt: auch das ist eine Änderung
+        fs::remove_file(d.path().join("k.md")).unwrap();
+        assert_eq!(schreiben_wenn(d.path(), "k.md", b"fuenf", Some(&s2)).unwrap(), Geschrieben::Geaendert);
+    }
+
+    #[test]
+    fn gleiche_groesse_und_zeit_aber_anderer_inhalt_faellt_auf() {
+        let d = ordner();
+        schreiben(d.path(), "k.md", b"aaaa").unwrap();
+        let (_, s1) = stand_von(d.path(), "k.md").unwrap().unwrap();
+        let zeit = fs::metadata(d.path().join("k.md")).unwrap().modified().unwrap();
+        fs::write(d.path().join("k.md"), b"bbbb").unwrap();
+        fs::File::options().write(true).open(d.path().join("k.md")).unwrap().set_modified(zeit).unwrap();
+        let (_, s2) = stand_von(d.path(), "k.md").unwrap().unwrap();
+        assert_ne!(s1, s2);
+    }
+
+    #[test]
+    fn loescht_nur_konfliktkopien() {
+        let d = ordner();
+        schreiben(d.path(), "lernen/m.md", b"m").unwrap();
+        schreiben(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md", b"k").unwrap();
+        assert!(konflikt_loeschen(d.path(), "lernen/m.md").is_err());
+        assert!(konflikt_loeschen(d.path(), "lernen.sync-conflict-x/m.md").is_err());
+        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md").unwrap();
+        let pfade: Vec<_> = liste(d.path()).unwrap().into_iter().map(|e| e.pfad).collect();
+        assert_eq!(pfade, ["lernen/m.md"]);
+        // Schon weg (Syncthing war schneller): kein Fehler
+        konflikt_loeschen(d.path(), "lernen/m.sync-conflict-20261113-101010-ABCDEFG.md").unwrap();
+    }
+
+    /// Messung: Start mit 2000 Karten (Liste + alle Texte lesen). Kein harter Grenzwert, die Zeit steht in der Ausgabe.
+    #[test]
+    fn messung_2000_dateien() {
+        let d = ordner();
+        let text = "---\ntyp: frage\nthema: \"[[modul]]\"\n---\n".to_string() + &"Ein Satz zur Lernkarte. ".repeat(20);
+        for i in 0..2000 {
+            schreiben(d.path(), &format!("lernen/fragen/{i:05}.md"), text.as_bytes()).unwrap();
+        }
+        let start = std::time::Instant::now();
+        let pfade: Vec<String> = liste(d.path()).unwrap().into_iter().map(|e| e.pfad).collect();
+        let t = texte_lesen(d.path(), &pfade);
+        let dauer = start.elapsed();
+        assert_eq!(t.len(), 2000);
+        println!("MESSUNG 2000 Dateien: Liste + Lesen {dauer:?}");
+        assert!(dauer.as_secs() < 5);
     }
 }

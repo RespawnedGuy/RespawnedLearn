@@ -12,15 +12,16 @@ Regeln für jede Claude-Sitzung hier. Nils ergänzt diese Datei selbst, nichts d
 ## Landkarte
 
 - `packages/kern/src/` (Tests `packages/kern/test/`): rein, nur relative Importe, kein Browser, kein React. `bestand.ts` (Index aller Dateien), `pfade.ts` (Orte im Datenordner), `module`, `mitschrift`, `fragen`, `inhalt`, `lernen.ts`, `blaetter.ts` (Zeichenblätter, Lineaturen, leeres Heft), `tinte`, `marken`. Einige Dateien stammen aus der Arbeits-App (`journal`, `aufgaben`, `berichtsvorlagen`), weil `bestand.ts` und der Editor sie brauchen.
-- `packages/oberflaeche/src/`: `daten/ordner.ts` (Tauri-Befehle für den Datenordner), `daten/speicher.ts` (Daten im Browser, wird in Schritt 2 auf den Ordner umgestellt), `editor/`, `pdf/`, `Kopf.tsx`, `Fehlergrenze.tsx`.
-- `app/src/`: `main.tsx`, `OrdnerWahl.tsx` (erster Start), `App.tsx`, `Start.tsx`, `Sammeln.tsx` (Übungsplatz), `Blaetter.tsx`, `Mitschrift.tsx`, `Abruf.tsx`, `wissen.ts` (Karten, FSRS), `ki.ts`.
-- `app/src-tauri/src/`: `ordner.rs` (Lesen, atomares Schreiben, Liste, Schreibprobe; ohne Tauri, mit `cargo test`), `lib.rs` (Befehle, Ordner beobachten, Einstellungen des Geräts). `android/MainActivity.kt` + `tools/android-anpassen.mjs` setzen in der GitHub Action „Zugriff auf alle Dateien“.
+- `vertrag/`: Datenvertrag „Lernen 1.0“ (Wegweiser `DATENVERTRAG.md`, `grundlagen.md`, `typen.md`, `aenderungen.md`); erst Vertrag ändern, dann Code.
+- `packages/oberflaeche/src/`: `daten/ordner.ts` (Schnittstelle `Ablage`, Tauri-Befehle), `daten/ablageImSpeicher.ts` (Ordner im Arbeitsspeicher für Tests und `npm run dev`, `Platte` = Syncthing nachgestellt), `daten/speicher.ts` (Texte im Arbeitsspeicher, Schreiben nach 1 s Ruhe, nur auf bekanntem Stempel, sonst Konfliktkopie; Tests `packages/oberflaeche/test/speicher.test.ts`), `editor/`, `pdf/`, `Kopf.tsx`, `Fehlergrenze.tsx`.
+- `app/src/`: `main.tsx`, `OrdnerWahl.tsx` (erster Start), `App.tsx`, `Start.tsx`, `Sammeln.tsx` (Übungsplatz), `Blaetter.tsx`, `Mitschrift.tsx`, `Abruf.tsx`, `Konflikte.tsx` (zwei Fassungen, übernehmen oder verwerfen), `wissen.ts` (Karten, FSRS), `ki.ts`.
+- `app/src-tauri/src/`: `ordner.rs` (Lesen, viele Texte auf einmal, atomares Schreiben, Schreiben nur auf erwartetem Stempel, Konfliktkopien löschen und sonst nichts, Liste, Schreibprobe; ohne Tauri, mit `cargo test`), `lib.rs` (Befehle, Ordner beobachten, Einstellungen des Geräts). `android/MainActivity.kt` + `tools/android-anpassen.mjs` setzen in der GitHub Action „Zugriff auf alle Dateien“.
 
-## Laufender Umbau (Stand 2026-11-13)
+## Laufender Umbau (Stand 2026-11-13, nach Schritt 2)
 
 Bauplan von Nils freigegeben („Go“ 2026-11-13), nacheinander:
 1. ~~Repo, Historie, Tauri-Gerüst~~ (v0.1.0): Historie der übernommenen Dateien aus VX (`git filter-repo`, Claude-Session-Zeilen entfernt, Historie auf Adressen/Token gescannt), Tauri für Windows und Android, Ordnerwahl, Rust-Befehle mit Tests, GitHub Action baut Installer und Debug-APK.
-2. Ordner statt Server: `speicher.ts` liest und schreibt den Ordner über `daten/ordner.ts`, beobachtet Änderungen (bei Android zusätzlich regelmäßig `dateien()` vergleichen, falls inotify im gemeinsamen Speicher schweigt), zeigt `*.sync-conflict-*` an. Eigener Vertrag „Lernen 1.0“ in `vertrag/` aus VX `typen-lernen.md` und den Lernteilen von `typen-gemeinsam.md`/`grundlagen.md`, gleiche Dateiformate.
+2. ~~Ordner statt Server~~ (v0.2.0): Speicher auf dem Ordner, Android fragt die Dateiliste alle 10 s ab, Konfliktansicht, Vertrag „Lernen 1.0“. Geprüft gegen echtes Syncthing 1.30.0 (Konfliktname, Zwischendateien werden nicht verteilt). KI, Kapitelfragen und Vorfragen sind bis Schritt 3 ohne Funktion.
 3. Serverfunktionen in die App: Seitenbilder und PDF-Text über pdf.js, KI über die Anthropic-API mit eigenem Schlüssel, Einstellungen.
 4. Releases: signierte APK (Schlüssel als GitHub-Secret), Windows vorerst unsigniert.
 5. Umzug von Nils' Lerndaten (`lernen/**`, `reviews/`, Skripte mit Sidecars) mit SHA-256-Liste vorher/nachher, Quelle unberührt.

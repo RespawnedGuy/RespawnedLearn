@@ -2,6 +2,7 @@ import { Daumenleiste, Fehlergrenze, Kopf, Meldungen, ortLink, useDaten, useOrt,
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
+import { Konflikte } from './Konflikte'
 import { linkZiel, lernziele, modulVon } from '@rl/kern'
 import { PlusKnopf, useTastaturOffen } from './PlusKnopf'
 import { usePlus } from './plus'
@@ -37,15 +38,16 @@ export function App() {
     : bereich === 'lernen' && ort[1] === 'modul' && ort[2] ? ortLink('sammeln', 'modul', ort[2])
     : bereich === 'lernen' && ort[1] ? ortLink('lernen')
     : bereich === 'nutzen' && ort[1] ? ortLink('nutzen')
+    : bereich === 'konflikte' ? ortLink('sammeln')
     : bereich === 'sammeln' && !ort[1] ? null
     : ortLink('sammeln')
 
   return (
     <>
-      <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
+      <Kopf app="lernen" oben={oben} ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : bereich === 'konflikte' ? 'Konflikte' : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'} ziele={ziele} />
       {/* Stürzt eine Ansicht ab, bleiben Kopf und Leiste bedienbar */}
       <Fehlergrenze ort={ort.join('/')}>
-        {bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+        {bereich === 'konflikte' ? <Konflikte /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
       <Daumenleiste ziele={ziele} mitte={plus ? <PlusKnopf ziel={plus} /> : undefined} nurMitte={!!plus && tastatur} />
       <Meldungen />

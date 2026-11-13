@@ -255,7 +255,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .chip.akzent { background: var(--akzent-weich); color: var(--akzent-dunkel); }
 .chip.rot { background: var(--rot-weich); color: var(--rot-text); }
 /* Demo: kräftig, damit beim Vorführen niemand die Demo für echte Daten hält */
-.chip.demo-schild { background: #2a2622; color: #fff; text-decoration: none; white-space: nowrap; letter-spacing: 0.02em; }
 .chip-wahl { border: none; font-family: inherit; cursor: pointer; max-width: 220px; }
 .eingabe {
   height: 44px; border-radius: 10px; border: 1px solid var(--linie); background: var(--flaeche); padding: 0 12px; font-size: 0.9375rem; width: 100%;
@@ -383,8 +382,6 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 @media (max-width: 720px) {
   .kopf-zeile { padding: 0 8px; gap: 6px; }
   .nur-breit { display: none !important; }
-  /* In der Demo steht am Handy das Schild dort, wo sonst die Version steht */
-  .kopf.mit-demo .version { display: none; }
   .segmente button { padding: 8px 12px; }
   .kopf-logo { display: none; }
   .kopf-links { gap: 2px; }

@@ -1,7 +1,8 @@
 // Zugang zum Datenordner auf der Platte über die Tauri-Befehle in app/src-tauri/src/lib.rs.
-// Im Browser (npm run dev ohne Tauri) gibt es keinen Ordner, dann liefert `inTauri()` false.
+// Im Browser (npm run dev ohne Tauri) gibt es keinen Ordner, dann liefert `inTauri()` false und der Speicher nimmt
+// eine Ablage im Arbeitsspeicher (ablageImSpeicher.ts).
 import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 
 export interface OrdnerStand {
   ordner: string | null
@@ -16,36 +17,52 @@ export interface OrdnerEintrag {
   geaendert: number
 }
 
+export interface TextDatei extends OrdnerEintrag {
+  /** Fingerabdruck des gelesenen Stands; beim Schreiben zurückgeben, damit nichts still überschrieben wird */
+  stempel: string
+  text: string
+}
+
+export type Geschrieben = { art: 'ok'; groesse: number; geaendert: number; stempel: string } | { art: 'geaendert' }
+
+/** Was der Speicher vom Datenordner braucht. Zwei Umsetzungen: Tauri (echter Ordner) und im Arbeitsspeicher (Tests, Browser). */
+export interface Ablage {
+  dateien(): Promise<OrdnerEintrag[]>
+  texteLesen(pfade: string[]): Promise<TextDatei[]>
+  leseDatei(pfad: string): Promise<Uint8Array>
+  /** Schreibt nur, wenn die Datei noch den Stand `erwartet` hat (null = darf noch nicht existieren) */
+  schreibeWenn(pfad: string, inhalt: Uint8Array | string, erwartet: string | null): Promise<Geschrieben>
+  /** Löscht eine Konfliktkopie; andere Dateien lehnt die Ablage ab */
+  konfliktLoeschen(pfad: string): Promise<void>
+  /** Meldet Änderungen im Ordner (auch von Syncthing); liefert die Abmeldung */
+  beobachte(rueckruf: () => void): Promise<() => void>
+  /** Wie oft die Dateiliste zusätzlich abgefragt wird (ms, 0 = nie): Unter Android schweigt die Dateiüberwachung im gemeinsamen Speicher oft */
+  abfrageMs: number
+  /** false = nichts wird dauerhaft gespeichert (Vorschau im Browser) */
+  dauerhaft: boolean
+}
+
 export const inTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 export const ordnerStand = () => invoke<OrdnerStand>('stand')
 export const setzeOrdner = (pfad: string) => invoke<void>('ordner_setzen', { pfad })
-export const ordnerDateien = () => invoke<OrdnerEintrag[]>('dateien')
 
-export async function leseDatei(pfad: string): Promise<Uint8Array> {
-  return new Uint8Array(await invoke<ArrayBuffer>('datei_lesen', { pfad }))
-}
+const bytes = (inhalt: Uint8Array | string) => (typeof inhalt === 'string' ? new TextEncoder().encode(inhalt) : inhalt)
 
-export async function leseText(pfad: string): Promise<string> {
-  return new TextDecoder().decode(await leseDatei(pfad))
-}
-
-export function schreibeDatei(pfad: string, inhalt: Uint8Array | string): Promise<void> {
-  const bytes = typeof inhalt === 'string' ? new TextEncoder().encode(inhalt) : inhalt
-  return invoke('datei_schreiben', bytes, { headers: { pfad: encodeURIComponent(pfad) } })
-}
-
-/** Meldet geänderte Pfade (auch von Syncthing), kurz hintereinander kommende Meldungen zusammengefasst */
-export function beobachteOrdner(rueckruf: (pfade: string[]) => void, wartezeit = 300): Promise<UnlistenFn> {
-  let offen = new Set<string>()
-  let uhr: ReturnType<typeof setTimeout> | undefined
-  return listen<string[]>('ordner-geaendert', (e) => {
-    for (const p of e.payload) offen.add(p)
-    clearTimeout(uhr)
-    uhr = setTimeout(() => {
-      const pfade = [...offen].sort()
-      offen = new Set()
-      rueckruf(pfade)
-    }, wartezeit)
-  })
+/** Der echte Ordner über Tauri */
+export async function tauriAblage(): Promise<Ablage> {
+  const { plattform } = await ordnerStand()
+  return {
+    dateien: () => invoke<OrdnerEintrag[]>('dateien'),
+    texteLesen: (pfade) => (pfade.length ? invoke<TextDatei[]>('texte_lesen', { pfade }) : Promise.resolve([])),
+    leseDatei: async (pfad) => new Uint8Array(await invoke<ArrayBuffer>('datei_lesen', { pfad })),
+    schreibeWenn: (pfad, inhalt, erwartet) =>
+      invoke<Geschrieben>('datei_schreiben_wenn', bytes(inhalt), {
+        headers: { pfad: encodeURIComponent(pfad), ...(erwartet === null ? {} : { erwartet }) }
+      }),
+    konfliktLoeschen: (pfad) => invoke<void>('konflikt_loeschen', { pfad }),
+    beobachte: (rueckruf) => listen<string[]>('ordner-geaendert', () => rueckruf()),
+    abfrageMs: plattform === 'android' ? 10_000 : 60_000,
+    dauerhaft: true
+  }
 }
