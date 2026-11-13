@@ -40,3 +40,13 @@ describe('Kontur am Rand', () => {
     for (let i = 1; i < p.length; i++) expect(p[i][1]).toBeLessThanOrEqual(p[i - 1][1])
   })
 })
+
+describe('gerade Kontur (seitlich scrollende Werkzeugleiste)', () => {
+  it('liegt ganz am unteren Rand und wölbt sich nur über dem aktiven Werkzeug', () => {
+    const p = punkte(daumenKontur(600, 56, 300, false).linie)
+    expect(p[0]).toEqual([0, 55])
+    expect(p[p.length - 1]).toEqual([600, 55])
+    expect(p.find(([x]) => x === 300)?.[1]).toBe(1.5)
+    expect(p.filter(([x]) => Math.abs(x - 300) > 70).every(([, y]) => y === 55)).toBe(true)
+  })
+})

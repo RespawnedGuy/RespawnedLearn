@@ -1,5 +1,7 @@
 import { FARBEN, type Farbe } from '@rl/kern'
+import type { CSSProperties } from 'react'
 import type { Werkzeug } from './Tinte'
+import { Kontur } from '../Kontur'
 
 const STIFTE: { farbe: Farbe; name: string }[] = [
   { farbe: 'alltag', name: 'Alltag' },
@@ -7,7 +9,11 @@ const STIFTE: { farbe: Farbe; name: string }[] = [
   { farbe: 'ergaenzung', name: 'Ergänzung' }
 ]
 
-/** Schwebende Leiste für PDF und Blatt. Die Farben haben Namen, damit sie überall dasselbe bedeuten. */
+/**
+ * Schwebende Leiste für PDF und Blatt, in derselben Glasoptik wie das Daumenmenü: Das aktive Werkzeug trägt die
+ * leuchtende Wölbung, die aktive Farbe einen leuchtenden Ring in ihrer Farbe. Die Farben haben Namen, damit sie
+ * überall dasselbe bedeuten.
+ */
 export function Werkzeugleiste({
   werkzeug,
   farbe,
@@ -25,6 +31,7 @@ export function Werkzeugleiste({
 }) {
   return (
     <div className="werkzeug" role="toolbar" aria-label="Werkzeuge">
+      <Kontur aktiv="button.aktiv" schluessel={werkzeug} rund={false} />
       <button type="button" className={werkzeug === 'lesen' ? 'aktiv' : ''} aria-pressed={werkzeug === 'lesen'} onClick={() => onWerkzeug('lesen')}>
         Lesen
       </button>
@@ -47,7 +54,7 @@ export function Werkzeugleiste({
             if (werkzeug === 'lesen' || werkzeug === 'radierer') onWerkzeug('stift')
           }}
         >
-          <span className="punkt" style={{ background: s.farbe === 'alltag' && farbe === 'alltag_schwarz' ? FARBEN.alltag_schwarz : FARBEN[s.farbe], boxShadow: '0 0 0 2px rgba(255,255,255,0.25)' }} />
+          <span className="punkt" style={{ '--punkt': s.farbe === 'alltag' && farbe === 'alltag_schwarz' ? FARBEN.alltag_schwarz : FARBEN[s.farbe] } as CSSProperties} />
           {s.name}
         </button>
       ))}

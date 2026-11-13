@@ -14,7 +14,7 @@
 @media (max-width: 720px) {
   .daumen-zeile { view-transition-name: daumen; }
   /* Die Kontur zeigt im Übergang nur ihren lebenden neuen Stand, so gleitet die Wölbung und erscheint nicht doppelt */
-  .daumen-kontur { view-transition-name: daumen-kontur; }
+  .daumen-zeile > .kontur { view-transition-name: daumen-kontur; }
 }
 ::view-transition-old(daumen-kontur) { display: none; }
 ::view-transition-new(daumen-kontur) { animation: none; }
@@ -51,7 +51,7 @@ html[data-uebergang='wechsel']::view-transition-new(root) { animation: ue-auftau
 .daumen-zeile { transition: transform 300ms var(--feder); }
 .daumen-text { transition: opacity 180ms ease; }
 .daumen-symbol { transition: transform 300ms var(--feder); }
-.daumen-kontur path { transition: d 380ms var(--feder); }
+.kontur path { transition: d 380ms var(--feder); }
 .werkzeug { transition: translate 300ms var(--feder); }
 
 /* ---------- Dialoge kommen von unten ---------- */
@@ -62,7 +62,7 @@ html[data-uebergang='wechsel']::view-transition-new(root) { animation: ue-auftau
 /* ---------- Bewegung reduzieren ---------- */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*) { animation: none; }
-  .daumen-kontur path { transition: none; }
+  .kontur path { transition: none; }
   html[data-uebergang]::view-transition-old(root) { animation: ue-aus 150ms ease-out both; }
   html[data-uebergang]::view-transition-new(root) { animation: ue-ein 150ms ease-out both; }
   .knopf:active:not(:disabled), .kopf-reiter-knopf:active, .kopf-zahnrad:active, .zurueck-pfeil:active:not(:disabled), .werkzeug button:active, .segmente button:active,

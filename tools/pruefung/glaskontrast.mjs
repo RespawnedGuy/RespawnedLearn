@@ -26,7 +26,7 @@ export function glasKontrast() {
     if (!wurzel.getClientRects().length) continue
     const elemente = [...wurzel.querySelectorAll('*')].filter((el) => {
       if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden' || Number(getComputedStyle(el).opacity) === 0) return false
-      return [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) || el.matches('svg:not(.daumen-kontur)')
+      return [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) || el.matches('svg:not(.kontur)')
     })
     for (const el of elemente) {
       // Flächen zwischen Schrift und Glas sammeln, von innen nach außen

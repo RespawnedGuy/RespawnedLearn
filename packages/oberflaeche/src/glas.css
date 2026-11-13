@@ -19,8 +19,6 @@
   /* Leuchtende Kontur des Daumenmenüs (Schmuck, die Beschriftung zeigt das Ziel zusätzlich) */
   --leucht: #7b5ee0;
   --leucht-schein: rgba(123, 94, 224, 0.55);
-  /* Werkzeugleiste im Skript: dunkles Glas, Weiß hält über weißer Seite 9,7:1 */
-  --werkzeug-glas: rgba(31, 34, 39, 0.84);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -34,7 +32,6 @@
     --glas-marke: rgba(185, 166, 245, 0.14);
     --leucht: #b29cff;
     --leucht-schein: rgba(178, 156, 255, 0.6);
-    --werkzeug-glas: rgba(52, 54, 60, 0.8);
   }
 }
 
@@ -87,9 +84,11 @@
 .daumen-ziel.aktiv { color: var(--akzent-dunkel); font-weight: 800; }
 .daumen-symbol { position: relative; width: 52px; height: 30px; border-radius: 15px; display: grid; place-items: center; }
 /* Leuchtende Kontur: liegt genau auf der Pille, unter den Zielen, fängt keine Finger */
-.daumen-kontur { position: absolute; left: -1px; top: -1px; overflow: visible; pointer-events: none; }
-.daumen-kontur-linie { fill: none; stroke: var(--leucht); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--leucht-schein)) drop-shadow(0 0 8px var(--leucht-schein)); }
-.daumen-kontur-flaeche { fill: var(--glas-marke); }
+.kontur { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+/* Im Daumenmenü liegt sie auf dem Rahmen der Pille, nicht innerhalb */
+.daumen-zeile > .kontur { left: -1px; top: -1px; }
+.kontur-linie { fill: none; stroke: var(--leucht); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--leucht-schein)) drop-shadow(0 0 8px var(--leucht-schein)); }
+.kontur-flaeche { fill: var(--glas-marke); }
 .daumen-ziel { position: relative; }
 .daumen-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .daumen-zahl {
@@ -105,35 +104,48 @@
   body:has(.daumenleiste.klein) .werkzeug { translate: 0 16px; }
 }
 
-/* ---------- Werkzeugleiste im Skript: dunkles Glas ---------- */
+/* ---------- Werkzeugleiste (Zeichenmenü) im Skript und im Buch: dieselbe Glaspille wie das Daumenmenü ----------
+   Aktives Werkzeug: Wölbung (Kontur.tsx, gerade, weil die Leiste am Handy seitlich scrollt). Aktive Farbe: Ring in ihrer Farbe. */
 .werkzeug {
-  background: var(--werkzeug-glas);
+  background: var(--glas-flaeche);
   -webkit-backdrop-filter: var(--glas-filter);
   backdrop-filter: var(--glas-filter);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--glas-schatten);
-  border-radius: 20px;
+  border: 1px solid var(--glas-rand);
+  box-shadow: var(--glas-licht), 0 0 0 0.5px var(--glas-haar), var(--glas-schatten);
+  border-radius: 28px; padding: 6px 10px;
 }
-.werkzeug button { border-radius: 14px; }
+.werkzeug button { position: relative; border-radius: 22px; color: var(--auf-glas-leise); font-weight: 600; }
+.werkzeug button:hover { color: var(--tinte); }
+.werkzeug button.aktiv { background: transparent; color: var(--akzent-dunkel); font-weight: 800; }
+.werkzeug button.farbe-aktiv { background: transparent; color: var(--tinte); font-weight: 700; }
+.werkzeug :focus-visible { outline-color: var(--akzent-text); }
+.werkzeug .trenner { background: var(--linie-stark); }
+.werkzeug .hinweis { color: var(--auf-glas-leise); }
+.werkzeug .punkt { background: var(--punkt); box-shadow: 0 0 0 1px rgba(31, 34, 39, 0.18); }
+.werkzeug .farbe-aktiv .punkt { box-shadow: 0 0 0 2px var(--glas-flaeche), 0 0 0 3.5px var(--punkt), 0 0 8px 2px var(--punkt); }
 
 /* ---------- Ohne Glas: keine Unschärfe, Transparenz reduziert, mehr Kontrast ---------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root { --glas-flaeche: var(--flaeche); --werkzeug-glas: var(--leiste); }
+  :root { --glas-flaeche: var(--flaeche); }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :root { --glas-flaeche: var(--flaeche); --werkzeug-glas: var(--leiste); --glas-filter: none; }
+  :root { --glas-flaeche: var(--flaeche); --glas-filter: none; }
 }
 @media (prefers-contrast: more) {
-  :root { --glas-flaeche: var(--flaeche); --werkzeug-glas: var(--leiste); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); }
+  :root { --glas-flaeche: var(--flaeche); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); }
 }
 @media (forced-colors: active) {
   .daumen-zeile, .kopf, .werkzeug { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; }
-  .daumen-kontur-linie { stroke: Highlight; filter: none; }
-  .daumen-kontur-flaeche { fill: none; }
+  .kontur-linie { stroke: Highlight; filter: none; }
+  .kontur-flaeche { fill: none; }
 }
 
 /* Sehr schmal (320 px): „Einstellungen“ passt auch fett ganz hinein */
 @media (max-width: 359px) {
   .daumen-zeile { padding: 0 2px; }
   .daumen-text { font-size: 0.65rem; letter-spacing: -0.01em; }
+}
+@media (prefers-color-scheme: dark) {
+  /* Schwarzer Alltagsstift auf dunklem Glas: heller Rand, damit der Punkt sichtbar bleibt */
+  .werkzeug .punkt { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
 }

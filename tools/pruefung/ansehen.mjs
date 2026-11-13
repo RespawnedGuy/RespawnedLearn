@@ -96,7 +96,7 @@ if (!nur || nur.includes('start')) {
   await page.waitForTimeout(1200)
   const st = await page.evaluate(() => {
     const z = getComputedStyle(document.querySelector('.daumen-zeile'))
-    return { backdrop: z.backdropFilter, grund: z.backgroundColor, uebergang: getComputedStyle(document.querySelector('.daumen-kontur path')).transitionDuration }
+    return { backdrop: z.backdropFilter, grund: z.backgroundColor, uebergang: getComputedStyle(document.querySelector('.daumen-zeile .kontur path')).transitionDuration }
   })
   const deckend = st.backdrop === 'none' && !/rgba\(.*,\s*0?\.\d+\)/.test(st.grund)
   const ruhig = st.uebergang.split(',').every((d) => parseFloat(d) < 0.02)
