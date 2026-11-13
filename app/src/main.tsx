@@ -6,6 +6,9 @@ import 'katex/dist/katex.min.css'
 import './lernen.css'
 import { App } from './App'
 import { OrdnerWahl } from './OrdnerWahl'
+import { wendeSchreibhandAn } from './schreibhand'
+
+wendeSchreibhandAn()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

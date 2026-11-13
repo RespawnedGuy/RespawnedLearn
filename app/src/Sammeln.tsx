@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, geheZu, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
-import { naechsteSeite } from '@rl/kern'
+import { naechsteSeite, type Rueckweg } from '@rl/kern'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -10,10 +10,11 @@ import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
 import { AnsichtKopf, BildKnoepfe, Trenner, useAnordnung } from './Blaetter'
-import { BuchAnsicht, bildInsBuch, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
+import { BuchAnsicht, bildInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
 import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
 import { hebeAn } from './anheben'
+import { RueckwegKnopf, useRueckwege } from './Rueckweg'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -91,6 +92,24 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
 
   // Skript ausgeblendet (z. B. altes Heft für ein Buch auf Papier): dann keine Seitenzahl, dafür „Skript zeigen“
   const skriptZu = ansichten.anordnung.ansichten.some((v) => v.art === 'pdf' && v.zu)
+
+  // Randmarken: Eine Skriptseite zählt erst, wenn sie 2 s stehen bleibt, damit Durchscrollen keine Marken setzt.
+  // Die beim Öffnen angesprungene Seite gilt sofort. Ohne sichtbares Skript entsteht keine Marke.
+  const [stabil, setStabil] = useState(sprungSeite)
+  useEffect(() => {
+    const t = setTimeout(() => setStabil(seite), 2000)
+    return () => clearTimeout(t)
+  }, [seite])
+  const ziel = skriptZu ? null : { anhang: quelle.id, seite: stabil }
+
+  // Rückweg: „✎ n“ auf der Skriptseite öffnet die Stelle im Buch
+  const wege = useRueckwege(quelle.id)
+  const [buchSprung, setBuchSprung] = useState<(BuchSprung & { id: string }) | null>(null)
+  const oeffneStelle = (w: Rueckweg) => {
+    ansichten.zeigeBuch(w.buch)
+    setHandyWahl(w.buch)
+    setBuchSprung((s) => ({ id: w.buch, nr: w.nr, y: w.y, mal: (s?.mal ?? 0) + 1 }))
+  }
 
   // Sprung von außen (Inhalt, Link, Zurück im Verlauf): dorthin scrollen. Die eigene Adresse beim Scrollen ändert
   // `sprungSeite` nur auf die schon sichtbare Seite, das springt nicht.
@@ -246,8 +265,10 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           setAuswahl({ seite: nr, bereich, punkt })
           setModus('wahl')
         }}
-        zusatz={(nr) =>
-          auswahl?.seite === nr && (
+        zusatz={(nr) => (
+          <>
+          {wege.get(nr) && <RueckwegKnopf wege={wege.get(nr)!} onOeffne={oeffneStelle} />}
+          {auswahl?.seite === nr && (
             <>
               <div className="auswahl" style={{ left: `${auswahl.bereich.x * 100}%`, top: `${auswahl.bereich.y * 100}%`, width: `${auswahl.bereich.b * 100}%`, height: `${auswahl.bereich.h * 100}%` }} />
               <div className="schwebe" style={{ left: Math.max(8, auswahl.punkt.x - 150), top: auswahl.punkt.y + 12 }}>
@@ -306,8 +327,9 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 {modus === 'link' && <Verlinken onWahl={(e) => void fertig('link', e)} onZurueck={() => setModus('wahl')} />}
               </div>
             </>
-          )
-        }
+          )}
+          </>
+        )}
       />
   )
   const alleOffen = ansichten.anordnung.ansichten.filter((v) => !v.zu)
@@ -340,6 +362,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           {alleOffen.map((v) => (
             <button key={v.id} type="button" role="tab" aria-selected={v === handy} className={v === handy ? 'aktiv' : ''} onClick={() => {
                 setHandyWahl(v.id)
+                setBuchSprung(null)
                 // zurück zum Skript: dort weiter, wo es zuletzt stand
                 if (v.art === 'pdf') setSprung((s) => ({ seite: seiteRef.current, mal: s.mal + 1, sanft: false }))
                 else scrollTo({ top: 0 })
@@ -380,7 +403,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 onVerschiebe={(r) => ansichten.verschiebe(v.id, r)}
                 onSchliesse={() => ansichten.schliesse(v.id)}
               />
-              {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} /> : null}
+              {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} ziel={ziel} sprung={buchSprung?.id === v.id ? buchSprung : null} /> : null}
             </section>
           </Fragment>
         ))}

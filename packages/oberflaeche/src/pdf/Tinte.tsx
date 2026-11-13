@@ -47,7 +47,8 @@ export function TintenEbene({
   fluechtig,
   finger,
   breite: strichBreite,
-  onZoom
+  onZoom,
+  onStrich
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -64,6 +65,8 @@ export function TintenEbene({
   breite?: number
   /** Zwei Finger auseinander/zusammen: Faktor gegenüber dem bisherigen Zoom. Ohne diese Angabe wird nicht gezoomt. */
   onZoom?: (faktor: number) => void
+  /** Ein Strich ist abgesetzt (nach dem Sichern der Tinte); `alle` sind alle Striche der Seite, der neue eingeschlossen */
+  onStrich?: (neu: Strich, alle: Strich[]) => void
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -251,6 +254,7 @@ export function TintenEbene({
       setStriche(neu)
       setAktiv(null)
       sichern(neu)
+      if (!fluechtig) onStrich?.(aktiv, neu)
     } else if (m === 'radieren' && geaendert.current) {
       geaendert.current = false
       const weg = radiert.current

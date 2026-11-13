@@ -1,6 +1,6 @@
 // Notizbuch (Vertrag Lernen 1.3, 5.3): Seiten untereinander, die letzte leere kommt von selbst dazu. Jede Seite hat
 // Lineatur, Bilder, Tinte und am Rand die Verweise aufs Skript („S. 12“, Tippen springt hin).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   A4,
   blattFormat,
@@ -12,14 +12,18 @@ import {
   pfade,
   platzImBuch,
   setzeFeld,
+  strichLage,
   ulid,
+  verweiseBeimSchreiben,
   SEITE_BREITE,
   type BlattBild,
   type BuchBild,
   type BuchSeite,
   type Eintrag,
   type Farbe,
-  type Lineatur
+  type Lineatur,
+  type Strich,
+  type Ziel
 } from '@rl/kern'
 import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
@@ -98,22 +102,70 @@ export async function fotosInsBuch(speicher: Speicher, id: string, dateien: Iter
   }
 }
 
-/** Ein Notizbuch: alle Seiten untereinander */
-export function BuchAnsicht({ id, werkzeug, farbe }: { id: string; werkzeug: Werkzeug; farbe: Farbe }) {
+/** Sprung an eine Stelle im Buch (vom Skript aus, „✎ 2“) */
+export interface BuchSprung {
+  nr: number
+  y: number
+  mal: number
+}
+
+/** Bis zum nächsten scrollbaren Vorfahren (Ansicht am PC) oder im Fenster (Handy) zu einer Höhe der Seite scrollen */
+function scrolleZu(el: HTMLElement, anteil: number) {
+  const r = el.getBoundingClientRect()
+  let p = el.parentElement
+  while (p && !(/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight)) p = p.parentElement
+  const ziel = r.top + r.height * anteil
+  if (p) p.scrollBy({ top: ziel - p.getBoundingClientRect().top - 80, behavior: 'smooth' })
+  else scrollBy({ top: ziel - 160, behavior: 'smooth' })
+}
+
+/**
+ * Ein Notizbuch: alle Seiten untereinander. Mit `ziel` (die Skriptseite, die gerade offen ist) entstehen beim
+ * Schreiben Randmarken (kern/randmarken.ts); ohne Skript keine.
+ */
+export function BuchAnsicht({ id, werkzeug, farbe, ziel = null, sprung }: { id: string; werkzeug: Werkzeug; farbe: Farbe; ziel?: Ziel | null; sprung?: BuchSprung | null }) {
   const { speicher, bestand } = useDaten()
+  const ref = useRef<HTMLDivElement>(null)
+  const [hervor, setHervor] = useState<{ nr: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!sprung) return
+    const el = ref.current?.querySelector<HTMLElement>(`[data-buchseite="${sprung.nr}"]`)
+    if (!el) return
+    const format = blattFormat(speicher.text(pfade.buchTinte(id, sprung.nr)))
+    scrolleZu(el, sprung.y / (SEITE_BREITE * format))
+    setHervor({ nr: sprung.nr, y: sprung.y })
+    const t = setTimeout(() => setHervor(null), 2500)
+    return () => clearTimeout(t)
+    // nur bei einem neuen Sprung
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprung?.mal])
   const buch = bestand.dokumente.get(id)
   if (!buch) return <div className="leer">Dieses Notizbuch liegt (noch) nicht im Datenordner. Bringt Syncthing es gerade, erscheint es gleich.</div>
   const lineatur = lineaturVon(buch)
   return (
-    <div className="buch-seiten">
+    <div className="buch-seiten" ref={ref}>
       {seitenVon(speicher, id).map((nr) => (
-        <BuchBlatt key={nr} id={id} nr={nr} lineatur={lineatur} werkzeug={werkzeug} farbe={farbe} />
+        <BuchBlatt key={nr} id={id} nr={nr} lineatur={lineatur} werkzeug={werkzeug} farbe={farbe} ziel={ziel} hervor={hervor?.nr === nr ? hervor.y : null} />
       ))}
     </div>
   )
 }
 
-function BuchBlatt({ id, nr, lineatur, werkzeug, farbe }: { id: string; nr: number; lineatur: Lineatur; werkzeug: Werkzeug; farbe: Farbe }) {
+/** Nach einem Strich: Randmarke setzen oder verwaiste wegräumen. Gespeichert wird mit der Tinte (1 s Ruhe). */
+function markeNachStrich(speicher: Speicher, id: string, nr: number, neu: Strich, alle: Strich[], ziel: Ziel | null) {
+  const anfang = neu.punkte[0]?.[1] ?? 0
+  const lagen = alle.map(strichLage)
+  const marke = { id: ulid().slice(-8).toLowerCase(), am: new Date().toISOString() }
+  const pfad = pfade.buchSeite(id, nr)
+  // Ändert sich nichts, entsteht auch keine (leere) Seitendatei
+  if (!verweiseBeimSchreiben(liesBuchSeite(speicher.text(pfad)).verweise, lagen, anfang, ziel, marke)) return
+  void aendereSeite(speicher, id, nr, (s) => {
+    const v = verweiseBeimSchreiben(s.verweise, lagen, anfang, ziel, marke)
+    return v ? { ...s, verweise: v } : s
+  })
+}
+
+function BuchBlatt({ id, nr, lineatur, werkzeug, farbe, ziel, hervor }: { id: string; nr: number; lineatur: Lineatur; werkzeug: Werkzeug; farbe: Farbe; ziel: Ziel | null; hervor: number | null }) {
   const { speicher, bestand } = useDaten()
   const [gewaehlt, setGewaehlt] = useState<string | null>(null)
   const tinte = pfade.buchTinte(id, nr)
@@ -127,13 +179,13 @@ function BuchBlatt({ id, nr, lineatur, werkzeug, farbe }: { id: string; nr: numb
   const aendere = (f: (b: BuchBild[]) => BuchBild[]) => void aendereSeite(speicher, id, nr, (s) => ({ ...s, bilder: f(s.bilder) }))
   const ohneBlatt = ({ blatt: _b, ...b }: BlattBild): BuchBild => b
   return (
-    <div className="buch-blatt">
+    <div className="buch-blatt" data-buchseite={nr}>
       <div className="buch-rand" aria-label={`Verweise auf Seite ${nr}`}>
         {seite.verweise.map((v) => (
           <button
             key={v.id}
             type="button"
-            className={`verweis${v.marke ? ' aus-markierung' : ''}`}
+            className={`verweis${v.marke ? ' aus-markierung' : ''}${hervor === v.y ? ' blinkt' : ''}`}
             style={{ top: `${(v.y / hoehe) * 100}%` }}
             title={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`}
             onClick={() => geheZu('sammeln', v.anhang, v.seite)}
@@ -159,7 +211,7 @@ function BuchBlatt({ id, nr, lineatur, werkzeug, farbe }: { id: string; nr: numb
             }}
           />
         ))}
-        <TintenEbene pfad={tinte} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} />
+        <TintenEbene pfad={tinte} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} onStrich={(neu, alle) => markeNachStrich(speicher, id, nr, neu, alle, ziel)} />
       </div>
     </div>
   )

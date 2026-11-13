@@ -3,6 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { inTauri, ordnerStand, setzeOrdner, Version, type OrdnerStand } from '@rl/oberflaeche'
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
+import { setzeSchreibhand, useSchreibhand } from './schreibhand'
 
 /** `#/einstellungen`: Datenordner, KI-Zugang dieses Geräts, Anweisungen an die KI */
 export function Einstellungen() {
@@ -10,6 +11,7 @@ export function Einstellungen() {
     <div className="lernen-seite einstellungen">
       <h1>Einstellungen</h1>
       <Datenordner />
+      <Schreiben />
       <EinstellungenKi />
       <EinstellungenPrompts />
       <section className="einstellungen-teil">
@@ -19,6 +21,24 @@ export function Einstellungen() {
         </p>
       </section>
     </div>
+  )
+}
+
+/** Geräte-Einstellung: mit welcher Hand geschrieben wird; die Randmarken im Notizbuch stehen gegenüber */
+function Schreiben() {
+  const hand = useSchreibhand()
+  return (
+    <section className="einstellungen-teil">
+      <h2>Schreiben</h2>
+      <div className="segmente klein" role="radiogroup" aria-label="Schreibhand">
+        {(['rechts', 'links'] as const).map((h) => (
+          <button key={h} type="button" role="radio" aria-checked={hand === h} className={hand === h ? 'aktiv' : ''} onClick={() => setzeSchreibhand(h)}>
+            {h === 'rechts' ? 'Rechte Hand' : 'Linke Hand'}
+          </button>
+        ))}
+      </div>
+      <p className="klein-leise">Die Verweise aufs Skript stehen im Notizbuch auf der anderen Seite, damit die Hand sie beim Schreiben nicht verdeckt. Gilt nur für dieses Gerät.</p>
+    </section>
   )
 }
 

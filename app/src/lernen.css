@@ -381,3 +381,20 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .buch-allein { max-width: 900px; margin: 0 auto; padding: 0 24px 120px 0; }
 @media (max-width: 900px) { .buch-allein { padding: 0 8px 120px 0; } .buch-blatt { margin-left: 44px; } .buch-rand { left: -44px; width: 40px; } }
 .ansicht-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Schreibhand links (Einstellungen › Schreiben): Randmarken rechts */
+[data-schreibhand='links'] .buch-blatt { margin-left: 0; margin-right: 52px; }
+[data-schreibhand='links'] .buch-rand { left: auto; right: -52px; }
+@media (max-width: 900px) {
+  [data-schreibhand='links'] .buch-blatt { margin-left: 0; margin-right: 44px; }
+  [data-schreibhand='links'] .buch-rand { left: auto; right: -44px; }
+}
+.verweis.blinkt { animation: verweis-blinkt 0.8s ease-in-out 3; }
+@keyframes verweis-blinkt { 50% { border-color: var(--akzent); box-shadow: 0 0 0 3px var(--verweis-rand); } }
+@media (prefers-reduced-motion: reduce) { .verweis.blinkt { animation: none; outline: 2px solid var(--akzent); } }
+/* Rückweg auf der Skriptseite: „✎ 2“ führt zur Stelle im Notizbuch */
+.rueckweg { position: absolute; top: 8px; left: 8px; z-index: 3; }
+[data-schreibhand='links'] .rueckweg { left: auto; right: 8px; }
+.rueckweg > button { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--verweis-rand); background: var(--verweis-grund); color: var(--verweis-text); font: inherit; font-size: 0.75rem; cursor: pointer; opacity: 0.9; }
+.rueckweg > button:hover { opacity: 1; border-color: var(--akzent); }
+.rueckweg-liste { position: absolute; top: calc(100% + 4px); left: 0; min-width: 200px; }
+[data-schreibhand='links'] .rueckweg-liste { left: auto; right: 0; }
