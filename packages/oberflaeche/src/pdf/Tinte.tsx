@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStroke } from 'perfect-freehand'
-import { FARBEN, SEITE_BREITE, getroffen, liesTinte, tinteSvg, type Bereich, type Farbe, type Strich } from '@rvx/kern'
+import { FARBEN, SEITE_BREITE, getroffen, liesTinte, tinteSvg, type Bereich, type Farbe, type Strich } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { beachteHandballen, hatStift, istHandballen } from './handballen'
 import { abstandVon, mitteVon, scroller, zoomeUm, type Punkt } from './zoomGeste'

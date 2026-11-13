@@ -4,7 +4,7 @@
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type ViewUpdate } from '@codemirror/view'
 import { completionStatus } from '@codemirror/autocomplete'
 import { EditorSelection, EditorState, Prec, Transaction, type Extension, type Range, type Text } from '@codemirror/state'
-import { leereZeile, striche, tabellen, zeilenKorrektur, zellen, type Tabelle } from '@rvx/kern'
+import { leereZeile, striche, tabellen, zeilenKorrektur, zellen, type Tabelle } from '@rl/kern'
 
 export interface TabellenZeile {
   tabelle: Tabelle

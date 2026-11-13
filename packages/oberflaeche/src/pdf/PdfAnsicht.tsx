@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rvx/kern'
+import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { bildStufe, ladeBild, ladePdf, seitenFormat, zeichneSeite, type PdfDokument } from './pdf'
 import { TintenEbene, type Werkzeug } from './Tinte'

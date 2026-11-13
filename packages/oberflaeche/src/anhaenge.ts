@@ -1,6 +1,6 @@
 // Originaldateien (PDF, Foto) ablegen: Original nach anhaenge/JJJJ/MM/, Sidecar nach gemeinsam/anhaenge/ (Vertrag 5.1).
 // Andere Dateien verweisen nur auf die ID des Sidecars, nie auf den Pfad.
-import { FARBEN, liesTinte, neuesDokument, pfade, SEITE_BREITE, tag, ulid, zeitstempel, type App, type Bestand, type Wert } from '@rvx/kern'
+import { FARBEN, liesTinte, neuesDokument, pfade, SEITE_BREITE, tag, ulid, zeitstempel, type App, type Bestand, type Wert } from '@rl/kern'
 import type { Speicher } from './daten/speicher'
 import { geraet } from './daten/speicher'
 

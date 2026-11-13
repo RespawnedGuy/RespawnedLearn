@@ -1,7 +1,7 @@
 // pdf.js laden und Seiten zeichnen. Dokumente und Ausschnitte bleiben im Speicher, damit Journal-Vorschauen
 // (Stelle im Plan als Bild) beim Tippen nicht ständig neu gerechnet werden.
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import type { Bereich } from '@rvx/kern'
+import type { Bereich } from '@rl/kern'
 import type { Speicher } from '../daten/speicher'
 
 export type PdfDokument = PDFDocumentProxy

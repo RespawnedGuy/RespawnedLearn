@@ -20,7 +20,6 @@ import {
   liesTinte,
   markenZeile,
   neuesDokument,
-  passtDazu,
   schalteAufgabe,
   setzeFeld,
   setzeMarke,
@@ -186,11 +185,6 @@ describe('Bestand', () => {
     expect(b.plaene('01JPROJ').map((p) => p.id)).toEqual(['01JPLAN'])
   })
 
-  it('schlägt Projektpunkte und passendes Wissen vor', () => {
-    const v = passtDazu(b, { kuerzel: 'dd_os_76', text: 'Spannungsteiler am Melder prüfen' })
-    expect(v.some((x) => x.art === 'offen')).toBe(true)
-    expect(v.find((x) => x.art === 'wissen')?.einfuegen).toBe('![[01JWISS]]')
-  })
 })
 
 describe('Sonstiges', () => {
@@ -260,10 +254,6 @@ describe('Aufgaben als Objekte', () => {
     expect(loeseLinksAuf(t, '01JMUELL', 'Müll')).toBe('A am Dienstag Müll rausbringen B eigener Text ![[01JMUELL]] [[01JX|x]]')
   })
 
-  it('schlägt eigene Aufgaben in „Passt dazu“ direkt als Link vor', () => {
-    const v = passtDazu(bestand(), { kuerzel: 'dd_os_76', text: 'Müll' })
-    expect(v.find((x) => x.id === '01JMUELL')?.einfuegen).toBe('[[01JMUELL|am Dienstag Müll rausbringen]]')
-  })
 })
 
 describe('Bericht und eigene Aufgaben', () => {

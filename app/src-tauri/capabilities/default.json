@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Hauptfenster: eigene Ordner-Befehle und Ordnerauswahl",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

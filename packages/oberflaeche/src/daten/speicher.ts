@@ -2,7 +2,7 @@
 // Jede Änderung wird zuerst lokal gespeichert und später mit dem Stand (Hash) hochgeladen, auf dem sie beruht.
 // Lehnt der Server ab (409), weil ein anderes Gerät inzwischen geändert hat, entsteht eine Konfliktkopie
 // `*.sync-conflict-*` (Vertrag 8), und die Fassung des Servers wird übernommen. Es geht nie etwas verloren.
-import { istText, zerlege } from '@rvx/kern'
+import { istText, zerlege } from '@rl/kern'
 
 interface TextEintrag {
   pfad: string

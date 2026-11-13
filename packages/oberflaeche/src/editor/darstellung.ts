@@ -1,7 +1,7 @@
 // Darstellung im Editor: Markdown bleibt der gespeicherte Text, angezeigt wird es ruhig und direkt bedienbar.
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { EditorState, StateEffect, type Extension, type Range, type Text } from '@codemirror/state'
-import { ankerParameter, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rvx/kern'
+import { ankerParameter, danachAbschnitte, findeLinks, type DanachAbschnitt, type Link } from '@rl/kern'
 import { dekoriereZeile, tabellenBedienung, tabellenZeilen } from './tabelle'
 
 export interface DarstellungHilfen {

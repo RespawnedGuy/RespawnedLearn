@@ -1,4 +1,4 @@
-import { FARBEN, type Farbe } from '@rvx/kern'
+import { FARBEN, type Farbe } from '@rl/kern'
 import type { Werkzeug } from './Tinte'
 
 const STIFTE: { farbe: Farbe; name: string }[] = [

@@ -262,7 +262,7 @@ export function leeresPdf(seiten: number, lineatur: Lineatur, titel = ''): strin
     '<< /Type /Catalog /Pages 2 0 R >>',
     '', // Seitenbaum, unten gefüllt
     `<< /Length ${inhalt.length} >>\nstream\n${inhalt}endstream`,
-    `<< /Title ${pdfText(titel)} /Producer (RespawnedNotes) >>`
+    `<< /Title ${pdfText(titel)} /Producer (RespawnedLearn) >>`
   ]
   const kinder: string[] = []
   for (let i = 0; i < n; i++) {

@@ -12,7 +12,7 @@ import {
   versatzAus,
   type Inhalt,
   type Kapitel
-} from '@rvx/kern'
+} from '@rl/kern'
 import type { Speicher } from '../daten/speicher'
 import { ladePdf, type PdfDokument } from './pdf'
 

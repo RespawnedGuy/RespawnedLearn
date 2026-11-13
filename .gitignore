@@ -2,9 +2,7 @@ node_modules/
 dist/
 .env
 *.local
-# Testdaten für die lokale Entwicklung, nie einchecken
-/daten/
-/vaultwarden-leer/
-/plaene-eingang/
-/ansehen/
+# Rust und erzeugte Plattformprojekte (gen/android entsteht in der GitHub Action)
+app/src-tauri/target/
+app/src-tauri/gen/
 /HANDOFF.md

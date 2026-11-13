@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { Bestand } from '@rvx/kern'
+import { Bestand } from '@rl/kern'
 import { Speicher, type SpeicherOptionen } from './speicher'
 
 interface Daten {

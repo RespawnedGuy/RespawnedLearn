@@ -25,18 +25,18 @@ function useKopfHoehe(ref: RefObject<HTMLElement | null>) {
 }
 
 /**
- * Der eine Kopf oben, in beiden Apps gleich (keine Seitenleiste, Nils ist Linkshänder): Jeder Reiter springt mit
+ * Der eine Kopf oben (keine Seitenleiste, Nils ist Linkshänder): Jeder Reiter springt mit
  * einem Klick an sein Ziel, nichts klappt auf. Am Handy sitzen die Ziele stattdessen unten in der Daumenleiste;
- * oben bleiben nur Zurück, App-Schalter und was rechts dazukommt (Lupe, Zahnrad).
+ * oben bleiben nur Zurück, Logo und was rechts dazukommt (Lupe, Zahnrad).
  */
 export function Kopf({
-  app,
   ort,
   ziele,
   rechts,
   oben
 }: {
-  app: string
+  /** früher App-Schalter (Arbeiten/Lernen), hier ohne Wirkung */
+  app?: string
   /** Name der Ansicht, steht im Fenstertitel (Tab, App-Umschalter am Handy) */
   ort: string
   ziele: KopfZiel[]
@@ -48,15 +48,14 @@ export function Kopf({
   const { speicher } = useDaten()
   useKopfHoehe(ref)
   useEffect(() => {
-    document.title = `${ort} · RespawnedNotes`
+    document.title = `${ort} · RespawnedLearn`
   }, [ort])
   return (
     <header className={`kopf${speicher.demo?.demo ? ' mit-demo' : ''}`} ref={ref}>
       <div className="kopf-zeile">
         <div className="kopf-links">
           <ZurueckPfeil oben={oben} />
-          <img className="kopf-logo" src={logo} alt="RespawnedNotes" />
-          <AppSchalter app={app} />
+          <img className="kopf-logo" src={logo} alt="RespawnedLearn" />
           <nav className="kopf-reiter nur-breit" aria-label="Hauptmenü">
             {ziele.map((z) => (
               <a key={z.ziel} className={`kopf-reiter-knopf${z.aktiv ? ' aktiv' : ''}`} href={z.ziel} aria-current={z.aktiv ? 'page' : undefined}>
@@ -101,24 +100,6 @@ export function ZurueckPfeil({ oben, schwebend, vorher }: { oben?: string | null
         <path d="M15 5l-7 7 7 7" />
       </svg>
     </button>
-  )
-}
-
-/** Wechsel zwischen den Bereichen, immer sichtbar oben links. Organisation wohnt in der Arbeits-App (#/organisation). */
-function AppSchalter({ app }: { app: string }) {
-  return (
-    <nav className="app-schalter" aria-label="App wechseln">
-      <a href="/#/organisation" className={app === 'organisation' ? 'aktiv' : ''} aria-current={app === 'organisation' ? 'page' : undefined}>
-        <span className="nur-breit">Organisation</span>
-        <span className="nur-schmal">Orga</span>
-      </a>
-      <a href="/#/" className={app === 'arbeit' ? 'aktiv' : ''} aria-current={app === 'arbeit' ? 'page' : undefined}>
-        Arbeiten
-      </a>
-      <a href="/lernen/" className={app === 'lernen' ? 'aktiv' : ''} aria-current={app === 'lernen' ? 'page' : undefined}>
-        Lernen
-      </a>
-    </nav>
   )
 }
 

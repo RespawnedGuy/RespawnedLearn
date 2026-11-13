@@ -4,7 +4,7 @@ import { EditorView, keymap, placeholder as platzhalter, drawSelection } from '@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { autocompletion, completionKeymap, type CompletionSource } from '@codemirror/autocomplete'
-import { projektTag } from '@rvx/kern'
+import { projektTag } from '@rl/kern'
 import { darstellung, neuZeichnen, type DarstellungHilfen } from './darstellung'
 import { einklappen } from './einklappen'
 import { beobachteTastatur } from '../tastatur'

@@ -1,22 +1,19 @@
 {
-  "name": "respawnednotes",
+  "name": "respawnedlearn",
   "private": true,
-  "version": "0.60.0",
+  "version": "0.1.0",
   "type": "module",
+  "license": "AGPL-3.0-only",
   "workspaces": [
     "packages/*",
-    "apps/*",
-    "server"
+    "app"
   ],
   "scripts": {
-    "dev:arbeit": "npm run dev -w apps/arbeit",
-    "dev:lernen": "npm run dev -w apps/lernen",
-    "server": "node server/index.mjs",
-    "build": "npm run build -w apps/arbeit && npm run build -w apps/lernen",
+    "dev": "npm run dev -w app",
+    "build": "npm run build -w app",
+    "tauri": "npm run tauri -w app --",
     "test": "vitest run",
-    "check": "npm run test && npm run build",
-    "beispiel": "node tools/beispieldaten.mjs",
-    "ansehen": "node tools/ansehen.mjs"
+    "check": "npm run test && npm run build"
   },
   "devDependencies": {
     "@types/react": "19.3.0",
