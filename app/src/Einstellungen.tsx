@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { inTauri, ordnerStand, setzeOrdner, type OrdnerStand } from '@rl/oberflaeche'
+import { inTauri, ordnerStand, setzeOrdner, Version, type OrdnerStand } from '@rl/oberflaeche'
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 
@@ -12,6 +12,12 @@ export function Einstellungen() {
       <Datenordner />
       <EinstellungenKi />
       <EinstellungenPrompts />
+      <section className="einstellungen-teil">
+        <h2>Über die App</h2>
+        <p className="klein-leise">
+          RespawnedLearn <Version />. Freie Software unter der AGPL-3.0, läuft ohne Server; deine Daten liegen nur in deinem Ordner.
+        </p>
+      </section>
     </div>
   )
 }

@@ -37,9 +37,18 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
     <main className="ordner-wahl karte">
       <h1>Wo sollen deine Lerndaten liegen?</h1>
       <p>
-        Wähle einen Ordner, den Syncthing mit deinen anderen Geräten abgleicht. Ist er leer, beginnst du neu; liegen dort
-        schon Daten von einem anderen Gerät, erscheinen sie hier.
+        Wähle einen Ordner für Lernkarten, Mitschriften und Skripte. Ist er leer, beginnst du neu; liegen dort schon Daten
+        von einem anderen Gerät, erscheinen sie hier.
       </p>
+      <p className="klein-leise">
+        Mehrere Geräte? Lass den Ordner von Syncthing abgleichen. Das ist freiwillig, ohne bleibt alles auf diesem Gerät.
+      </p>
+      {android && (
+        <p className="klein-leise">
+          Damit die App und Syncthing denselben Ordner sehen, braucht sie unter Android „Zugriff auf alle Dateien“. Hast du
+          das beim Start nicht erlaubt, findest du es unter Einstellungen › Apps › RespawnedLearn › Berechtigungen.
+        </p>
+      )}
       {android ? (
         <form
           onSubmit={(e) => {
@@ -48,8 +57,8 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
           }}
         >
           <label>
-            Ordner
-            <input value={pfad} onChange={(e) => setPfad(e.target.value)} spellCheck={false} autoCapitalize="off" />
+            Ordner (Pfad im Gerätespeicher)
+            <input className="eingabe" value={pfad} onChange={(e) => setPfad(e.target.value)} spellCheck={false} autoCapitalize="off" />
           </label>
           <button type="submit" className="knopf haupt">Übernehmen</button>
         </form>
@@ -68,7 +77,7 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
       {fehler && (
         <p className="ordner-fehler" role="alert">
           {fehler}
-          {android && ' Erlaube der App in den Android-Einstellungen „Zugriff auf alle Dateien“ und versuche es noch einmal.'}
+          {android && ' Erlaube der App „Zugriff auf alle Dateien“ (siehe oben) und versuche es noch einmal.'}
         </p>
       )}
     </main>

@@ -1,7 +1,7 @@
 export { DatenAnbieter, useDaten } from './daten/DatenKontext'
 export { Speicher, geraet, konfliktPfad, type SyncZustand, type SpeicherOptionen } from './daten/speicher'
 export { Platte, ablageImSpeicher } from './daten/ablageImSpeicher'
-export { Kopf, SyncAnzeige, ZurueckPfeil, type KopfZiel } from './Kopf'
+export { Kopf, SyncAnzeige, Version, ZurueckPfeil, type KopfZiel } from './Kopf'
 export { useOrt, geheZu, ortLink, zurueck, kannZurueck } from './ort'
 export { Editor, type EditorGriff, type EditorKontext } from './editor/Editor'
 export type { DarstellungHilfen } from './editor/darstellung'

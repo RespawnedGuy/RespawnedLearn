@@ -271,10 +271,12 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 @media (prefers-color-scheme: dark) { .erklaer-ki, .erklaer-fehler { --ki-flaeche: #2a2538; } }
 
 /* Erster Start: Datenordner wählen */
-.ordner-wahl { max-width: 34rem; margin: 15vh auto 0; padding: 1.5rem; display: grid; gap: 1rem; }
+.ordner-wahl { max-width: 34rem; width: calc(100% - 32px); margin: 15vh auto 0; padding: 1.5rem; display: grid; gap: 1rem; }
+.ordner-wahl p { margin: 0; }
 .ordner-wahl form { display: grid; gap: 0.75rem; }
 .ordner-wahl label { display: grid; gap: 0.25rem; }
-.ordner-wahl input { font: inherit; padding: 0.6rem; min-height: 44px; }
+.ordner-wahl label { font-weight: 600; font-size: 0.875rem; }
+.ordner-wahl input { font-weight: 400; }
 .ordner-fehler { color: var(--rot, #b3261e); }
 .ordner-wahl > .knopf, .ordner-wahl form .knopf { justify-self: start; }
 
@@ -302,6 +304,7 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .einstellungen h1 { margin: 0; font-size: 1.5rem; }
 .einstellungen-teil { display: flex; flex-direction: column; gap: 10px; }
 .einstellungen-teil h2 { margin: 12px 0 0; font-size: 1.125rem; }
+.einstellungen-teil .version { font-size: inherit; color: inherit; }
 .einstellungen-teil p { margin: 0; }
 .ordner-pfad { font-family: ui-monospace, monospace; font-size: 0.875rem; overflow-wrap: anywhere; }
 .ki-stand { font-size: 0.875rem; padding: 10px 12px; border-radius: 10px; background: var(--mulde-hell); color: var(--leise); }

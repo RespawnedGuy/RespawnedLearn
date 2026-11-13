@@ -19,6 +19,43 @@ function pdfjs() {
 
 const dokumente = new Map<string, Promise<PdfDokument | null>>()
 
+/**
+ * Unsichtbare Textebene von pdf.js über der Seite (Design-Prüfung W8): Bildschirmleser lesen das Skript vor, und im
+ * Werkzeug „Lesen“ lässt sich Text markieren und kopieren. Die Schrift ist durchsichtig, zu sehen bleibt das Bild.
+ * `--total-scale-factor` braucht die Ebene für Schriftgröße und Lage, berechnet aus der CSS-Breite der Seite.
+ */
+export function zeichneText(doc: PdfDokument, nr: number, ebene: HTMLElement, breite: number): { fertig: Promise<boolean>; abbrechen: () => void } {
+  let weg = false
+  let tl: { cancel: () => void } | null = null
+  const fertig = (async () => {
+    const [m, seite] = await Promise.all([pdfjs(), doc.getPage(nr)])
+    if (weg) return false
+    const v = seite.getViewport({ scale: breite / seite.getViewport({ scale: 1 }).width })
+    const neu = document.createElement('div')
+    neu.className = 'textLayer'
+    neu.style.setProperty('--total-scale-factor', String(v.scale))
+    neu.style.setProperty('--scale-factor', String(v.scale))
+    const t = new m.TextLayer({ textContentSource: seite.streamTextContent(), container: neu, viewport: v })
+    tl = t
+    try {
+      await t.render()
+    } catch {
+      return false
+    }
+    if (weg) return false
+    ebene.replaceChildren(...neu.childNodes)
+    ebene.style.setProperty('--total-scale-factor', String(v.scale))
+    return true
+  })()
+  return {
+    fertig,
+    abbrechen: () => {
+      weg = true
+      tl?.cancel()
+    }
+  }
+}
+
 export function ladePdf(speicher: Speicher, pfad: string): Promise<PdfDokument | null> {
   let p = dokumente.get(pfad)
   if (!p) {

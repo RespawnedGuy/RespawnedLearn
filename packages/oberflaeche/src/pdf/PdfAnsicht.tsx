@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { pfade, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
-import { ladePdf, seitenFormat, zeichneSeite, type PdfDokument } from './pdf'
+import { ladePdf, seitenFormat, zeichneSeite, zeichneText, type PdfDokument } from './pdf'
 import { TintenEbene, type Werkzeug } from './Tinte'
 import { useZweiFingerZoom } from './zoomGeste'
 
@@ -96,6 +96,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
 
 function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: number; breite: number }) {
   const canvas = useRef<HTMLCanvasElement>(null)
+  const text = useRef<HTMLDivElement>(null)
   const doc = p.doc
   const el = useRef<HTMLDivElement>(null)
   const [sichtbar, setSichtbar] = useState(false)
@@ -129,6 +130,18 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
     }
   }, [sichtbar, doc, p.nr, p.breite])
 
+  // Textebene: erst wenn die Seite sichtbar ist und das Zoomen ruht (sie ist für Bildschirmleser und Markieren da)
+  useEffect(() => {
+    const e = text.current
+    if (!sichtbar || !e || !doc) return
+    let z: ReturnType<typeof zeichneText> | null = null
+    const t = setTimeout(() => (z = zeichneText(doc, p.nr, e, p.breite)), 300)
+    return () => {
+      clearTimeout(t)
+      z?.abbrechen()
+    }
+  }, [sichtbar, doc, p.nr, p.breite])
+
   useEffect(() => {
     if (p.springeZu === p.nr) el.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [p.springeZu, p.nr])
@@ -136,8 +149,9 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
   const marken = p.marken.filter((m) => m.seite === p.nr)
   const alleNummern = new Map(p.marken.map((m, i) => [m.id, i + 1]))
   return (
-    <div ref={el} className={`pdf-seite${p.werkzeug !== 'lesen' ? ' zeichnen' : ''}`} style={{ width: p.breite, height: p.breite * p.format }}>
-      <canvas ref={canvas} className="bild" />
+    <div ref={el} className={`pdf-seite${p.werkzeug !== 'lesen' ? ' zeichnen' : ''}`} style={{ width: p.breite, height: p.breite * p.format }} role="group" aria-label={`Seite ${p.nr}`}>
+      <canvas ref={canvas} className="bild" aria-hidden="true" />
+      <div ref={text} className="textLayer" style={{ pointerEvents: p.werkzeug === 'lesen' ? 'auto' : 'none' }} />
       <TintenEbene
         pfad={pfade.tinte(p.app, p.anhangId, p.nr)}
         format={p.format}

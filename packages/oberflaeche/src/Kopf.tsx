@@ -66,7 +66,6 @@ export function Kopf({
         <div className="kopf-rechts">
           {rechts}
           <SyncAnzeige />
-          <Version />
         </div>
       </div>
     </header>
@@ -123,7 +122,7 @@ export function SyncAnzeige() {
 declare const __VERSION__: string
 declare const __GEBAUT__: string
 
-/** Versionsnummer und Build-Zeitpunkt, damit man sieht, ob der neue Stand schon angekommen ist */
+/** Versionsnummer und Build-Zeitpunkt, damit man sieht, ob der neue Stand schon angekommen ist (Einstellungen › Über die App) */
 export function Version() {
   const v = typeof __VERSION__ === 'string' ? __VERSION__ : '?'
   const g = typeof __GEBAUT__ === 'string' ? new Date(__GEBAUT__) : null
