@@ -35,6 +35,9 @@
   --glas: rgba(255, 255, 255, 0.78);
   --glas-dicht: rgba(255, 255, 255, 0.9);
   --toast: #24262b;
+  /* Schwebende Werkzeugleiste: bleibt in beiden Modi dunkel, weiße Schrift hält 15,9:1 (hell) bzw. 12,1:1 (dunkel) */
+  --leiste: #1f2227;
+  --leiste-aktiv: #3a3e46;
   --schatten: 0 1px 2px rgba(31, 34, 39, 0.06), 0 10px 30px rgba(31, 34, 39, 0.06);
   --schatten-hoch: 0 2px 4px rgba(31, 34, 39, 0.08), 0 18px 40px rgba(31, 34, 39, 0.16);
   --stift-alltag: #2e5bd8;
@@ -96,6 +99,8 @@
     --glas: rgba(30, 31, 35, 0.8);
     --glas-dicht: rgba(30, 31, 35, 0.92);
     --toast: #34363c;
+    --leiste: #34363c;
+    --leiste-aktiv: #4a4d55;
     --schatten: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.25);
     --schatten-hoch: 0 2px 4px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.5);
   }
@@ -135,7 +140,8 @@ body {
 a { color: var(--akzent-text); }
 a:hover { color: var(--akzent-dunkel); }
 button, input, textarea, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+/* Ring in Akzent-Textfarbe: hell ≥ 5:1, im Dunkeln aufgehellt (Lernen 8,3:1 statt 2,98:1 mit --akzent), WCAG 1.4.11 */
+:focus-visible { outline: 2px solid var(--akzent-text); outline-offset: 2px; }
 /* Der Platzhalter ist Anleitung, also lesbar (CodeMirror-Standard #888 hatte 3,2:1) */
 .cm-editor .cm-placeholder { color: var(--leise); }
 
@@ -274,12 +280,13 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 /* Schwebende Werkzeugleiste (PDF, Blatt) */
 .werkzeug {
   position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40;
-  background: var(--tinte); border-radius: 16px; padding: 6px; display: flex; gap: 4px; align-items: center; box-shadow: var(--schatten-hoch);
+  background: var(--leiste); border-radius: 16px; padding: 6px; display: flex; gap: 4px; align-items: center; box-shadow: var(--schatten-hoch);
   max-width: calc(100vw - 24px); overflow-x: auto; touch-action: pan-x;
 }
 .werkzeug button { height: 44px; padding: 0 12px; border: none; border-radius: 11px; background: transparent; color: #fff; font-size: 0.8125rem; display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
 .werkzeug button.aktiv { background: #fff; color: #1f2227; font-weight: 700; }
-.werkzeug button.farbe-aktiv { background: #3a3e46; }
+.werkzeug button.farbe-aktiv { background: var(--leiste-aktiv); }
+.werkzeug :focus-visible { outline-color: #fff; }
 .werkzeug .trenner { width: 1px; height: 24px; background: #4a4e56; flex: none; }
 .werkzeug .punkt { width: 12px; height: 12px; border-radius: 6px; flex: none; }
 .werkzeug .hinweis { color: #c9ccd2; font-size: 0.75rem; padding: 0 8px; white-space: nowrap; }

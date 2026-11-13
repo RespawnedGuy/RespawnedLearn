@@ -140,6 +140,7 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
   background: rgba(31, 34, 40, 0.82); color: #fff; border-radius: 14px; box-shadow: var(--schatten-hoch); font-size: 0.8125rem;
 }
 .vollbild-steuer span { padding: 0 6px; white-space: nowrap; }
+.vollbild-steuer :focus-visible { outline-color: #fff; }
 .vollbild-steuer button { width: 40px; height: 40px; border: none; border-radius: 10px; background: transparent; color: #fff; font-size: 1.125rem; cursor: pointer; }
 .vollbild-steuer button:hover { background: rgba(255, 255, 255, 0.15); }
 .vollbild-steuer button:disabled { opacity: 0.35; cursor: default; background: transparent; }
