@@ -86,24 +86,24 @@ for (const [gname, g] of Object.entries(GERAETE)) {
   }
 }
 // Systemeinstellungen: „Bewegung reduzieren“ und „Transparenz reduzieren“ (die zweite kennt Playwright nur über CDP)
-if (!nur || nur.includes('start')) {
+if (!nur || nur.includes('lernen')) {
   const ctx = await browser.newContext({ ...GERAETE.handy, reducedMotion: 'reduce', locale: 'de-DE' })
   await ctx.addInitScript(initSkript())
   const page = await ctx.newPage()
   const cdp = await ctx.newCDPSession(page)
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
-  await page.goto(URL + ANSICHTEN.start)
+  await page.goto(URL + ANSICHTEN.lernen)
   await page.waitForTimeout(1200)
   const st = await page.evaluate(() => {
-    const z = getComputedStyle(document.querySelector('.daumen-zeile'))
-    return { backdrop: z.backdropFilter, grund: z.backgroundColor, uebergang: getComputedStyle(document.querySelector('.daumen-zeile .kontur path')).transitionDuration }
+    const z = getComputedStyle(document.querySelector('.funktionsleiste'))
+    return { backdrop: z.backdropFilter, grund: z.backgroundColor, linie: getComputedStyle(document.querySelector('.fl-fn.aktiv'), '::before').animationName }
   })
   const deckend = st.backdrop === 'none' && !/rgba\(.*,\s*0?\.\d+\)/.test(st.grund)
-  const ruhig = st.uebergang.split(',').every((d) => parseFloat(d) < 0.02)
+  const ruhig = st.linie === 'none'
   if (!deckend || !ruhig) fehler++
   ergebnis['reduziert|handy'] = { ...st, deckend, ruhig }
-  console.log('reduziert: Glas deckend', deckend, '· Kontur gleitet nicht', ruhig, JSON.stringify(st))
-  await page.screenshot({ path: path.join(AUS, 'start-handy-reduziert.png') })
+  console.log('reduziert: Glas deckend', deckend, '· Linie ohne Bewegung', ruhig, JSON.stringify(st))
+  await page.screenshot({ path: path.join(AUS, 'lernen-handy-reduziert.png') })
   await ctx.close()
 }
 writeFileSync(path.join(AUS, 'ergebnis.json'), JSON.stringify(ergebnis, null, 1))

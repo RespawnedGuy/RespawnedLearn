@@ -20,7 +20,7 @@ import {
   type BlattBild,
   type Lineatur
 } from '@rl/kern'
-import { ausschnitt, bildUrl, mitFinger, useDaten } from '@rl/oberflaeche'
+import { ausschnitt, bildUrl, useDaten } from '@rl/oberflaeche'
 
 /** Strichstärke der Lineatur in Bildschirmpixeln, unabhängig von der Größe des Blatts */
 const STAERKE = { fein: 0.5, mittel: 0.8, kraeftig: 1.1, punkt: 2.4 } as const
@@ -231,27 +231,3 @@ export function Trenner({ links, rechts, onZiehen, onFertig }: { links: Ansicht;
   )
 }
 
-/** Kamera und Bild in der Werkzeugleiste: legt Fotos aufs erste offene Blatt der Seite */
-export function BildKnoepfe({ onDateien }: { onDateien: (d: File[]) => void }) {
-  const galerie = useRef<HTMLInputElement>(null)
-  const kamera = useRef<HTMLInputElement>(null)
-  const nimm = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onDateien(Array.from(e.target.files ?? []))
-    e.target.value = ''
-  }
-  return (
-    <>
-      <span className="trenner" />
-      {mitFinger() && (
-        <button type="button" onClick={() => kamera.current?.click()} title="Foto aufnehmen und aufs Blatt legen">
-          Kamera
-        </button>
-      )}
-      <button type="button" onClick={() => galerie.current?.click()} title="Foto, Screenshot oder Bild aufs Blatt legen (am PC auch mit Strg+V)">
-        Bild
-      </button>
-      <input ref={galerie} type="file" accept="image/*" multiple hidden onChange={nimm} />
-      <input ref={kamera} type="file" accept="image/*" capture="environment" hidden onChange={nimm} />
-    </>
-  )
-}

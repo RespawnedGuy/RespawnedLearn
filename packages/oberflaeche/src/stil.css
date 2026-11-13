@@ -1,5 +1,5 @@
 /* RespawnedNotes – gemeinsame Optik beider Apps (Phoenix-Stil: warmes Weiß, ruhige Flächen).
-   Apple-Prinzip: nur zeigen, was gerade gebraucht wird. Akzent je App über --akzent. */
+   Apple-Prinzip: nur zeigen, was gerade gebraucht wird. Akzent ist das Orange von RespawnedNotes (Nils 13.11.: Lernen ohne eigenes Violett). */
 /* Keine Schriften aus dem Netz: die App läuft offline und meldet niemandem ihren Start. Manrope usw. greifen, wenn installiert, sonst die Systemschrift. */
 
 :root {
@@ -49,13 +49,6 @@
   color-scheme: light dark;
 }
 
-.app-lernen {
-  --akzent: #6a4fc4;
-  --akzent-tief: #5a3fb3;
-  --akzent-text: #5a3fb3;
-  --akzent-dunkel: #432e8a;
-  --akzent-weich: #efebfa;
-}
 
 /* Organisation (Termine, Nachrichten): Blau. Wohnt in der Arbeits-App, die Klasse setzt App.tsx am body */
 .app-organisation {
@@ -103,11 +96,6 @@
     --leiste-aktiv: #4a4d55;
     --schatten: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.25);
     --schatten-hoch: 0 2px 4px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.5);
-  }
-  .app-lernen {
-    --akzent-text: #b9a6f5;
-    --akzent-dunkel: #d4c8fb;
-    --akzent-weich: #2c2544;
   }
   .app-organisation {
     --akzent-text: #8ab4ef;
@@ -287,23 +275,9 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 .dialog h2 { margin: 0; font-size: 1.1875rem; }
 .dialog-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* Schwebende Werkzeugleiste (PDF, Blatt) */
-.werkzeug {
-  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40;
-  background: var(--leiste); border-radius: 16px; padding: 6px; display: flex; gap: 4px; align-items: center; box-shadow: var(--schatten-hoch);
-  max-width: calc(100vw - 24px); overflow-x: auto; touch-action: pan-x;
-}
-.werkzeug button { height: 44px; padding: 0 12px; border: none; border-radius: 11px; background: transparent; color: #fff; font-size: 0.8125rem; display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
-.werkzeug button.aktiv { background: #fff; color: #1f2227; font-weight: 700; }
-.werkzeug button.farbe-aktiv { background: var(--leiste-aktiv); }
-.werkzeug :focus-visible { outline-color: #fff; }
-.werkzeug .trenner { width: 1px; height: 24px; background: #4a4e56; flex: none; }
-.werkzeug .punkt { width: 12px; height: 12px; border-radius: 6px; flex: none; }
-.werkzeug .hinweis { color: #c9ccd2; font-size: 0.75rem; padding: 0 8px; white-space: nowrap; }
-/* Auf dem Tablet hat der Radierer Vorrang vor dem Hinweis, sonst rutscht er aus der Leiste */
-@media (max-width: 1100px) { .werkzeug .hinweis { display: none; } }
+/* Werkzeuge für PDF und Blatt: Funktionsleiste in glas.css */
 /* Aufliegende Hand: kein Markieren von Text, kein Lupen- oder Kontextmenü */
-.werkzeug, .pdf-seite.zeichnen, .schreib-werkzeug { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.funktionsleiste, .pdf-seite.zeichnen, .schreib-werkzeug { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 /* ---------- Editor (CodeMirror): Markdown bleibt sichtbar, aber ruhig ---------- */
 .cm-editor { font-size: 1.0625rem; line-height: 1.6; background: transparent; }
@@ -399,7 +373,7 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 .marke.ergaenzung { border-color: var(--stift-ergaenzung); background: rgba(47, 158, 91, 0.08); }
 .marke.gewaehlt { box-shadow: 0 0 0 3px rgba(210, 86, 28, 0.3); }
 .marke .nummer { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--akzent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(106, 79, 196, 0.06); border-radius: 3px; pointer-events: none; }
+.auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(196, 80, 26, 0.06); border-radius: 3px; pointer-events: none; }
 .schwebe { position: absolute; z-index: 20; background: var(--flaeche); border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }
 .schwebe .reihe { display: flex; gap: 4px; flex-wrap: wrap; }
 
@@ -448,8 +422,3 @@ button.marke { padding: 0; }
 .cm-tabelle-leiste button { font: inherit; font-size: 0.8125rem; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; min-height: 34px; cursor: pointer; }
 .cm-tabelle-leiste button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Werkzeugleiste am Handy: Rand blendet weich aus, damit man sieht, dass es seitlich weitergeht (Design-Prüfung Kl1).
-   Der Innenabstand rechts sorgt dafür, dass der letzte Knopf am Ende nicht im Verlauf steht. */
-@media (max-width: 700px) {
-  .werkzeug { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
-}

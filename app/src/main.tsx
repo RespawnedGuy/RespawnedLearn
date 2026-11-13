@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { DatenAnbieter, Fehlergrenze } from '@rl/oberflaeche'
+import { DatenAnbieter, Fehlergrenze, beobachteStift } from '@rl/oberflaeche'
 import '@rl/oberflaeche/src/stil.css'
 import 'katex/dist/katex.min.css'
 import './lernen.css'
-// Glas und Bewegung zuletzt: legen sich über Kopf, Daumenmenü und Werkzeugleiste aus stil.css und lernen.css
+// Glas und Bewegung zuletzt: legen sich über Kopf und Funktionsleiste aus stil.css und lernen.css
 import '@rl/oberflaeche/src/glas.css'
 import '@rl/oberflaeche/src/bewegung.css'
 import { App } from './App'
@@ -12,6 +12,8 @@ import { OrdnerWahl } from './OrdnerWahl'
 import { wendeSchreibhandAn } from './schreibhand'
 
 wendeSchreibhandAn()
+// Stift am PC und Tablet: Werkzeugspalte durchlässig, solange er schreibt
+beobachteStift()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { inTauri, ordnerStand, setzeOrdner, Version, type OrdnerStand } from '@rl/oberflaeche'
+import { inTauri, ordnerStand, ortLink, setzeOrdner, useDaten, Version, type OrdnerStand } from '@rl/oberflaeche'
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
@@ -10,6 +10,7 @@ export function Einstellungen() {
   return (
     <div className="lernen-seite einstellungen">
       <h1>Einstellungen</h1>
+      <KonfliktHinweis />
       <Datenordner />
       <Schreiben />
       <EinstellungenKi />
@@ -21,6 +22,21 @@ export function Einstellungen() {
         </p>
       </section>
     </div>
+  )
+}
+
+/** Am Handy steht neben den Tabs nur ein roter Punkt am Zahnrad; hier steht, was er meint, mit dem Weg dorthin */
+function KonfliktHinweis() {
+  const { speicher } = useDaten()
+  const k = speicher.konflikte().length + speicher.syncProbleme().length
+  const h = speicher.hinweis
+  if (!k && !h) return null
+  return (
+    <section className="einstellungen-teil">
+      <a className="knopf haupt" href={ortLink('konflikte')}>
+        {h ? 'Sync prüfen' : `${k} Konflikt${k > 1 ? 'e' : ''} ansehen`}
+      </a>
+    </section>
   )
 }
 

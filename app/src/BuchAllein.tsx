@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { linkZiel, type Farbe } from '@rl/kern'
 import { Werkzeugleiste, useDaten, type Werkzeug } from '@rl/oberflaeche'
-import { AnsichtKopf, BildKnoepfe } from './Blaetter'
+import { AnsichtKopf } from './Blaetter'
 import { BuchAnsicht, fotosInsBuch, lineaturVon, setzeBuchLineatur } from './Buch'
 
 export function BuchAlleinSeite({ id }: { id: string }) {
@@ -34,7 +34,7 @@ export function BuchAlleinSeite({ id }: { id: string }) {
         />
         <BuchAnsicht id={id} werkzeug={werkzeug} farbe={farbe} />
       </div>
-      <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} extra={<BildKnoepfe onDateien={(d) => void fotosInsBuch(speicher, id, d)} />} />
+      <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} onBilder={(d) => void fotosInsBuch(speicher, id, d)} />
     </div>
   )
 }

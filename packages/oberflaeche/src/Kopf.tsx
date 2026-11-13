@@ -3,7 +3,7 @@ import logo from './logo.png'
 import { useDaten } from './daten/DatenKontext'
 import { kannZurueck, ortLink, zurueck } from './ort'
 
-/** Ein festes Ziel im Kopf (am Handy in der Daumenleiste) */
+/** Ein festes Ziel im Kopf (Bereich als Tab, am Handy wie am PC) */
 export interface KopfZiel {
   titel: string
   ziel: string
@@ -24,9 +24,9 @@ function useKopfHoehe(ref: RefObject<HTMLElement | null>) {
 }
 
 /**
- * Der eine Kopf oben (keine Seitenleiste, Nils ist Linkshänder): Jeder Reiter springt mit
- * einem Klick an sein Ziel, nichts klappt auf. Am Handy sitzen die Ziele stattdessen unten in der Daumenleiste;
- * oben bleiben nur Zurück, Logo und was rechts dazukommt (Lupe, Zahnrad).
+ * Der eine Kopf oben (keine Seitenleiste, Nils ist Linkshänder): Die Bereiche stehen als Tabs mit Unterstrich
+ * darin, am Handy wie am PC (Stil „Linie“); jeder springt mit einem Klick an sein Ziel, nichts klappt auf.
+ * Links Zurück (und am PC das Logo), rechts das Zahnrad. Die Funktionen eines Bereichs stehen in der Funktionsleiste.
  */
 export function Kopf({
   ort,
@@ -54,7 +54,7 @@ export function Kopf({
         <div className="kopf-links">
           <ZurueckPfeil oben={oben} />
           <img className="kopf-logo" src={logo} alt="RespawnedLearn" />
-          <nav className="kopf-reiter nur-breit" aria-label="Hauptmenü">
+          <nav className="kopf-reiter" aria-label="Hauptmenü">
             {ziele.map((z) => (
               <a key={z.ziel} className={`kopf-reiter-knopf${z.aktiv ? ' aktiv' : ''}`} href={z.ziel} aria-current={z.aktiv ? 'page' : undefined}>
                 <span className="kopf-reiter-text">{z.titel}</span>

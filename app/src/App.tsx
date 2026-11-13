@@ -1,11 +1,11 @@
-import { Daumenleiste, Fehlergrenze, Kopf, Meldungen, ortLink, Symbol, useDaten, useOrt, type LeistenZiel } from '@rl/oberflaeche'
+import { Fehlergrenze, Funktionsleiste, Kopf, Meldungen, geheZu, ortLink, Symbol, useDaten, useOrt, type KopfZiel } from '@rl/oberflaeche'
 import { Sammeln } from './Sammeln'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
 import { Konflikte } from './Konflikte'
 import { Einstellungen } from './Einstellungen'
 import { linkZiel, lernziele, modulVon } from '@rl/kern'
-import { PlusKnopf, useTastaturOffen } from './PlusKnopf'
+import { lernFunktionen, mitschriftFunktionen, type LeistenFunktion } from './funktionen'
 import { usePlus } from './plus'
 import { faellige } from './wissen'
 import { useEffect } from 'react'
@@ -22,17 +22,19 @@ export function App() {
   const mitschrift = bereich === 'sammeln' && ort[1] === 'mitschrift' && ort[2] ? bestand.dokumente.get(ort[2]) : undefined
   const mitschriftModul = mitschrift ? linkZiel(mitschrift.felder.thema) : null
   const plus = usePlus()
-  const tastatur = useTastaturOffen()
   const modul = bereich === 'sammeln' && ort[1] === 'modul' ? lernziele(bestand).find((z) => z.id === ort[2]) : undefined
   const faellig = faellige(bestand).length
 
-  // Feste Ziele wie in Arbeit: am PC als Reiter oben, am Handy in der Daumenleiste. Vorfragen und Kapitelfragen
-  // kündigen sich als Hinweis über der Lernrunde an, Module und Bücher stehen auf der Startseite unter Sammeln.
-  const ziele: LeistenZiel[] = [
-    { titel: 'Sammeln', symbol: 'sammeln', ziel: ortLink('sammeln'), aktiv: bereich === 'sammeln' },
-    { titel: 'Lernen', symbol: 'lernen', ziel: ortLink('lernen'), aktiv: bereich === 'lernen', zahl: faellig },
-    { titel: 'Nutzen', symbol: 'nutzen', ziel: ortLink('nutzen'), aktiv: bereich === 'nutzen' }
+  // Bereiche als Tabs oben, am Handy wie am PC (Stil „Linie“, Nils 13.11.). Vorfragen und Kapitelfragen kündigen
+  // sich als Hinweis über der Lernrunde an, Module und Bücher stehen auf der Startseite unter Sammeln.
+  const ziele: KopfZiel[] = [
+    { titel: 'Sammeln', ziel: ortLink('sammeln'), aktiv: bereich === 'sammeln' },
+    { titel: 'Lernen', ziel: ortLink('lernen'), aktiv: bereich === 'lernen', zahl: faellig },
+    { titel: 'Nutzen', ziel: ortLink('nutzen'), aktiv: bereich === 'nutzen' }
   ]
+  // Funktionsleiste unten (nur Handy): Skript und Buch bringen ihre Werkzeuge selbst mit, hier Lernen und Mitschrift
+  const leiste: LeistenFunktion[] = bereich === 'lernen' ? lernFunktionen(ort) : mitschriftFunktionen(plus)
+  const konflikte = speicher.konflikte().length + speicher.syncProbleme().length + (speicher.hinweis ? 1 : 0)
 
   // Eine Ebene höher, falls es keinen Verlauf gibt; die Startseite unter Sammeln ist ganz oben
   const buchModul = quelle ? modulVon(bestand, quelle.id) : undefined
@@ -55,8 +57,15 @@ export function App() {
         ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : bereich === 'konflikte' ? 'Konflikte' : bereich === 'einstellungen' ? 'Einstellungen' : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'}
         ziele={ziele}
         rechts={
-          <a className={`kopf-zahnrad nur-breit${bereich === 'einstellungen' ? ' aktiv' : ''}`} href={ortLink('einstellungen')} aria-label="Einstellungen" title="Einstellungen">
+          <a
+            className={`kopf-zahnrad${bereich === 'einstellungen' ? ' aktiv' : ''}`}
+            href={ortLink('einstellungen')}
+            aria-label={konflikte ? `Einstellungen, ${konflikte} Konflikt${konflikte > 1 ? 'e' : ''}` : 'Einstellungen'}
+            title="Einstellungen"
+          >
             <Symbol name="zahnrad" groesse={20} />
+            {/* Am Handy ist neben den Tabs kein Platz für den Konflikt-Text: roter Punkt, der Text steht in den Einstellungen */}
+            {konflikte > 0 && <span className="zahnrad-punkt nur-schmal" aria-hidden="true" />}
           </a>
         }
       />
@@ -66,13 +75,13 @@ export function App() {
         {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
       </main>
-      {/* Am Handy sitzt das Zahnrad mit im Daumenmenü statt oben rechts, wo der Daumen nicht hinkommt. Im Skript wird die Pille beim Lesen klein */}
-      <Daumenleiste
-        ziele={[...ziele, { titel: 'Einstellungen', symbol: 'zahnrad', ziel: ortLink('einstellungen'), aktiv: bereich === 'einstellungen' }]}
-        mitte={plus ? <PlusKnopf ziel={plus} /> : undefined}
-        nurMitte={!!plus && tastatur}
-        einklappen={!!quelle}
-      />
+      {leiste.length > 0 && (
+        <Funktionsleiste
+          name={bereich === 'lernen' ? 'Lernen' : 'Einfügen'}
+          fokusBehalten={bereich !== 'lernen'}
+          funktionen={leiste.map((f) => ({ ...f, tun: typeof f.ziel === 'function' ? f.ziel : () => geheZu(...(f.ziel as string).replace(/^#\//, '').split('/')) }))}
+        />
+      )}
       <Meldungen />
     </>
   )

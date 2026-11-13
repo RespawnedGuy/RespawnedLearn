@@ -1,4 +1,4 @@
-/* Lern-App: ruhig, eine Sache zur Zeit. Akzent Violett (.app-lernen). */
+/* Lern-App: ruhig, eine Sache zur Zeit. Akzent Orange wie RespawnedNotes (stil.css). */
 .seite { max-width: 1100px; margin: 0 auto; padding: 24px; }
 .seite-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .seite-kopf h1 { margin: 0; font-size: 1.625rem; font-weight: 800; }
@@ -20,7 +20,7 @@
 .lineatur-wahl { position: relative; font: inherit; font-size: 0.75rem; color: var(--leise); background: transparent; border: none; padding: 4px 2px; cursor: pointer; }
 .ansicht-trenner { flex: none; align-self: stretch; width: 16px; cursor: col-resize; touch-action: none; position: relative; }
 .ansicht-trenner::after { content: ''; position: absolute; top: 40px; bottom: 0; left: 7px; width: 2px; border-radius: 1px; background: transparent; transition: background 0.15s; }
-.ansicht-trenner:hover::after, .ansicht-trenner:active::after { background: var(--akzent-weich, #cfc3ef); }
+.ansicht-trenner:hover::after, .ansicht-trenner:active::after { background: var(--akzent-weich, #f3c9ae); }
 .blatt-flaeche { width: 100%; background-color: #fff; }
 .blatt-flaeche .lineatur { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .blatt-unten { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
@@ -33,7 +33,7 @@
 .blatt-menue-huelle { position: relative; }
 .blatt-menue { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 300px; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--flaeche, #fff); border-radius: 14px; box-shadow: var(--schatten-hoch); }
 .lineatur-knoepfe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.lineatur-knopf { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--linie, #e5e1ee); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.lineatur-knopf { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--linie, #e8e4dd); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 0.75rem; cursor: pointer; }
 .lineatur-knopf:hover { border-color: var(--akzent); }
 .lineatur-knopf.gewaehlt { border-color: var(--akzent); box-shadow: 0 0 0 1px var(--akzent); }
 .lineatur-probe { position: relative; width: 100%; aspect-ratio: 2 / 1; background: #fff; border-radius: 4px; overflow: hidden; }
@@ -47,9 +47,9 @@
 /* Lernen */
 .lernen-seite { max-width: 820px; margin: 0 auto; padding: 32px 24px 60px; display: flex; flex-direction: column; gap: 18px; }
 .fortschritt { display: flex; gap: 6px; }
-.fortschritt span { height: 6px; flex: 1; border-radius: 3px; background: #e3deef; }
+.fortschritt span { height: 6px; flex: 1; border-radius: 3px; background: #efe3da; }
 .fortschritt span.fertig { background: var(--akzent); }
-.fortschritt span.jetzt { background: #b7a8e6; }
+.fortschritt span.jetzt { background: #eaa47c; }
 .lern-karte { padding: 32px 36px; display: flex; flex-direction: column; gap: 18px; border-radius: 20px; }
 .lern-karte .art { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; color: var(--akzent-text); }
 .lern-karte .frage { font-size: 1.375rem; font-weight: 600; line-height: 1.45; }
@@ -60,22 +60,22 @@
 .bewertung .knopf { height: auto; min-height: 56px; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 4px; white-space: normal; text-align: center; }
 .bewertung .abstand { font-size: 0.75rem; font-weight: 400; color: var(--leise); }
 
-.schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fbfafe; background-image: linear-gradient(#eeeaf6 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
-.ki-vorschlag { display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; padding: 8px 10px; border: 1px dashed var(--akzent); border-radius: 10px; background: #f7f4fd; color: inherit; font: inherit; cursor: pointer; }
+.schreibflaeche { width: 100%; aspect-ratio: 1 / 0.32; border-radius: 12px; background-color: #fdfbf9; background-image: linear-gradient(#efe9e3 1px, transparent 1px); background-size: 100% 34px; box-shadow: none; }
+.ki-vorschlag { display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; padding: 8px 10px; border: 1px dashed var(--akzent); border-radius: 10px; background: #fdf5ef; color: inherit; font: inherit; cursor: pointer; }
 .ki-vorschlag .inhalt { font-size: 0.875rem; line-height: 1.4; }
 .fragen-hinweis { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-radius: 16px; text-decoration: none; color: inherit; }
 .lern-karte .frage .inhalt { font-size: inherit; line-height: inherit; }
 .inhalt ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .antwort { border-top: 1px solid var(--linie); padding-top: 14px; font-size: 1.0625rem; }
-.abruf-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--rand-stark); border-radius: 12px; background: #fbfafe; font: inherit; font-size: 1.0625rem; line-height: 1.45; resize: vertical; }
+.abruf-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--rand-stark); border-radius: 12px; background: #fdfbf9; font: inherit; font-size: 1.0625rem; line-height: 1.45; resize: vertical; }
 .rueckmeldung-huelle { display: flex; flex-direction: column; gap: 10px; }
 .rueckmeldung-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.rueckmeldung { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; border-left: 4px solid var(--linie); background: #f7f6fa; font-size: 1rem; }
+.rueckmeldung { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; border-left: 4px solid var(--linie); background: #f8f5f2; font-size: 1rem; }
 .rueckmeldung.richtig { border-left-color: #2F9E5B; }
 .rueckmeldung.teilweise { border-left-color: #D99A1E; }
 .rueckmeldung.falsch { border-left-color: #E0443A; }
 .rueckmeldung-titel { display: block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; color: var(--akzent-text); text-transform: uppercase; }
-.hilfe { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #f7f4fd; font-size: 1rem; }
+.hilfe { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #fdf5ef; font-size: 1rem; }
 .hilfe-schritt { display: flex; flex-direction: column; gap: 2px; }
 
 /* Nutzen */
@@ -96,7 +96,7 @@
 .formel { font-family: var(--serif); font-size: 1.375rem; text-align: center; padding: 6px 0; overflow-x: auto; }
 .abruf-frage { font-weight: 700; }
 .abruf-antwort { color: var(--tinte); }
-.ausschnitt { display: inline-block; vertical-align: middle; border-radius: 8px; border: 1px solid var(--linie); overflow: hidden; background: #fff; outline: 2px solid rgba(106, 79, 196, 0.35); outline-offset: -4px; max-width: 100%; }
+.ausschnitt { display: inline-block; vertical-align: middle; border-radius: 8px; border: 1px solid var(--linie); overflow: hidden; background: #fff; outline: 2px solid rgba(196, 80, 26, 0.35); outline-offset: -4px; max-width: 100%; }
 .ausschnitt img { display: block; max-width: 100%; max-height: 240px; }
 .ausschnitt .platz { display: block; width: 140px; height: 70px; background: var(--mulde); }
 
@@ -213,30 +213,14 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .cm-tooltip.cm-markier-knopf { border: none; background: transparent; margin-top: 6px; }
 .cm-markier-knopf button { height: 34px; padding: 0 14px; border: none; border-radius: 999px; background: var(--akzent); color: #fff; font: inherit; font-size: 0.875rem; font-weight: 600; box-shadow: var(--schatten-hoch); cursor: pointer; }
 
-/* „+“ in der Daumenleiste (nur in der Mitschrift) */
-.plus-huelle { display: contents; }
-.daumen-plus {
-  flex: none; width: 56px; height: 56px; margin: 0 6px; border-radius: 50%; border: none; background: var(--akzent); color: #fff;
-  display: grid; place-items: center; box-shadow: var(--schatten-hoch); cursor: pointer; transition: transform 0.15s; touch-action: manipulation;
-}
-.daumen-plus.offen { transform: rotate(45deg); }
-.einfuege-menue { background: var(--flaeche); border-radius: 16px; box-shadow: var(--schatten-hoch); padding: 6px; display: flex; flex-direction: column; }
-.daumenleiste .einfuege-menue { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); width: min(340px, calc(100vw - 24px)); }
-.einfuege-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; padding: 2px; }
-.einfuege-kachel {
-  height: 68px; border: none; border-radius: 12px; background: var(--akzent-weich); color: var(--akzent-dunkel);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.8125rem; font-weight: 700; cursor: pointer; touch-action: manipulation;
-}
-.einfuege-kachel:active, .einfuege-kachel:hover { background: var(--mulde); }
-
 /* Rückmeldung nach einer Handlung, unten mittig */
 .rueckmeldung-ort { position: fixed; left: 0; right: 0; bottom: calc(var(--tastatur, 0px) + env(safe-area-inset-bottom, 0px) + 24px); z-index: 50; display: flex; justify-content: center; pointer-events: none; padding: 0 12px; }
-@media (max-width: 720px) { .rueckmeldung-ort { bottom: calc(var(--tastatur, 0px) + env(safe-area-inset-bottom, 0px) + 84px); } }
+/* Über der Funktionsleiste, wenn es eine gibt */
+@media (max-width: 720px) { body:has(.funktionsleiste) .rueckmeldung-ort { bottom: calc(var(--tastatur, 0px) + env(safe-area-inset-bottom, 0px) + 84px); } }
 .rueckmeldung {
   pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 480px;
   background: var(--toast); color: #fff; border-radius: 12px; padding: 10px 16px; font-size: 0.9375rem; box-shadow: var(--schatten-hoch);
 }
-@media (prefers-reduced-motion: reduce) { .daumen-plus { transition: none; } }
 .cm-line.cm-hervor { background: var(--akzent-weich); border-radius: 4px; transition: background 0.6s; }
 .lern-wo { margin-bottom: -6px; }
 .gliederung-zeile { display: flex; align-items: center; gap: 8px; }
@@ -255,25 +239,25 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 
 /* Dunkelmodus: hellviolette Hilfsflächen dunkel; Schreibflächen bleiben Papier (siehe stil.css) */
 @media (prefers-color-scheme: dark) {
-  .ki-vorschlag, .hilfe { background: #2a2538; }
+  .ki-vorschlag, .hilfe { background: #2e2219; }
   .abruf-text { background: var(--flaeche); }
   .rueckmeldung { background: #29292f; }
-  .fortschritt span { background: #3a3550; }
-  .fortschritt span.jetzt { background: #7d6bc4; }
+  .fortschritt span { background: #3d3028; }
+  .fortschritt span.jetzt { background: #b5643a; }
 }
 
 /* Erklären: Chatfenster zu einer markierten Stelle */
 .erklaer-verlauf { display: flex; flex-direction: column; gap: 10px; max-height: min(52vh, 460px); overflow-y: auto; }
-.erklaer-ki { padding: 10px 12px; border-radius: 12px; background: var(--ki-flaeche, #f7f4fd); }
+.erklaer-ki { padding: 10px 12px; border-radius: 12px; background: var(--ki-flaeche, #fdf5ef); }
 .erklaer-ki .inhalt { font-size: 1rem; line-height: 1.5; }
 .erklaer-ich { align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 12px; background: var(--akzent-weich); white-space: pre-wrap; }
-.erklaer-fehler { padding: 8px 12px; border-radius: 12px; border-left: 4px solid #E0443A; background: var(--ki-flaeche, #f7f4fd); }
+.erklaer-fehler { padding: 8px 12px; border-radius: 12px; border-left: 4px solid #E0443A; background: var(--ki-flaeche, #fdf5ef); }
 .erklaer-eingabe { display: flex; gap: 8px; }
 .erklaer-eingabe .eingabe { flex: 1; min-width: 0; }
 .callout { border-left: 3px solid var(--linie); padding: 2px 0 2px 12px; }
 .callout > summary { cursor: pointer; color: var(--leise, inherit); font-size: 0.875rem; }
 .callout[open] > summary { margin-bottom: 6px; }
-@media (prefers-color-scheme: dark) { .erklaer-ki, .erklaer-fehler { --ki-flaeche: #2a2538; } }
+@media (prefers-color-scheme: dark) { .erklaer-ki, .erklaer-fehler { --ki-flaeche: #2e2219; } }
 
 /* Erster Start: Datenordner wählen */
 .ordner-wahl { max-width: 34rem; width: calc(100% - 32px); margin: 15vh auto 0; padding: 1.5rem; display: grid; gap: 1rem; }
@@ -375,8 +359,8 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .marke-menue { top: calc(100% + 4px); left: 0; width: 220px; padding: 6px; gap: 2px; }
 [data-schreibhand='links'] .marke-menue { left: auto; right: 0; }
 .buch-zeile.gefahr { color: var(--rot-text); }
-:root { --verweis-grund: #efeafb; --verweis-rand: #d9d0f3; --verweis-text: #4b35a0; }
-@media (prefers-color-scheme: dark) { :root { --verweis-grund: #2c2640; --verweis-rand: #4a3f70; --verweis-text: #d4caf5; } }
+:root { --verweis-grund: #fcebe0; --verweis-rand: #f3c9ae; --verweis-text: #8a350b; }
+@media (prefers-color-scheme: dark) { :root { --verweis-grund: #3d2619; --verweis-rand: #6e4128; --verweis-text: #f6b088; } }
 .buch-menue { width: 320px; max-height: 70vh; overflow-y: auto; }
 .buch-zeile { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; border: none; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
 .buch-zeile:hover { background: var(--mulde-hell); }

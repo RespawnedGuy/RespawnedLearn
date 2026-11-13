@@ -108,7 +108,7 @@ function kartenKnopf(view: EditorView) {
   return { dom }
 }
 
-/** „/“ am PC: Lernkarte aus dem Absatz, Foto einfügen. Am Handy gibt es dafür das „+“ in der Daumenleiste. */
+/** „/“ am PC: Lernkarte aus dem Absatz, Foto einfügen. Am Handy steht dasselbe in der Funktionsleiste unten. */
 const slash: CompletionSource = (ctx: CompletionContext) => {
   if (mitFinger()) return null
   const m = ctx.matchBefore(/(?:^|\s)\/[\p{L}\d -]{0,24}$/u)

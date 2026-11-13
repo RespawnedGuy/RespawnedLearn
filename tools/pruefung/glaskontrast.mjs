@@ -1,5 +1,5 @@
 // Kontrast auf Glas messen (glas.css): axe misst gegen den Hintergrund, den es sieht, Glas ist aber durchsichtig.
-// Hier wird jede Schrift auf Kopf, Daumenmenü und Werkzeugleiste gegen den ungünstigsten Grund gerechnet:
+// Hier wird jede Schrift auf Kopf und Funktionsleiste gegen den ungünstigsten Grund gerechnet:
 // Glasfarbe über reinem Schwarz und über reinem Weiß (die Unschärfe mittelt den Inhalt, schlimmer wird es nicht).
 // Liegt zwischen Schrift und Glas eine deckende Fläche (Chip, aktiver Knopf), zählt die.
 // Aufruf in der Seite: page.evaluate(glasKontrast) → [{ ort, text, schwarz, weiss }]
@@ -22,11 +22,11 @@ export function glasKontrast() {
     return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
   }
   const ergebnis = []
-  for (const wurzel of document.querySelectorAll('.kopf, .daumen-zeile, .werkzeug')) {
+  for (const wurzel of document.querySelectorAll('.kopf, .funktionsleiste')) {
     if (!wurzel.getClientRects().length) continue
     const elemente = [...wurzel.querySelectorAll('*')].filter((el) => {
       if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden' || Number(getComputedStyle(el).opacity) === 0) return false
-      return [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) || el.matches('svg:not(.kontur)')
+      return [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) || el.matches('svg')
     })
     for (const el of elemente) {
       // Flächen zwischen Schrift und Glas sammeln, von innen nach außen

@@ -9,7 +9,7 @@ import { ModulSeite, Start } from './Start'
 import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
-import { AnsichtKopf, BildKnoepfe, Trenner, useAnordnung } from './Blaetter'
+import { AnsichtKopf, Trenner, useAnordnung } from './Blaetter'
 import { BuchAnsicht, bildInsBuch, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
 import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
@@ -470,7 +470,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         farbe={farbe}
         onWerkzeug={setWerkzeug}
         onFarbe={setFarbe}
-        extra={<BildKnoepfe onDateien={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))} />}
+        onBilder={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))}
       />
     </div>
   )

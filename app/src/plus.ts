@@ -1,4 +1,4 @@
-// „+“ in der Daumenleiste der Lern-App: gibt es nur, solange eine Seite etwas zum Einfügen anbietet (die Mitschrift).
+// Einfügen in der Funktionsleiste (Lernkarte, Kamera, Foto): gibt es nur, solange eine Seite es anbietet (die Mitschrift).
 import { useEffect, useSyncExternalStore } from 'react'
 
 export interface PlusZiel {

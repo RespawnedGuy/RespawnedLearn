@@ -13,7 +13,7 @@ node tools/pruefung/ansehen.mjs                        # alle Ansichten, oder z.
 ```
 
 - Ausgabe: `./ansehen/<ansicht>-<handy|pc>-<hell|dunkel>.png` und `ergebnis.json` (seitliches Überlaufen,
-  Konsolenfehler und Antworten ≥ 400, Kontrast auf Glas). Dazu `start-handy-reduziert.png` mit „Bewegung reduzieren“
+  Konsolenfehler und Antworten ≥ 400, Kontrast auf Glas). Dazu `lernen-handy-reduziert.png` mit „Bewegung reduzieren“
   und „Transparenz reduzieren“ (über CDP). Exit-Code 1 bei Konsolenfehlern, Schrift auf Glas unter 4,5:1
   (`glaskontrast.mjs`: Glas über Schwarz und Weiß gerechnet, weil axe durchsichtige Flächen nicht kennt) oder wenn
   das Glas mit reduzierter Transparenz nicht deckend wird.

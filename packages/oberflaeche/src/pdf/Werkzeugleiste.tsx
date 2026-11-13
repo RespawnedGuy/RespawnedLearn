@@ -1,7 +1,7 @@
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { FARBEN, type Farbe } from '@rl/kern'
-import type { CSSProperties } from 'react'
 import type { Werkzeug } from './Tinte'
-import { Kontur } from '../Kontur'
+import { Funktionsleiste, type Funktion } from '../Funktionsleiste'
 
 const STIFTE: { farbe: Farbe; name: string }[] = [
   { farbe: 'alltag', name: 'Alltag' },
@@ -9,10 +9,13 @@ const STIFTE: { farbe: Farbe; name: string }[] = [
   { farbe: 'ergaenzung', name: 'Ergänzung' }
 ]
 
+/** Kürzel am PC: ein Buchstabe wählt das Werkzeug, solange man nicht in ein Textfeld schreibt */
+const KUERZEL: Record<string, Werkzeug> = { l: 'lesen', s: 'stift', m: 'markieren', r: 'radierer' }
+
 /**
- * Schwebende Leiste für PDF und Blatt, in derselben Glasoptik wie das Daumenmenü: Das aktive Werkzeug trägt die
- * leuchtende Wölbung, die aktive Farbe einen leuchtenden Ring in ihrer Farbe. Die Farben haben Namen, damit sie
- * überall dasselbe bedeuten.
+ * Werkzeuge für Skript und Buch, in der Funktionsleiste „Linie“: am Handy unten, am PC als Spalte gegenüber der
+ * Schreibhand. Bei Stift und Markieren stehen die Farben darüber. Die Farben haben Namen, damit sie überall
+ * dasselbe bedeuten. „Bild“ legt Fotos oder Bilder ins Buch (am Handy bietet die Auswahl auch die Kamera an).
  */
 export function Werkzeugleiste({
   werkzeug,
@@ -20,49 +23,78 @@ export function Werkzeugleiste({
   onWerkzeug,
   onFarbe,
   markierenText = 'Markieren',
-  extra
+  onBilder
 }: {
   werkzeug: Werkzeug
   farbe: Farbe
   onWerkzeug: (w: Werkzeug) => void
   onFarbe: (f: Farbe) => void
   markierenText?: string
-  extra?: React.ReactNode
+  onBilder?: (dateien: File[]) => void
 }) {
+  const bild = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      const w = KUERZEL[e.key.toLowerCase()]
+      if (w) onWerkzeug(w)
+    }
+    addEventListener('keydown', taste)
+    return () => removeEventListener('keydown', taste)
+  }, [onWerkzeug])
+
+  const werkzeugFn = (w: Werkzeug, titel: string, k: string): Funktion => ({
+    id: w,
+    titel,
+    symbol: w,
+    aktiv: werkzeug === w,
+    tun: () => onWerkzeug(w),
+    hinweis: `${titel} (Taste ${k.toUpperCase()})${w === 'radierer' ? '. Mit dem Stift: einfach umdrehen' : ''}`
+  })
+  const funktionen: Funktion[] = [werkzeugFn('lesen', 'Lesen', 'l'), werkzeugFn('stift', 'Stift', 's'), werkzeugFn('markieren', markierenText, 'm'), werkzeugFn('radierer', 'Radierer', 'r')]
+  if (onBilder) funktionen.push({ id: 'bild', titel: 'Bild', symbol: 'foto', tun: () => bild.current?.click(), hinweis: 'Foto, Screenshot oder Bild ins Buch legen (am PC auch mit Strg+V)' })
+
+  const alltagSchwarz = farbe === 'alltag_schwarz'
+  const farben =
+    werkzeug === 'stift' || werkzeug === 'markieren' ? (
+      <div className="fl-farben" role="group" aria-label="Farbe">
+        {STIFTE.map((s) => {
+          const an = farbe === s.farbe || (s.farbe === 'alltag' && alltagSchwarz)
+          return (
+            <button
+              type="button"
+              key={s.farbe}
+              className={`fl-farbe${an ? ' aktiv' : ''}`}
+              aria-pressed={an}
+              onClick={() => onFarbe(s.farbe === 'alltag' && farbe === 'alltag' ? 'alltag_schwarz' : s.farbe)}
+              title={s.farbe === 'alltag' ? 'Alltag: zweiter Tipp wechselt zwischen Blau und Schwarz' : s.name}
+            >
+              <span className="punkt" style={{ '--punkt': s.farbe === 'alltag' && alltagSchwarz ? FARBEN.alltag_schwarz : FARBEN[s.farbe] } as CSSProperties} />
+              <span className="fl-farbe-name">{s.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    ) : null
+
   return (
-    <div className="werkzeug" role="toolbar" aria-label="Werkzeuge">
-      <Kontur aktiv="button.aktiv" schluessel={werkzeug} rund={false} />
-      <button type="button" className={werkzeug === 'lesen' ? 'aktiv' : ''} aria-pressed={werkzeug === 'lesen'} onClick={() => onWerkzeug('lesen')}>
-        Lesen
-      </button>
-      <button type="button" className={werkzeug === 'stift' ? 'aktiv' : ''} aria-pressed={werkzeug === 'stift'} onClick={() => onWerkzeug('stift')}>
-        Stift
-      </button>
-      <button type="button" className={werkzeug === 'markieren' ? 'aktiv' : ''} aria-pressed={werkzeug === 'markieren'} onClick={() => onWerkzeug('markieren')}>
-        {markierenText}
-      </button>
-      <span className="trenner" />
-      {STIFTE.map((s) => (
-        <button
-          type="button"
-          key={s.farbe}
-          className={farbe === s.farbe || (s.farbe === 'alltag' && farbe === 'alltag_schwarz') ? 'farbe-aktiv' : ''}
-          aria-pressed={farbe === s.farbe || (s.farbe === 'alltag' && farbe === 'alltag_schwarz')}
-          onClick={() => {
-            // Alltag hat zwei Töne: zweiter Tipp wechselt zwischen Blau und Schwarz
-            onFarbe(s.farbe === 'alltag' && farbe === 'alltag' ? 'alltag_schwarz' : s.farbe)
-            if (werkzeug === 'lesen' || werkzeug === 'radierer') onWerkzeug('stift')
+    <>
+      <Funktionsleiste name="Werkzeuge" funktionen={funktionen} oben={farben} spalte />
+      {onBilder && (
+        <input
+          ref={bild}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            onBilder(Array.from(e.target.files ?? []))
+            e.target.value = ''
           }}
-        >
-          <span className="punkt" style={{ '--punkt': s.farbe === 'alltag' && farbe === 'alltag_schwarz' ? FARBEN.alltag_schwarz : FARBEN[s.farbe] } as CSSProperties} />
-          {s.name}
-        </button>
-      ))}
-      <span className="trenner" />
-      <button type="button" className={werkzeug === 'radierer' ? 'aktiv' : ''} aria-pressed={werkzeug === 'radierer'} onClick={() => onWerkzeug('radierer')} title="Mit dem Stift: einfach umdrehen">
-        Radierer
-      </button>
-      {extra}
-    </div>
+        />
+      )}
+    </>
   )
 }

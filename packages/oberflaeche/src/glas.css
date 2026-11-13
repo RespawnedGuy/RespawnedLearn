@@ -1,6 +1,7 @@
-/* Glas: die schwebende Ebene (Kopf, Daumenmenü, Werkzeugleiste) liegt als mattes Glas über dem Inhalt.
-   Regeln nach Apple „Liquid Glass“ und Material 3: Glas nur für Bedienung, nie für Inhalt; Text auf Glas hält
-   4,5:1 auch über dem ungünstigsten Grund (schwarz und weiß, gemessen in tools/pruefung/glaskontrast.mjs).
+/* Glas und Stil „Linie“ (Nils 13.11.): Oben stehen die Bereiche als Tabs mit Unterstrich, unten schaltet die
+   Funktionsleiste die Funktionen des aktiven Bereichs, die aktive trägt dieselbe Linie gespiegelt am oberen Rand.
+   Glas nur für Bedienung (Kopf, Funktionsleiste), nie für Inhalt (Apple „Liquid Glass“, Material 3). Text auf Glas
+   hält 4,5:1 auch über dem ungünstigsten Grund (schwarz und weiß, gemessen in tools/pruefung/glaskontrast.mjs).
    Wer „Transparenz reduzieren“ oder „Mehr Kontrast“ eingestellt hat oder keine Unschärfe bekommt, sieht deckende Flächen.
    Achtung: Unschärfe sieht nur bis zum nächsten Vorfahren mit opacity, filter oder view-transition-name. Darum trägt
    das Element mit Glas seinen Übergangsnamen selbst (bewegung.css) und kein Vorfahr einen. */
@@ -10,32 +11,29 @@
   --glas-flaeche: rgba(255, 255, 255, 0.72);
   --glas-filter: blur(24px) saturate(1.8);
   --glas-rand: rgba(255, 255, 255, 0.65);
-  --glas-haar: rgba(31, 34, 39, 0.1);
+  --glas-haar: rgba(31, 34, 39, 0.12);
   --glas-licht: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   --glas-schatten: 0 1px 3px rgba(31, 34, 39, 0.08), 0 10px 32px rgba(31, 34, 39, 0.14);
   --auf-glas-leise: #43474f;
-  /* Hover auf Glas, Fläche unter der Wölbung des Daumenmenüs */
-  --glas-marke: rgba(106, 79, 196, 0.12);
-  /* Leuchtende Kontur des Daumenmenüs (Schmuck, die Beschriftung zeigt das Ziel zusätzlich) */
-  --leucht: #7b5ee0;
-  --leucht-schein: rgba(123, 94, 224, 0.55);
+  /* Akzent als Schrift auf Glas: über Schwarz 4,71:1, über Weiß 9,4:1 */
+  --akzent-auf-glas: #7a2f0a;
+  --glas-marke: rgba(196, 80, 26, 0.1);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 0,8: über weißer PDF-Seite bleibt #c4c7ce bei 4,71:1 */
+    /* 0,8: über weißer PDF-Seite bleibt #c4c7ce bei 4,71:1, #f8bd98 bei 4,83:1 */
     --glas-flaeche: rgba(36, 37, 42, 0.8);
     --glas-rand: rgba(255, 255, 255, 0.1);
-    --glas-haar: rgba(0, 0, 0, 0.4);
-    --glas-licht: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --glas-haar: rgba(255, 255, 255, 0.1);
+    --glas-licht: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     --glas-schatten: 0 1px 3px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45);
     --auf-glas-leise: #c4c7ce;
-    --glas-marke: rgba(185, 166, 245, 0.14);
-    --leucht: #b29cff;
-    --leucht-schein: rgba(178, 156, 255, 0.6);
+    --akzent-auf-glas: #f8bd98;
+    --glas-marke: rgba(242, 149, 95, 0.14);
   }
 }
 
-/* ---------- Kopf ---------- */
+/* ---------- Kopf: Tabs mit Unterstrich, am Handy wie am PC ---------- */
 .kopf {
   background: var(--glas-flaeche);
   -webkit-backdrop-filter: var(--glas-filter);
@@ -44,85 +42,87 @@
   box-shadow: var(--glas-licht);
 }
 .kopf .sync, .kopf-reiter-knopf, .kopf-zahnrad { color: var(--auf-glas-leise); }
+.kopf-reiter-knopf.aktiv { color: var(--tinte); }
 .kopf-reiter-knopf:hover, .kopf-zahnrad:hover { background: var(--glas-marke); }
-/* Unterstreichung als eigenes Element: gleitet beim Bereichswechsel zum neuen Reiter */
+/* Unterstreichung als eigenes Element: gleitet beim Bereichswechsel zum neuen Tab (bewegung.css) */
 .kopf-reiter-knopf.aktiv::after { content: none; }
-.kopf-strich { position: absolute; left: 12px; right: 12px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--leucht); box-shadow: 0 0 6px var(--leucht-schein); }
-
-/* ---------- Daumenmenü (Handy): schwebende Glaspille ---------- */
-.daumenleiste { display: none; }
+.kopf-strich { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; border-radius: 3px 3px 0 0; background: var(--akzent); }
+.kopf-zahnrad { position: relative; }
+.zahnrad-punkt { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 5px; background: var(--stift-wichtig); box-shadow: 0 0 0 2px var(--flaeche); }
 @media (max-width: 720px) {
-  body { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
-  .daumenleiste {
-    display: block; position: fixed; z-index: 32; pointer-events: none;
-    left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  .kopf-reiter { margin-left: 0; gap: 0; flex: 1; justify-content: center; }
+  .kopf-reiter-knopf { padding: 0 9px; font-size: 0.875rem; }
+  .kopf-strich { left: 9px; right: 9px; }
+  .kopf-zahl { min-width: 18px; height: 18px; padding: 0 5px; font-size: 0.6875rem; }
+  /* Kein Platz für den Konflikt-Text neben den Tabs: roter Punkt am Zahnrad (App.tsx) */
+  .kopf .sync .chip.rot { display: none; }
+}
+@media (max-width: 359px) {
+  .kopf-reiter-knopf { padding: 0 6px; }
+  .kopf-strich { left: 6px; right: 6px; }
+}
+
+/* ---------- Funktionsleiste ---------- */
+.funktionsleiste {
+  display: none; z-index: 32;
+  background: var(--glas-flaeche);
+  -webkit-backdrop-filter: var(--glas-filter);
+  backdrop-filter: var(--glas-filter);
+}
+.fl-zeile { display: flex; }
+.fl-fn {
+  position: relative; flex: 1 1 0; min-width: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border: none; background: transparent; color: var(--auf-glas-leise); font: inherit; font-size: 0.6875rem; font-weight: 600; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.fl-fn:hover { color: var(--tinte); }
+.fl-fn.aktiv { color: var(--akzent-auf-glas); font-weight: 800; }
+.fl-fn.aktiv::before { content: ''; position: absolute; background: var(--akzent); }
+.fl-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.fl-farben { display: flex; gap: 6px; justify-content: center; }
+.fl-farbe {
+  display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: none; border-radius: 18px; background: transparent;
+  color: var(--auf-glas-leise); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; touch-action: manipulation;
+}
+.fl-farbe.aktiv { color: var(--tinte); font-weight: 800; background: var(--glas-marke); }
+.fl-farbe .punkt { width: 14px; height: 14px; border-radius: 7px; flex: none; background: var(--punkt); box-shadow: 0 0 0 1px rgba(31, 34, 39, 0.2); }
+.fl-farbe.aktiv .punkt { box-shadow: 0 0 0 2px var(--flaeche), 0 0 0 3.5px var(--punkt); }
+@media (prefers-color-scheme: dark) {
+  /* Schwarzer Alltagsstift auf dunklem Glas: heller Rand, damit der Punkt sichtbar bleibt */
+  .fl-farbe .punkt { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+}
+
+/* Handy: fest unten über die ganze Breite, über der Tastatur, wenn sie offen ist */
+@media (max-width: 720px) {
+  body:has(.funktionsleiste) { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .funktionsleiste {
+    display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: var(--tastatur, 0px);
+    border-top: 1px solid var(--glas-haar); box-shadow: var(--glas-licht);
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   }
-  .daumenleiste > * { pointer-events: auto; }
-  /* Tastatur offen: nur „+“ bleibt, an derselben Stelle über der Tastatur, ohne Pille */
-  .daumenleiste.tastatur { bottom: calc(var(--tastatur, 0px) + 8px); }
-  .daumenleiste.tastatur .daumen-zeile { pointer-events: none; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: transparent; box-shadow: none; }
-  .daumenleiste.tastatur .daumen-plus { pointer-events: auto; }
-  /* Werkzeuge im Skript schweben über der Pille, nicht auf ihr */
-  body:has(.daumenleiste:not(.tastatur)) .werkzeug { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-}
-.daumen-zeile {
-  height: 64px; max-width: 460px; margin: 0 auto; padding: 0 4px; display: flex; align-items: center; justify-content: space-around;
-  position: relative; border-radius: 32px; border: 1px solid var(--glas-rand);
-  background: var(--glas-flaeche);
-  -webkit-backdrop-filter: var(--glas-filter);
-  backdrop-filter: var(--glas-filter);
-  box-shadow: var(--glas-licht), 0 0 0 0.5px var(--glas-haar), var(--glas-schatten);
-  transform-origin: 50% 100%;
-}
-.daumen-ziel {
-  flex: 1 1 0; min-width: 48px; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--auf-glas-leise); text-decoration: none; border-radius: 28px; font-size: 0.6875rem; font-weight: 600; touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-.daumen-ziel:hover { color: var(--tinte); }
-.daumen-ziel.aktiv { color: var(--akzent-dunkel); font-weight: 800; }
-.daumen-symbol { position: relative; width: 52px; height: 30px; border-radius: 15px; display: grid; place-items: center; }
-/* Leuchtende Kontur: liegt genau auf der Pille, unter den Zielen, fängt keine Finger */
-.kontur { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-/* Im Daumenmenü liegt sie auf dem Rahmen der Pille, nicht innerhalb */
-.daumen-zeile > .kontur { left: -1px; top: -1px; }
-.kontur-linie { fill: none; stroke: var(--leucht); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--leucht-schein)) drop-shadow(0 0 8px var(--leucht-schein)); }
-.kontur-flaeche { fill: var(--glas-marke); }
-.daumen-ziel { position: relative; }
-.daumen-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.daumen-zahl {
-  position: absolute; top: -3px; left: 30px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  background: var(--akzent); color: #fff; font-size: 0.6875rem; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
-}
-/* Klein beim Lesen: Pille schrumpft zum unteren Rand hin, Beschriftung verschwindet, Symbole rücken in die Mitte */
-.daumenleiste.klein .daumen-zeile { transform: scale(0.75); }
-.daumenleiste.klein .daumen-text { opacity: 0; }
-.daumenleiste.klein .daumen-symbol { transform: translateY(8px); }
-.daumenleiste.klein .daumen-plus { transform: translateY(8px) scale(0.9); }
-@media (max-width: 720px) {
-  body:has(.daumenleiste.klein) .werkzeug { translate: 0 16px; }
+  .fl-zeile { height: 60px; }
+  .fl-fn.aktiv::before { top: -1px; left: 26%; right: 26%; height: 3px; border-radius: 0 0 3px 3px; }
+  .fl-oben { padding: 6px 8px; border-bottom: 1px solid var(--glas-haar); }
 }
 
-/* ---------- Werkzeugleiste (Zeichenmenü) im Skript und im Buch: dieselbe Glaspille wie das Daumenmenü ----------
-   Aktives Werkzeug: Wölbung (Kontur.tsx, gerade, weil die Leiste am Handy seitlich scrollt). Aktive Farbe: Ring in ihrer Farbe. */
-.werkzeug {
-  background: var(--glas-flaeche);
-  -webkit-backdrop-filter: var(--glas-filter);
-  backdrop-filter: var(--glas-filter);
-  border: 1px solid var(--glas-rand);
-  box-shadow: var(--glas-licht), 0 0 0 0.5px var(--glas-haar), var(--glas-schatten);
-  border-radius: 28px; padding: 6px 10px;
+/* PC: nur die Werkzeuge, als Spalte am Rand gegenüber der Schreibhand; beim Schreiben durchlässig (stiftRuhe.ts) */
+@media (min-width: 721px) {
+  .funktionsleiste.spalte {
+    display: flex; flex-direction: column; gap: 4px; position: fixed; top: 50%; transform: translateY(-50%); width: 76px; padding: 6px 4px;
+    border: 1px solid var(--glas-rand); border-radius: 18px; box-shadow: var(--glas-licht), 0 0 0 0.5px var(--glas-haar), var(--glas-schatten);
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    transition: opacity 180ms ease;
+  }
+  :root[data-schreibhand='links'] .funktionsleiste.spalte { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .spalte .fl-zeile { flex-direction: column; gap: 2px; }
+  .spalte .fl-fn { height: 56px; flex: none; }
+  .spalte .fl-fn.aktiv::before { top: 22%; bottom: 22%; left: -4px; width: 3px; border-radius: 0 3px 3px 0; }
+  :root[data-schreibhand='links'] .spalte .fl-fn.aktiv::before { left: auto; right: -4px; border-radius: 3px 0 0 3px; }
+  .spalte .fl-oben { order: 2; border-top: 1px solid var(--glas-haar); padding-top: 4px; }
+  .spalte .fl-farben { flex-direction: column; gap: 2px; }
+  .spalte .fl-farbe { flex-direction: column; gap: 3px; padding: 6px 2px; border-radius: 12px; font-size: 0.6875rem; }
+  :root[data-stift='schreibt'] .funktionsleiste.spalte { opacity: 0.12; pointer-events: none; }
 }
-.werkzeug button { position: relative; border-radius: 22px; color: var(--auf-glas-leise); font-weight: 600; }
-.werkzeug button:hover { color: var(--tinte); }
-.werkzeug button.aktiv { background: transparent; color: var(--akzent-dunkel); font-weight: 800; }
-.werkzeug button.farbe-aktiv { background: transparent; color: var(--tinte); font-weight: 700; }
-.werkzeug :focus-visible { outline-color: var(--akzent-text); }
-.werkzeug .trenner { background: var(--linie-stark); }
-.werkzeug .hinweis { color: var(--auf-glas-leise); }
-.werkzeug .punkt { background: var(--punkt); box-shadow: 0 0 0 1px rgba(31, 34, 39, 0.18); }
-.werkzeug .farbe-aktiv .punkt { box-shadow: 0 0 0 2px var(--glas-flaeche), 0 0 0 3.5px var(--punkt), 0 0 8px 2px var(--punkt); }
 
 /* ---------- Ohne Glas: keine Unschärfe, Transparenz reduziert, mehr Kontrast ---------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -135,17 +135,6 @@
   :root { --glas-flaeche: var(--flaeche); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); }
 }
 @media (forced-colors: active) {
-  .daumen-zeile, .kopf, .werkzeug { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; }
-  .kontur-linie { stroke: Highlight; filter: none; }
-  .kontur-flaeche { fill: none; }
-}
-
-/* Sehr schmal (320 px): „Einstellungen“ passt auch fett ganz hinein */
-@media (max-width: 359px) {
-  .daumen-zeile { padding: 0 2px; }
-  .daumen-text { font-size: 0.65rem; letter-spacing: -0.01em; }
-}
-@media (prefers-color-scheme: dark) {
-  /* Schwarzer Alltagsstift auf dunklem Glas: heller Rand, damit der Punkt sichtbar bleibt */
-  .werkzeug .punkt { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+  .funktionsleiste, .kopf { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; }
+  .fl-fn.aktiv::before, .kopf-strich { background: Highlight; }
 }
