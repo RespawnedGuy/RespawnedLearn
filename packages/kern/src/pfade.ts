@@ -41,7 +41,7 @@ export const pfade = {
   fragen: (anhangId: string, seite: number) => `lernen/fragen/${anhangId}/S${drei(seite)}.json`,
   /** Welche Kapitelfragen ein Gerät erledigt hat */
   fragenStand: (geraet: string) => `lernen/fragen-stand/${geraet}.json`,
-  /** Vorfragen eines Tages zu den nächsten Seiten (schreibt der Server auf Knopfdruck) */
+  /** Vorfragen eines Tages zu den nächsten Seiten (erzeugt die App auf Knopfdruck) */
   vorfragen: (datum: string) => `lernen/vorfragen/${datum}.json`,
   /** Eigene KI-Anweisungen, nur Abweichungen vom Standard (Vertrag Lernen 1.1, 5.8) */
   kiPrompts: () => 'lernen/einstellungen/ki-prompts.json',

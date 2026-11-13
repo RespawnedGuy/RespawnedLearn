@@ -15,6 +15,12 @@ export interface Schema {
 
 const LISTE: Schema = { type: 'array', items: { type: 'string' } }
 const obj = (properties: Record<string, Schema>): Schema => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false })
+const KAPITEL_FRAGE = obj({
+  art: { type: 'string', enum: ['verstaendnis', 'sokratisch'] },
+  frage: { type: 'string' },
+  antwort: { type: 'string' },
+  seite: { type: 'integer' }
+})
 
 export const SCHEMAS = {
   frage: obj({ frage: { type: 'string' } }),
@@ -29,7 +35,27 @@ export const SCHEMAS = {
     tipp: { type: 'string' }
   }),
   /** Verbindungstest in den Einstellungen */
-  pruefung: obj({ ok: { type: 'boolean' } })
+  pruefung: obj({ ok: { type: 'boolean' } }),
+  /** Kapitelfragen (Vertrag 5.7): ein Stück von wenigen Seiten */
+  stueck: obj({ kern: { type: 'string', description: '2 bis 4 Sätze: worum es in diesem Abschnitt geht' }, fragen: { type: 'array', items: KAPITEL_FRAGE } }),
+  /** Kapitelfragen: offene Fragen zum ganzen Kapitel */
+  kapitel: obj({ fragen: { type: 'array', items: KAPITEL_FRAGE } }),
+  /** Kapitelfragen: Rechenaufgaben zu einem Abschnitt */
+  rechnen: obj({
+    aufgaben: {
+      type: 'array',
+      items: obj({
+        frage: { type: 'string' },
+        ergebnis: { type: 'string' },
+        seite: { type: 'integer' },
+        tipps: LISTE,
+        schritte: { type: 'array', items: obj({ ziel: { type: 'string' }, rechnung: { type: 'string' }, ergebnis: { type: 'string' } }) },
+        wege: { type: 'string' }
+      })
+    }
+  }),
+  /** Vorfragen (Vertrag 5.8) */
+  vorfragen: obj({ fragen: { type: 'array', items: obj({ anhang: { type: 'string' }, frage: { type: 'string' }, antwort: { type: 'string' }, seite: { type: 'integer' } }) } })
 } satisfies Record<string, Schema>
 
 /**

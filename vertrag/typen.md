@@ -121,7 +121,7 @@ anhang: "[[ID]]"
 
 ### 5.7 Fragen zum Kapitel
 
-Der Erzeuger der Fragen (Grundlagen 6) erzeugt Fragen zu dem Kapitel, in dem gerade gelesen wird. Grundlage sind der Lesestand (5.3, jüngster Eintrag aller Geräte, höchstens 14 Tage alt) und das Inhaltsverzeichnis. Als Kapitel gilt dieselbe Einheit wie in der Modulübersicht: die oberste Ebene, bei Büchern mit weniger als drei Teilen eine Ebene tiefer; es endet vor dem nächsten Eintrag dieser Einheit, höchstens nach 40 Seiten. Den Text liest er in Stücken von 5 Seiten aus dem PDF. Seiten ohne Text (Scans) gehen nicht an die KI.
+Der Erzeuger der Fragen (Grundlagen 6) erzeugt Fragen zu dem Kapitel, in dem gerade gelesen wird; in RespawnedLearn auf Knopfdruck („Fragen zu … erzeugen“), angeboten, solange das aktuelle Kapitel keine fertigen Fragen hat. Nach jedem Schritt schreibt er auf den neuesten Stand der Datei, sodass ein Abbruch oder ein zweites Gerät nichts Erreichtes verliert; ein Knopfdruck setzt ein Kapitel mit `fehler` wieder auf `laeuft`. Eine unlesbare Fragendatei überschreibt er nie. Grundlage sind der Lesestand (5.3, jüngster Eintrag aller Geräte, höchstens 14 Tage alt) und das Inhaltsverzeichnis. Als Kapitel gilt dieselbe Einheit wie in der Modulübersicht: die oberste Ebene, bei Büchern mit weniger als drei Teilen eine Ebene tiefer; es endet vor dem nächsten Eintrag dieser Einheit, höchstens nach 40 Seiten. Den Text liest er in Stücken von 5 Seiten aus dem PDF. Seiten ohne Text (Scans) gehen nicht an die KI.
 
 **`lernen/fragen/<anhang-id>/S<erste Seite>.json`**: eine Datei pro Kapitel, sie wächst Stück für Stück.
 ```json

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { lesestand, liesVorfragen, pfade, type Vorfragen as VorfragenDatei } from '@rl/kern'
-import { ortLink, useDaten } from '@rl/oberflaeche'
+import { heute, lesestand, liesVorfragen, pfade, type Vorfragen as VorfragenDatei } from '@rl/kern'
+import { ortLink, useDaten, type Speicher } from '@rl/oberflaeche'
+import { vorfragenJetzt } from './fragenWerkzeug'
+import { fehlerText } from './ki'
 import { Abrufflaeche, useAbruf } from './Abruf'
 import { Inhalt } from './Inhalt'
 
@@ -8,7 +10,6 @@ import { Inhalt } from './Inhalt'
 // die Vermutung falsch ist (Pretesting, Pan & Carpenter 2023). Auf Knopfdruck, als tägliche Routine vor dem Lernen.
 
 const TAGE = 14
-const heute = () => new Date().toLocaleDateString('sv-SE')
 const merkName = (datum: string) => `rvx-vorfragen-${datum}`
 
 function gemacht(datum: string): boolean {
@@ -50,15 +51,18 @@ export function VorfragenHinweis() {
   )
 }
 
-async function holeVorfragen(neu: boolean): Promise<{ v: VorfragenDatei | null; hinweis?: string }> {
-  // Die App erzeugt Vorfragen selbst ab Version 0.4.0 (Schritt 3b); bis dahin gelten nur schon vorhandene Dateien
-  void neu
-  return { v: null, hinweis: 'Neue Vorfragen erzeugt die App mit dem nächsten Update selbst.' }
+async function holeVorfragen(speicher: Speicher, neu: boolean): Promise<{ v: VorfragenDatei | null; hinweis?: string }> {
+  try {
+    const r = await vorfragenJetzt(speicher, neu)
+    return 'hinweis' in r ? { v: null, hinweis: r.hinweis } : { v: r }
+  } catch (e) {
+    return { v: null, hinweis: fehlerText(e) }
+  }
 }
 
 /** `#/lernen/vorfragen`: eine Frage zur Zeit, erst raten, dann wahlweise auflösen */
 export function Vorfragen() {
-  const { bestand } = useDaten()
+  const { speicher, bestand } = useDaten()
   const datum = heute()
   const gespeichert = liesVorfragen(bestand.texte.get(pfade.vorfragen(datum)))
   const [v, setV] = useState<VorfragenDatei | null>(() => (gespeichert && !veraltet(gespeichert, lesestand(bestand)) ? gespeichert : null))
@@ -72,7 +76,7 @@ export function Vorfragen() {
   const lade = async (neu: boolean) => {
     setLaedt(true)
     setHinweis(null)
-    const r = await holeVorfragen(neu)
+    const r = await holeVorfragen(speicher, neu)
     setLaedt(false)
     if (r.v) {
       setV(r.v)
@@ -106,7 +110,10 @@ export function Vorfragen() {
     return (
       <div className="lernen-seite">
         {kopf}
-        <p className="leer">{laedt ? 'Die KI liest die nächsten Seiten deiner Bücher. Das dauert etwa eine Minute.' : hinweis ?? ''}</p>
+        <p className="leer">
+          {laedt ? 'Die KI liest die nächsten Seiten deiner Bücher. Das dauert etwa eine Minute.' : hinweis ?? ''}{' '}
+          {!laedt && hinweis && /Einstellungen/.test(hinweis) && <a href={ortLink('einstellungen')}>Zu den Einstellungen</a>}
+        </p>
         {!laedt && hinweis && (
           <button type="button" className="knopf" onClick={() => void lade(false)}>
             Nochmal versuchen

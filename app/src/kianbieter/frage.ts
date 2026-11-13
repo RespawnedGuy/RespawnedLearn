@@ -15,7 +15,7 @@ export interface Aufgabe {
   bilder?: Bild[]
   schema: Schema
   name: string
-  aufwand?: 'niedrig' | 'mittel'
+  aufwand?: 'niedrig' | 'mittel' | 'hoch'
   signal?: AbortSignal
 }
 

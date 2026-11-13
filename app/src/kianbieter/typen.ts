@@ -26,7 +26,7 @@ export interface Anfrage {
   /** Name des Formats (manche Anbieter verlangen einen) */
   name: string
   /** wie gründlich das Modell nachdenken soll, wo der Anbieter das kennt */
-  aufwand: 'niedrig' | 'mittel'
+  aufwand: 'niedrig' | 'mittel' | 'hoch'
   signal?: AbortSignal
 }
 

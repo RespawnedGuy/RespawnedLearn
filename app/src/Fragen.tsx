@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { fragenStand, hilfeStufen, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rl/kern'
+import { useEffect, useState } from 'react'
+import { fragenStand, hilfeStufen, kapitelOhneFragen, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rl/kern'
 import { geraet, ortLink, useDaten, type Speicher } from '@rl/oberflaeche'
 import { Abrufflaeche, KiRueckmeldung, useAbruf } from './Abruf'
 import { Inhalt } from './Inhalt'
 import { aktiverZugang, useKiZugang } from './kianbieter/zugang'
+import { kapitelfragenJetzt, kapitelfragenLaufen } from './fragenWerkzeug'
+import { fehlerText } from './ki'
 
 /** Stand der KI auf diesem Gerät: ohne eingerichtete KI sagt die App es, statt still keine Fragen zu zeigen */
 function useKi(): { bereit: boolean; grund?: string } | null {
@@ -22,8 +24,20 @@ export function FragenHinweis() {
   const { bestand } = useDaten()
   const offen = useOffeneFragen()
   const ki = useKi()
-  // fehlt auf dem Server etwas, sagt die App es hier, statt still keine Fragen zu zeigen
-  if (!offen.length) return ki && !ki.bereit ? <p className="klein-leise">Fragen zum Kapitel: {ki.grund}</p> : null
+  if (!offen.length) {
+    // Angebot nur, wenn eine KI eingerichtet ist und das aktuelle Kapitel noch keine fertigen Fragen hat
+    const ohne = ki?.bereit ? kapitelOhneFragen(bestand, Date.now()) : []
+    if (!ohne.length) return null
+    return (
+      <a className="karte fragen-hinweis" href={ortLink('lernen', 'fragen')}>
+        <span>
+          <b>Fragen zu deinem Kapitel</b>
+          <span className="klein-leise"> · {ohne[0].kapitel}</span>
+        </span>
+        <span className="knopf klein">Erzeugen</span>
+      </a>
+    )
+  }
   const buch = bestand.dokumente.get(offen[0].anhang)?.titel ?? 'deinem Buch'
   return (
     <a className="karte fragen-hinweis" href={ortLink('lernen', 'fragen')}>
@@ -78,7 +92,7 @@ export function KapitelFragen() {
   const { speicher, bestand } = useDaten()
   const ki = useKi()
   // die Reihe einmal festhalten, damit sie sich beim Abhaken nicht verschiebt
-  const [reihe] = useState(() => offeneFragen(bestand, lesestand(bestand)))
+  const [reihe, setReihe] = useState(() => offeneFragen(bestand, lesestand(bestand)))
   const [i, setI] = useState(0)
   const [offen, setOffen] = useState(false)
   /** Rechenaufgaben: wie viele Hilfestufen aufgedeckt sind */
@@ -107,7 +121,18 @@ export function KapitelFragen() {
             ? `Geschafft: ${reihe.length} ${reihe.length === 1 ? 'Frage' : 'Fragen'}.`
             : 'Gerade sind keine Fragen offen. Sie entstehen zu dem Kapitel, in dem du liest, und erscheinen, sobald du den Stoff gelesen hast.'}
         </p>
-        {ki && !ki.bereit && <p className="klein-leise">KI: {ki.grund}</p>}
+        {ki && !ki.bereit ? (
+          <p className="klein-leise">
+            KI: {ki.grund} <a href={ortLink('einstellungen')}>Zu den Einstellungen</a>
+          </p>
+        ) : (
+          <FragenErzeugen
+            nachher={() => {
+              setReihe(offeneFragen(bestand, lesestand(bestand)))
+              setI(0)
+            }}
+          />
+        )}
       </div>
     )
   }
@@ -255,5 +280,66 @@ function FrageInhalt({ q, offen, stufe, setStufe }: { q: OffeneFrage; offen: boo
       )}
       {rechnen && q.wege && (offen || (stufe > 0 && stufe >= stufen.length)) && <p className="klein-leise">Andere Wege: {q.wege}</p>}
     </>
+  )
+}
+
+/**
+ * Knopf „Fragen erzeugen“: liest das aktuelle Kapitel Stück für Stück und fragt die KI. Was fertig ist, steht sofort
+ * im Datenordner; ein Abbruch verliert nichts.
+ */
+function FragenErzeugen({ nachher }: { nachher: () => void }) {
+  const { speicher, bestand } = useDaten()
+  const [laeuft, setLaeuft] = useState(kapitelfragenLaufen)
+  const [stand, setStand] = useState('')
+  const [ergebnis, setErgebnis] = useState<{ gut: boolean; text: string } | null>(null)
+  const ohne = kapitelOhneFragen(bestand, Date.now())
+  const los = async () => {
+    setLaeuft(true)
+    setErgebnis(null)
+    try {
+      const r = await kapitelfragenJetzt(speicher, setStand)
+      setErgebnis(
+        r.hinweis
+          ? { gut: false, text: r.hinweis }
+          : { gut: true, text: r.neu ? `${r.neu} neue ${r.neu === 1 ? 'Frage' : 'Fragen'}. Jede erscheint, sobald du bis zu ihrer Seite gelesen hast.` : 'Keine neuen Fragen: Das Kapitel ist schon bearbeitet oder hat kaum Text.' }
+      )
+    } catch (e) {
+      setErgebnis({ gut: false, text: fehlerText(e) })
+    } finally {
+      setLaeuft(false)
+      setStand('')
+    }
+  }
+  // läuft der Lauf schon (aus einer anderen Ansicht), hier anhängen, damit Stand und Ende sichtbar sind
+  useEffect(() => {
+    if (laeuft) void los()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // neue Fragen in die Reihe holen, sobald sie da sind
+  useEffect(() => {
+    if (ergebnis?.gut) nachher()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ergebnis])
+  if (!ohne.length && !laeuft && !ergebnis) return null
+  return (
+    <div className="fragen-erzeugen">
+      {laeuft ? (
+        <p className="klein-leise" role="status">
+          {stand || 'Liest das Kapitel …'} · etwa eine halbe Minute je Abschnitt
+        </p>
+      ) : (
+        ohne.length > 0 && (
+          <button type="button" className="knopf haupt" onClick={() => void los()}>
+            Fragen zu „{ohne[0].kapitel}“ erzeugen
+          </button>
+        )
+      )}
+      {ergebnis && (
+        <p className={ergebnis.gut ? 'meldung-gut' : 'meldung-schlecht'} role="status">
+          {ergebnis.text} {/Einstellungen/.test(ergebnis.text) && <a href={ortLink('einstellungen')}>Zu den Einstellungen</a>}
+        </p>
+      )}
+      {!laeuft && !ergebnis && <p className="klein-leise">Die KI liest dafür den Text des Kapitels (bis zu 40 Seiten); der Anbieter rechnet das nach Verbrauch ab.</p>}
+    </div>
   )
 }

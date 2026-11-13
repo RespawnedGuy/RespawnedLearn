@@ -7,7 +7,8 @@ import type { Abruf } from './typen'
 /** wie inTauri() aus @rl/oberflaeche, ohne die ganze Oberfläche zu laden (testbar ohne Browser) */
 export const inTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
-const SEKUNDEN = 180
+// Rechenaufgaben mit hohem Aufwand und Vorfragen über zwei Bücher brauchen bei großen Modellen auch mal drei, vier Minuten (VX: 300 s)
+const SEKUNDEN = 300
 
 /** Bricht nach SEKUNDEN ab und hört zusätzlich auf das Signal des Aufrufers */
 export function mitFrist(signal?: AbortSignal, sekunden = SEKUNDEN): AbortSignal {

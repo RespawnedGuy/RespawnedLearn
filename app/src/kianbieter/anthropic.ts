@@ -62,7 +62,7 @@ export const anthropic: Adapter = {
           ],
           output_config: {
             format: { type: 'json_schema', schema: a.schema as unknown as Record<string, unknown> },
-            ...(kenntAufwand(modell) ? { effort: a.aufwand === 'niedrig' ? ('low' as const) : ('medium' as const) } : {})
+            ...(kenntAufwand(modell) ? { effort: a.aufwand === 'niedrig' ? ('low' as const) : a.aufwand === 'hoch' ? ('high' as const) : ('medium' as const) } : {})
           },
           ...(kenntAusweichen(modell) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {})
         },

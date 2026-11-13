@@ -145,3 +145,20 @@ export function sichereInhalt(speicher: Speicher, anhangId: string, pfad: string
   }
   return p
 }
+
+/**
+ * Text der Seiten `von` bis `bis` (je Seite ein Eintrag, Zeilen wie auf der Seite) samt Seitenzahl des PDFs. Ersetzt
+ * `pdftotext` des alten Servers; Scans liefern leere Seiten.
+ */
+export async function seitenText(speicher: Speicher, pfad: string, von: number, bis: number): Promise<{ seiten: number; texte: string[] }> {
+  const doc = await ladePdf(speicher, pfad)
+  if (!doc) return { seiten: 0, texte: [] }
+  const texte: string[] = []
+  for (let nr = Math.max(1, von); nr <= Math.min(bis, doc.numPages); nr++) texte.push((await seitenZeilen(doc, nr).catch(() => [])).join('\n'))
+  return { seiten: doc.numPages, texte }
+}
+
+/** Seitenzahl eines PDFs (0, wenn es fehlt) */
+export async function seitenzahl(speicher: Speicher, pfad: string): Promise<number> {
+  return (await ladePdf(speicher, pfad))?.numPages ?? 0
+}
