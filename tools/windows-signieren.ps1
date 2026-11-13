@@ -4,7 +4,8 @@
 param([Parameter(Mandatory = $true)][string]$Datei)
 $ErrorActionPreference = 'Stop'
 
-if (-not $env:WINDOWS_PFX_BASE64 -or -not $env:WINDOWS_PFX_PASSWORT) { throw 'WINDOWS_PFX_BASE64 oder WINDOWS_PFX_PASSWORT fehlt' }
+# WINDOWS_PFX_DATEI nutzt nur die Signierprobe (Wegwerf-Zertifikat als Datei, damit es nicht im Log steht)
+if (-not ($env:WINDOWS_PFX_BASE64 -or $env:WINDOWS_PFX_DATEI) -or -not $env:WINDOWS_PFX_PASSWORT) { throw 'WINDOWS_PFX_BASE64 oder WINDOWS_PFX_PASSWORT fehlt' }
 if (-not (Test-Path -LiteralPath $Datei)) { throw "Zu signierende Datei fehlt: $Datei" }
 
 # signtool aus dem neuesten Windows SDK des Runners
@@ -16,7 +17,8 @@ $tmp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath(
 $pfx = Join-Path $tmp ("signatur-" + [guid]::NewGuid() + ".pfx")
 $zeitstempel = if ($env:WINDOWS_ZEITSTEMPEL) { $env:WINDOWS_ZEITSTEMPEL } else { 'http://timestamp.digicert.com' }
 try {
-  [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64))
+  if ($env:WINDOWS_PFX_DATEI) { Copy-Item -LiteralPath $env:WINDOWS_PFX_DATEI $pfx }
+  else { [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)) }
   # Zeitstempeldienste sind manchmal kurz weg: dreimal versuchen
   for ($versuch = 1; $versuch -le 3; $versuch++) {
     & $signtool.FullName sign /fd SHA256 /td SHA256 /tr $zeitstempel /f $pfx /p $env:WINDOWS_PFX_PASSWORT /d RespawnedLearn $Datei
