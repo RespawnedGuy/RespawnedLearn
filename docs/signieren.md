@@ -23,6 +23,8 @@ Wer auf `main` pushen kann, bekäme sonst über die Action ein echt signiertes U
 4. **Fremde Pull Requests:** Settings → Actions → General → *Approval for running fork pull request workflows from
    contributors* → „Require approval for all external contributors“.
 5. **Konto:** github.com/settings/security → Passkey oder Zwei-Faktor einschalten.
+6. **Mailadresse:** github.com/settings/emails → „Keep my email addresses private“ und „Block command line pushes that
+   expose my email“. Sonst steht deine private Adresse in jedem Merge-Commit, den du über die Weboberfläche anlegst.
 
 Ein Release läuft danach so: Pull Request mergen → Action baut → unter Actions im Lauf „Review deployments“ →
 `release` anhaken → Approve. Erst dann signieren Windows- und Android-Job, danach entsteht der Release.
