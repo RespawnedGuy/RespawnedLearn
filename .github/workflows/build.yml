@@ -72,9 +72,7 @@ jobs:
           Get-ChildItem ausgabe | ForEach-Object { Write-Host $_.Name }
       - name: Signatur prüfen
         if: env.HAT_ZERTIFIKAT == 'true'
-        run: |
-          $dateien = @('app/src-tauri/target/release/respawnedlearn.exe') + (Get-ChildItem ausgabe/*).FullName
-          ./tools/windows-signatur-pruefen.ps1 @dateien
+        run: ./tools/windows-signatur-pruefen.ps1 -Installer (Get-ChildItem ausgabe/*).FullName
       # Ohne Zertifikat: derselbe Weg mit einem Wegwerf-Zertifikat, damit der Schalter beim Einschalten sicher läuft.
       # Veröffentlicht wird nur der unsignierte Stand aus „ausgabe“.
       - name: Signierprobe vorbereiten
@@ -85,9 +83,8 @@ jobs:
         run: |
           npm run tauri -- build --config (Join-Path $env:RUNNER_TEMP 'signieren.json')
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $dateien = @('app/src-tauri/target/release/respawnedlearn.exe') +
-            (Get-ChildItem app/src-tauri/target/release/bundle/nsis/*.exe, app/src-tauri/target/release/bundle/msi/*.msi).FullName
-          ./tools/windows-signatur-pruefen.ps1 @dateien -Fingerabdruck $env:PROBE_FINGERABDRUCK
+          $installer = (Get-ChildItem app/src-tauri/target/release/bundle/nsis/*.exe, app/src-tauri/target/release/bundle/msi/*.msi).FullName
+          ./tools/windows-signatur-pruefen.ps1 -Installer $installer -Fingerabdruck $env:PROBE_FINGERABDRUCK
           # die veröffentlichten Pakete bleiben unsigniert
           foreach ($d in Get-ChildItem ausgabe/*) {
             if ((Get-AuthenticodeSignature $d.FullName).Status -ne 'NotSigned') { throw "Probe hat $($d.Name) verändert" }
