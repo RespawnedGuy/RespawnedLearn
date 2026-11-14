@@ -103,3 +103,21 @@ export function stelleVon(e: Eintrag): { notiz: string; anker: string } | null {
 export function kartenAus(b: Bestand, notizId: string): Eintrag[] {
   return b.nachTyp('frage').filter((e) => stelleVon(e)?.notiz === notizId)
 }
+
+/**
+ * Text eines Bausteins aus einer Mitschrift (Vertrag Lernen 1.10, 5.4): der Absatz, an dessen letzter Zeile die
+ * Blockkennung steht, nach oben bis zur Leerzeile oder Überschrift; eine Überschrift mit Kennung steht für sich.
+ * Ohne die Kennung selbst. Gibt es die Kennung nicht (mehr), null.
+ */
+export function absatzAmAnker(rumpf: string, anker: string): string | null {
+  const zeilen = rumpf.split('\n')
+  const bis = zeileVonAnker(rumpf, anker)
+  if (bis < 0) return null
+  let von = bis
+  if (!/^#{1,6}\s/.test(zeilen[bis])) while (von > 0 && zeilen[von - 1].trim() && !/^#{1,6}\s/.test(zeilen[von - 1])) von--
+  return zeilen
+    .slice(von, bis + 1)
+    .map((z) => z.replace(ANKER, ''))
+    .join('\n')
+    .trim()
+}

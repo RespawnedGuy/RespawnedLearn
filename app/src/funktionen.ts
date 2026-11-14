@@ -26,6 +26,7 @@ export function lernFunktionen(ort: string[]): LeistenFunktion[] {
 export function mitschriftFunktionen(plus: PlusZiel | null): LeistenFunktion[] {
   if (!plus) return []
   return [
+    { id: 'baustein', titel: 'Baustein', symbol: 'markieren', ziel: () => plus.baustein(), hinweis: 'Merkt den markierten Text, sonst den Absatz am Cursor, als Baustein' },
     { id: 'lernkarte', titel: 'Lernkarte', symbol: 'lernkarte', ziel: () => plus.lernkarte(), hinweis: 'Nimmt den markierten Text, sonst den Absatz am Cursor' },
     { id: 'kamera', titel: 'Kamera', symbol: 'kamera', ziel: () => plus.kamera() },
     { id: 'foto', titel: 'Foto', symbol: 'foto', ziel: () => plus.foto() }

@@ -145,6 +145,11 @@ anhang: "[[ID]]"
   ```
   - S. 2 · Eigene Herleitung #integral %%rn 0.080 1.120 0.840 0.260 2026-11-14%% ^b7x2q1
   ```
+- **In der Mitschrift** (ab Lernen 1.10): Markierter Text einer Mitschrift (`notiz`, 5.3) wird ein Baustein. Die App setzt an die letzte Zeile seines Absatzes eine Blockkennung `^anker` (wie für Lernkarten aus der Mitschrift) und schreibt in `lernen/markierungen/<notiz-id>.md` (Kopf `notiz: "[[ID]]"`) eine Zeile mit der Kennung statt Seite und Bereich, danach das Datum und optional die Farbe:
+  ```
+  - ^k3m9 · Maschenregel #kirchhoff %%rt 2026-11-14%% ^b7x2q1
+  ```
+  Text des Bausteins ist der Absatz, an dessen Ende die Kennung steht (nach oben bis zur Leerzeile oder Überschrift). Je Kennung gibt es höchstens einen Baustein; eine Lernkarte aus derselben Stelle hängt ihren Verweis an diese Zeile. Fehlt die Kennung in der Mitschrift, bleibt die Zeile stehen und die App sagt, dass die Stelle fehlt. Ältere Apps erkennen die Zeile nicht und lassen sie unverändert.
 
 **Handschrift** pro Seite als SVG mit der Breite 1000 (`lernen/tinte/<anhang-id>/S001.svg`, Zeichenblätter in `lernen/blaetter/`, 5.3). Ein `<path>` pro Strich als gefüllter Umriss, dazu `data-farbe`, `data-w` (Breite) und `data-pts="x y druck,…"` für spätere Erkennung. Benannte Farben: `alltag` (Blau), `alltag_schwarz`, `wichtig` (Rot), `ergaenzung` (Grün).
 

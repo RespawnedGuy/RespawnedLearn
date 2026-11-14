@@ -23,13 +23,23 @@ export interface Marke {
   /** benannte Farbe (alltag | wichtig | ergaenzung), optional */
   farbe: string | null
   zeile: number
+  /** Stelle in einer Mitschrift (Text, ab Lernen 1.10): Blockkennung der Zeile statt Seite und Bereich */
+  anker?: string
 }
 
 const ZEILE = /^- S\. (\d+)(?: · (.*?))? %%rn ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) (\d{4}-\d{2}-\d{2})(?: (\w+))?%% \^([a-z0-9]+)\s*$/
+// Textstelle einer Mitschrift (Lernen 1.10): `- ^anker · Name %%rt 2026-11-14%% ^id`
+const TEXTZEILE = /^- \^([a-z0-9-]+)(?: · (.*?))? %%rt (\d{4}-\d{2}-\d{2})(?: (\w+))?%% \^([a-z0-9]+)\s*$/
+const KEIN_BEREICH: Bereich = { x: 0, y: 0, b: 0, h: 0 }
 
 export function liesMarken(text: string): Marke[] {
   const out: Marke[] = []
   text.split('\n').forEach((z, zeile) => {
+    const t = TEXTZEILE.exec(z)
+    if (t) {
+      out.push({ id: t[5], seite: 0, text: (t[2] ?? '').trim(), bereich: KEIN_BEREICH, datum: t[3], farbe: t[4] ?? null, zeile, anker: t[1] })
+      return
+    }
     const m = ZEILE.exec(z)
     if (!m) return
     out.push({
@@ -52,6 +62,7 @@ const HOCH = 99
 
 export function markenZeile(m: Omit<Marke, 'zeile'>): string {
   const text = m.text.replace(/\s+/g, ' ').trim()
+  if (m.anker) return `- ^${m.anker}${text ? ` · ${text}` : ''} %%rt ${m.datum}${m.farbe ? ` ${m.farbe}` : ''}%% ^${m.id}`
   const { x, y, b, h } = m.bereich
   return `- S. ${m.seite}${text ? ` · ${text}` : ''} %%rn ${r(x)} ${r(y, HOCH)} ${r(b)} ${r(h, HOCH)} ${m.datum}${m.farbe ? ` ${m.farbe}` : ''}%% ^${m.id}`
 }

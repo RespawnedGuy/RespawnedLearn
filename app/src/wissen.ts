@@ -218,6 +218,38 @@ export async function karteAusStelle(
   return karteId
 }
 
+/**
+ * Baustein aus einer Textstelle der Mitschrift (Vertrag Lernen 1.10, 5.4): Zeile mit der Blockkennung in
+ * `lernen/markierungen/<notiz-id>.md`. Gibt es zu dieser Kennung schon einen Baustein, wird er benannt bzw. bekommt den
+ * Verweis dazu, statt dass ein zweiter entsteht. `karte`: die Lernkarte, die gerade daraus wurde.
+ */
+export async function bausteinAusMitschrift(speicher: Speicher, p: { mitschrift: Eintrag; anker: string; name: string; karte?: { id: string; titel: string } }): Promise<string> {
+  const jetzt = zeitstempel()
+  let id = ''
+  await aendere(
+    speicher,
+    pfade.marken('lernen', p.mitschrift.id),
+    (t) => {
+      const alt = liesMarken(t).find((m) => m.anker === p.anker)
+      id = alt?.id ?? kurzId()
+      const benannt = p.name.trim() || !alt ? benenne(alt?.text ?? '', p.name) : alt.text
+      const text = p.karte ? mitVerweis(benannt, p.karte.id, p.karte.titel) : benannt
+      if (alt && text === alt.text) return t
+      return setzeMarke(t, { id, seite: 0, anker: p.anker, text, bereich: { x: 0, y: 0, b: 0, h: 0 }, datum: alt?.datum ?? tag(), farbe: alt?.farbe ?? null })
+    },
+    () =>
+      neuesDokument([
+        ['id', ulid()],
+        ['typ', 'markierungen'],
+        ['erstellt', jetzt],
+        ['geaendert', jetzt],
+        ['titel', `Stellen in ${p.mitschrift.titel}`],
+        ['notiz', `[[${p.mitschrift.id}]]`]
+      ])
+  )
+  return id
+}
+
 /** Text der Markierung: Name und Schlagworte des Bausteins, dahinter der Verweis auf die Karte, falls es eine gibt */
 export function markenText(name: string, karteId: string, anzeige: string): string {
   const baustein = benenne('', name)
