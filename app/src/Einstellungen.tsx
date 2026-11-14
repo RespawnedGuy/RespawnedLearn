@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { open } from '@tauri-apps/plugin-dialog'
-import { inTauri, ordnerStand, ortLink, setzeOrdner, useDaten, Version, type OrdnerStand } from '@rl/oberflaeche'
+import { inTauri, ordnerStand, ortLink, setzeOrdner, useDaten, Version, waehleOrdner, type OrdnerStand } from '@rl/oberflaeche'
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
@@ -70,12 +69,12 @@ function Datenordner() {
     if (tauri) void ordnerStand().then((s) => (setStand(s), setPfad(s.ordner ?? ''))).catch((e) => setFehler(String(e)))
   }, [tauri])
 
-  const uebernimm = async (p: string) => {
+  // Android: getippter Pfad (setzeOrdner); PC: Rust öffnet den Dialog und setzt die Wahl (waehleOrdner)
+  const uebernimm = async (setze: () => Promise<unknown>) => {
     setFehler('')
     try {
-      await setzeOrdner(p)
       // Neu laden, damit der Speicher den anderen Ordner von vorn liest
-      location.reload()
+      if ((await setze()) !== false) location.reload()
     } catch (e) {
       setFehler(String(e))
     }
@@ -101,7 +100,7 @@ function Datenordner() {
               className="anbieter-knoepfe"
               onSubmit={(e) => {
                 e.preventDefault()
-                void uebernimm(pfad.trim())
+                void uebernimm(() => setzeOrdner(pfad.trim()))
               }}
             >
               <input className="eingabe" value={pfad} onChange={(e) => setPfad(e.target.value)} spellCheck={false} autoCapitalize="off" />
@@ -114,10 +113,7 @@ function Datenordner() {
               <button
                 type="button"
                 className="knopf haupt klein"
-                onClick={async () => {
-                  const p = await open({ directory: true, multiple: false, title: 'Datenordner wählen' })
-                  if (typeof p === 'string') await uebernimm(p)
-                }}
+                onClick={() => void uebernimm(waehleOrdner)}
               >
                 Ordner wählen
               </button>

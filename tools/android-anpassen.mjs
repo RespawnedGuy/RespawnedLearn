@@ -2,23 +2,12 @@
 // MainActivity einsetzen (siehe app/src-tauri/android/MainActivity.kt), bei vorhandenem Schlüssel die Release-Signatur. Läuft in der GitHub Action vor dem Android-Build.
 import fs from 'node:fs'
 import path from 'node:path'
+import { manifestAnpassen } from './android-manifest.mjs'
 import { signaturEintragen } from './android-signatur.mjs'
 
 const gen = path.resolve('app/src-tauri/gen/android/app/src/main')
 const manifestPfad = path.join(gen, 'AndroidManifest.xml')
-let manifest = fs.readFileSync(manifestPfad, 'utf8')
-const rechte = [
-  '<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />',
-  // bis Android 10 genügen die alten Rechte
-  '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />',
-  '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />'
-]
-for (const r of rechte) if (!manifest.includes(r.split('"')[1])) manifest = manifest.replace(/<application/, `${r}\n    <application`)
-if (!manifest.includes('requestLegacyExternalStorage')) manifest = manifest.replace(/<application/, '<application android:requestLegacyExternalStorage="true"')
-// Ollama im eigenen Netz spricht unverschlüsseltes http (Port 11434); welche Adressen die App erreichen darf, regelt
-// die Freigabe in app/src-tauri/capabilities/default.json
-if (manifest.includes('usesCleartextTraffic')) manifest = manifest.replace(/android:usesCleartextTraffic="[^"]*"/, 'android:usesCleartextTraffic="true"')
-else manifest = manifest.replace(/<application/, '<application android:usesCleartextTraffic="true"')
+const manifest = manifestAnpassen(fs.readFileSync(manifestPfad, 'utf8'))
 fs.writeFileSync(manifestPfad, manifest)
 
 const alt = fs.readdirSync(path.join(gen, 'java'), { recursive: true }).map(String).find((p) => p.endsWith('MainActivity.kt'))

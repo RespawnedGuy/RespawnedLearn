@@ -87,7 +87,7 @@ kräftigen Rechner (am besten mit Grafikkarte).
    - **Linux (systemd):** `systemctl edit ollama.service`, unter `[Service]` die Zeile `Environment="OLLAMA_HOST=0.0.0.0:11434"` ergänzen, dann `systemctl daemon-reload` und `systemctl restart ollama`.
    
    In der App dann die Adresse des Rechners im Heimnetz eintragen, z. B. `http://192.168.1.20:11434`.
-5. Die Verbindung im Heimnetz ist unverschlüsselt (http). Die App erlaubt unverschlüsselte Verbindungen nur auf Port 11434.
+5. Die Verbindung im Heimnetz ist unverschlüsselt (http). Die App spricht Ollama nur auf Port 11434 und nur mit Rechnern im eigenen Netz an (localhost, 192.168.x.x, 10.x.x.x, 172.16–31.x.x, Namen wie `mein-pc.local`, die dorthin zeigen, auch Tailscale 100.64–127.x.x). Eine Adresse im Internet lehnt sie ab.
 
 ## Anweisungen an die KI anpassen
 

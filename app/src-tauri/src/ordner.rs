@@ -25,7 +25,9 @@ pub struct Eintrag {
 }
 
 /// Macht aus einem relativen Pfad der App einen Pfad im Datenordner. Absolute Pfade, `..` und leere Pfade werden
-/// abgelehnt, damit die App nie außerhalb des gewählten Ordners liest oder schreibt.
+/// abgelehnt, damit die App nie außerhalb des gewählten Ordners liest oder schreibt. Ebenso symbolische Links
+/// unterhalb des Ordners: Syncthing überträgt sie unter Linux und Android, ein Link könnte
+/// Lesen und Schreiben sonst aus dem Datenordner hinausführen. Der gewählte Ordner selbst darf ein Link sein.
 pub fn sicherer_pfad(wurzel: &Path, rel: &str) -> Result<PathBuf, String> {
     if rel.is_empty() || rel.contains('\\') || rel.contains('\0') {
         return Err(format!("ungültiger Pfad: {rel:?}"));
@@ -36,6 +38,9 @@ pub fn sicherer_pfad(wurzel: &Path, rel: &str) -> Result<PathBuf, String> {
         match teil {
             Component::Normal(t) => ziel.push(t),
             _ => return Err(format!("Pfad außerhalb des Datenordners: {rel:?}")),
+        }
+        if fs::symlink_metadata(&ziel).map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+            return Err(format!("{rel}: symbolischer Link im Datenordner, die App folgt ihm nicht"));
         }
     }
     Ok(ziel)
@@ -248,6 +253,30 @@ mod tests {
             assert!(sicherer_pfad(d.path(), rel).is_err(), "{rel} müsste abgelehnt werden");
         }
         assert_eq!(sicherer_pfad(d.path(), "lernen/karten/a.md").unwrap(), d.path().join("lernen").join("karten").join("a.md"));
+    }
+
+    /// Ein Sync-Partner legt Links an, die aus dem Datenordner hinauszeigen: weder lesen noch schreiben darf durchgehen
+    #[cfg(unix)]
+    #[test]
+    fn folgt_keinen_links_aus_dem_ordner_hinaus() {
+        let d = ordner();
+        let draussen = ordner();
+        fs::write(draussen.path().join("geheim.txt"), b"fremd").unwrap();
+        fs::create_dir_all(d.path().join("lernen")).unwrap();
+        std::os::unix::fs::symlink(draussen.path().join("geheim.txt"), d.path().join("lernen/datei.md")).unwrap();
+        std::os::unix::fs::symlink(draussen.path(), d.path().join("anhaenge")).unwrap();
+        assert!(lesen(d.path(), "lernen/datei.md").is_err());
+        assert!(lesen(d.path(), "anhaenge/geheim.txt").is_err());
+        assert!(schreiben(d.path(), "anhaenge/neu.txt", b"x").is_err());
+        assert!(schreiben(d.path(), "lernen/datei.md", b"x").is_err());
+        assert!(texte_lesen(d.path(), &["anhaenge/geheim.txt".into()]).is_empty());
+        assert!(!draussen.path().join("neu.txt").exists());
+        assert_eq!(fs::read(draussen.path().join("geheim.txt")).unwrap(), b"fremd");
+        // der gewählte Ordner selbst darf ein Link sein
+        let link = draussen.path().join("ordner-link");
+        std::os::unix::fs::symlink(d.path(), &link).unwrap();
+        schreiben(&link, "lernen/ok.md", b"ok").unwrap();
+        assert_eq!(lesen(d.path(), "lernen/ok.md").unwrap(), b"ok");
     }
 
     #[test]

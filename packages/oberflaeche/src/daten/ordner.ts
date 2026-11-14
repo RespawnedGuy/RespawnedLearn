@@ -45,7 +45,10 @@ export interface Ablage {
 export const inTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 export const ordnerStand = () => invoke<OrdnerStand>('stand')
+/** Nur Android: getippter Pfad, Rust prüft ihn (ordnerwahl.rs) */
 export const setzeOrdner = (pfad: string) => invoke<void>('ordner_setzen', { pfad })
+/** Am PC: Rust öffnet den Ordnerdialog und setzt die Wahl; false = abgebrochen */
+export const waehleOrdner = () => invoke<boolean>('ordner_waehlen')
 
 const bytes = (inhalt: Uint8Array | string) => (typeof inhalt === 'string' ? new TextEncoder().encode(inhalt) : inhalt)
 

@@ -14,3 +14,6 @@ keystore.properties
 # Prüfungen im Browser (tools/pruefung)
 /daten/
 /ansehen/
+
+# Update-Signaturschlüssel (tauri signer generate) nie einchecken
+*.key

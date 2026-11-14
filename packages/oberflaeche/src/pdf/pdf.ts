@@ -3,6 +3,7 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { Bereich } from '@rl/kern'
 import type { Speicher } from '../daten/speicher'
+import { PDF_LADEN } from './sicher'
 
 export type PdfDokument = PDFDocumentProxy
 
@@ -61,7 +62,7 @@ export function ladePdf(speicher: Speicher, pfad: string): Promise<PdfDokument |
   if (!p) {
     p = speicher.binaer(pfad).then(async (blob) => {
       if (!blob) return null
-      return (await pdfjs()).getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
+      return (await pdfjs()).getDocument({ ...PDF_LADEN, data: new Uint8Array(await blob.arrayBuffer()) }).promise
     })
     p.catch(() => dokumente.delete(pfad))
     dokumente.set(pfad, p)
