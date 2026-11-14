@@ -106,6 +106,15 @@ export function spaeter(n: Neuigkeit) {
   setze({ art: 'ruhe' })
 }
 
+/** Bau ohne Update-Schlüssel (Testbau aus den Actions): Release-Seite im Browser öffnen, dort liegt der richtige Installer */
+export async function oeffneReleaseSeite(): Promise<void> {
+  try {
+    await invoke('release_seite_oeffnen')
+  } catch (e) {
+    setze({ art: 'fehler', text: `Die Release-Seite ließ sich nicht öffnen (${String(e).slice(0, 80)}).` })
+  }
+}
+
 /** PC: installieren (die App beendet sich dafür und startet neu). Android: Download der APK öffnen. */
 export async function hole(n: Neuigkeit): Promise<void> {
   if (plattform === 'android') {

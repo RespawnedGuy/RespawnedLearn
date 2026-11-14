@@ -131,7 +131,8 @@ jobs:
           }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: respawnedlearn-windows
+          # Nur Läufe auf main mit Environment release tragen Schlüssel; alles andere ist ein Testbau (docs/installieren.md)
+          name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'respawnedlearn-windows' || 'testbau-windows' }}
           path: ausgabe/*
 
   android:
@@ -226,7 +227,8 @@ jobs:
         run: rm -f "$RUNNER_TEMP/respawnedlearn.jks" app/src-tauri/gen/android/keystore.properties
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: respawnedlearn-android
+          # Nur Läufe auf main mit Environment release tragen Schlüssel; alles andere ist ein Testbau (docs/installieren.md)
+          name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'respawnedlearn-android' || 'testbau-android' }}
           path: ausgabe/*
 
   veroeffentlichen:
@@ -259,12 +261,14 @@ jobs:
           UPDATE_SCHLUESSEL: ${{ vars.TAURI_UPDATER_PUBKEY }}
         run: |
           cd ausgabe
+          # Release-Text: Titel des PRs statt „Merge pull request …“ (releaseText in tools/neueste.mjs, mit Test)
+          TEXT=$(node ../tools/neueste.mjs text "$HINWEIS")
           # latest.json für die Updates (nur mit .sig-Dateien); prüft vorher jede Signatur gegen den Schlüssel der App
-          UPDATE_SCHLUESSEL="$UPDATE_SCHLUESSEL" node ../tools/neueste.mjs bau . "$VERSION" "$GITHUB_REPOSITORY" "$(printf '%s' "$HINWEIS" | head -n 1)"
+          UPDATE_SCHLUESSEL="$UPDATE_SCHLUESSEL" node ../tools/neueste.mjs bau . "$VERSION" "$GITHUB_REPOSITORY" "$TEXT"
           sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           {
-            printf '%s\n\n' "$(printf '%s' "$HINWEIS" | head -n 1)"
+            printf '%s\n\n' "$TEXT"
             echo "Installieren und Warnungen von Windows, Browser und Android: [docs/installieren.md](https://github.com/$GITHUB_REPOSITORY/blob/v$VERSION/docs/installieren.md)."
             echo "Prüfsummen (SHA-256) stehen in \`SHA256SUMS.txt\`."
           } > ../notizen.md

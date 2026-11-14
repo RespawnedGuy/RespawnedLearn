@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error reines Node-Skript ohne Typen
-import { baueNeueste, pruefeNeueste, pruefeSignatur } from '../neueste.mjs'
+import { baueNeueste, pruefeNeueste, pruefeSignatur, releaseText } from '../neueste.mjs'
 
 // Testtabelle, die auch kern (aktualisierung.test.ts) und Rust (aktualisieren.rs, Format des Tauri-Updaters) lesen
 const wurzel = path.join(__dirname, '../../testdaten')
@@ -72,5 +72,22 @@ describe('Signatur selbst nachprüfen (unabhängig vom Updater)', () => {
     const fremd = Buffer.from('untrusted comment: minisign public key: 8EA6BC101864FF6E\nRWRu/2QYELymjvZEb7W6v34GRFTPQw3DzVf2NsfrEbkO4DEZ45HitYld\n').toString('base64')
     expect(pruefeSignatur(exe, sig, fremd)).toBe('falscher-schluessel')
     expect(pruefeSignatur(exe, 'kaputt', schluessel)).toBe('unlesbar')
+  })
+})
+
+describe('Release-Text aus der Commit-Nachricht', () => {
+  it('nimmt bei einem Merge-Commit den Titel des PRs statt „Merge pull request …“', () => {
+    const merge = 'Merge pull request #10 from RespawnedGuy/claude/project-thread-ss7tso\n\nv0.20.4: ts-fsrs 6, Actions auf Node 24, kleine Updates'
+    expect(releaseText(merge)).toBe('ts-fsrs 6, Actions auf Node 24, kleine Updates')
+  })
+
+  it('nimmt sonst die erste Zeile, ohne führende Version', () => {
+    expect(releaseText('Release nur mit allen Schlüsseln; v0.20.3\n\nText')).toBe('Release nur mit allen Schlüsseln; v0.20.3')
+    expect(releaseText('v1.2.3: Neue Ansicht\r\n\nmehr')).toBe('Neue Ansicht')
+  })
+
+  it('bleibt bei leerem Titel leer statt die Merge-Zeile zu zeigen', () => {
+    expect(releaseText('Merge pull request #3 from x/y\n\n')).toBe('')
+    expect(releaseText('')).toBe('')
   })
 })

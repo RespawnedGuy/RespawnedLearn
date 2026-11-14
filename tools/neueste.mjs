@@ -5,6 +5,7 @@
 //
 //   node tools/neueste.mjs bau <ordner> <version> <owner/repo> <notizen>   schreibt <ordner>/latest.json, wenn es .sig gibt
 //   node tools/neueste.mjs pruefe <ordner>                                 prüft latest.json gegen die Dateien im Ordner
+//   node tools/neueste.mjs text <commit-nachricht>                         gibt den Release-Text aus (releaseText)
 // Mit UPDATE_SCHLUESSEL (Inhalt der .pub) prüfen beide zusätzlich jede Signatur selbst nach (Ed25519, node:crypto).
 
 import crypto from 'node:crypto'
@@ -18,6 +19,19 @@ const ZUORDNUNG = [
   { muster: /_x64_[A-Za-z-]+\.msi$/, schluessel: ['windows-x86_64-msi'] },
   { muster: /_arm64\.apk$/, schluessel: ['android-aarch64'] }
 ]
+
+/**
+ * Lesbarer Release-Text aus der Nachricht des Commits, der auf main gelandet ist. Bei einem Merge-Commit von GitHub
+ * („Merge pull request #10 from …“, Leerzeile, Titel des PRs) der Titel des PRs, sonst die erste Zeile. Eine führende
+ * Versionsnummer („v0.20.4: …“) fällt weg, die App zeigt die Version ohnehin davor.
+ * @param {string} nachricht
+ */
+export function releaseText(nachricht) {
+  const zeilen = nachricht.split(/\r?\n/).map((z) => z.trim())
+  let text = zeilen[0] ?? ''
+  if (/^Merge pull request #\d+ from \S+$/.test(text)) text = zeilen.slice(1).find((z) => z) ?? ''
+  return text.replace(/^v?\d+\.\d+\.\d+\s*:\s*/, '').trim()
+}
 
 /**
  * @param {{ version: string, notizen: string, datum: string, repo: string, dateien: Record<string, string | null> }} e
@@ -114,6 +128,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     if (fehler.length) process.exit(1)
     fs.writeFileSync(path.join(ordner, 'latest.json'), JSON.stringify(neueste, null, 2) + '\n')
     console.log(JSON.stringify(neueste, null, 2))
+  } else if (befehl === 'text') {
+    console.log(releaseText(ordner ?? ''))
   } else if (befehl === 'pruefe') {
     const datei = path.join(ordner, 'latest.json')
     if (!fs.existsSync(datei)) {
@@ -127,7 +143,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     if (fehler.length) process.exit(1)
     console.log(`latest.json passt zu den Dateien und Signaturen des Releases${process.env.UPDATE_SCHLUESSEL ? ', jede Signatur nachgeprüft' : ''}`)
   } else {
-    console.error('Aufruf: node tools/neueste.mjs bau <ordner> <version> <owner/repo> <notizen> | pruefe <ordner>')
+    console.error('Aufruf: node tools/neueste.mjs bau <ordner> <version> <owner/repo> <notizen> | pruefe <ordner> | text <commit-nachricht>')
     process.exit(2)
   }
 }

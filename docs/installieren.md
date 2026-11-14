@@ -51,3 +51,7 @@ Lädst du nur von dieser Releases-Seite und stimmt die Prüfsumme, ist die Warnu
 Updates installierst du einfach über die alte Version, deine Einstellungen bleiben. Nur wer eine frühere Testfassung
 (Debug-APK aus den Actions) hat, muss diese **einmal deinstallieren**, weil die Releases einen anderen Schlüssel tragen.
 Dein Datenordner bleibt dabei unberührt.
+
+**Nur Dateien aus dem Release installieren.** Die ZIP-Dateien `testbau-…` unter „Actions“ sind Prüfbauten aus
+Pull Requests: ohne Signatur und ohne Update-Schlüssel. Am PC können sie sich nicht selbst aktualisieren, am Handy lässt
+sich keine Release-APK darüber installieren.

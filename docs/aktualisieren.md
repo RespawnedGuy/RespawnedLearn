@@ -26,6 +26,10 @@ Update-Schlüssel, der in der App steckt. Die Signatur muss außerdem die angek�
 eine ältere, echt signierte Version als neue ausgeben. Passt etwas nicht, installiert die App nichts und sagt das.
 Danach beendet sich die App, der Installer läuft ohne Fragen durch und startet sie neu. Dein Datenordner bleibt, wie er ist.
 
+Ein Testbau aus den Actions (`testbau-windows`) hat keinen Update-Schlüssel. Er zeigt die neue Version an, sagt aber, dass
+er sich nicht selbst aktualisieren kann, und bietet „Release-Seite öffnen“. Einmal den Installer von dort installieren,
+danach kommen Updates von selbst.
+
 SmartScreen warnt bei der **ersten** Installation aus dem Browser, solange die App kein bezahltes Zertifikat trägt
 (siehe [installieren.md](installieren.md)). Updates lädt die App selbst, nicht der Browser; die Datei trägt darum nicht
 die Browser-Markierung, an der SmartScreen ansetzt, und eine Warnung ist nicht zu erwarten.
