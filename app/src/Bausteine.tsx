@@ -1,7 +1,7 @@
 // Bausteine in „Nutzen“ (Vertrag Lernen 1.8, 5.4): Jede Markierung ist ein Baustein. Die Suche findet sie in allen
 // Skripten; „Offen“ fragt nach denen ohne Namen: benennen oder weglegen. Gelöscht wird nichts.
 import { useMemo, useState } from 'react'
-import { alleBausteine, eingabeVon, modulVon, offeneBausteine, sucheBausteine, type Baustein, type Bestand } from '@rl/kern'
+import { alleBausteine, eingabeVon, linkZiel, modulVon, offeneBausteine, sucheBausteine, type Baustein, type Bestand } from '@rl/kern'
 import { melde, ortLink, useDaten } from '@rl/oberflaeche'
 import { Ausschnitt } from './Inhalt'
 import { benenneBaustein, legeBausteinWeg } from './wissen'
@@ -12,7 +12,10 @@ export function useBausteine(): Baustein[] {
 }
 
 function imModul(bestand: Bestand, b: Baustein, modul: string | null) {
-  return !modul || modulVon(bestand, b.anhang)?.id === modul
+  if (!modul) return true
+  // Ein Notizbuch gehört über sein Feld `modul` zum Modul, ein Skript über die Quellen des Moduls
+  const doc = bestand.dokumente.get(b.anhang)
+  return (doc?.typ === 'notizbuch' ? linkZiel(doc.felder.modul) : modulVon(bestand, b.anhang)?.id) === modul
 }
 
 export function anzahlOffen(alle: Baustein[], bestand: Bestand, modul: string | null) {
@@ -57,7 +60,7 @@ export function OffeneBausteine({ modul, onZu }: { modul: string | null; onZu: (
         <div className="leer">Alles benannt. Neue Markierungen ohne Namen erscheinen hier.</div>
       ) : (
         <>
-          <p className="klein-leise">Gib einen Namen (Schlagworte mit #), dann findest du die Stelle in jedem Skript wieder. Was du nicht mehr brauchst, legst du weg; die Markierung im Skript bleibt.</p>
+          <p className="klein-leise">Gib einen Namen (Schlagworte mit #), dann findest du die Stelle in jedem Skript wieder. Was du nicht mehr brauchst, legst du weg; die Markierung bleibt.</p>
           <div className="baustein-liste">
             {offen.slice(0, 30).map((b) => (
               <BausteinKarte key={`${b.anhang}:${b.marke.id}`} b={b} offen />
@@ -82,7 +85,9 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
   const { bestand, speicher } = useDaten()
   const [bearbeiten, setBearbeiten] = useState(offen)
   const [eingabe, setEingabe] = useState(() => eingabeVon(b))
-  const quelle = bestand.dokumente.get(b.anhang)?.titel ?? 'Skript'
+  const doc = bestand.dokumente.get(b.anhang)
+  const istBuch = doc?.typ === 'notizbuch'
+  const quelle = doc?.titel ?? 'Skript'
   const stelle = `${quelle}, S. ${b.marke.seite}`
   const merken = () => {
     if (!eingabe.trim()) return
@@ -118,7 +123,7 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
               Merken
             </button>
             {offen ? (
-              <button type="button" className="knopf still klein" onClick={weg} title="Aus „Offen“ und der Suche nehmen; die Markierung im Skript bleibt">
+              <button type="button" className="knopf still klein" onClick={weg} title="Aus „Offen“ und der Suche nehmen; die Markierung bleibt">
                 Weglegen
               </button>
             ) : (
@@ -141,13 +146,13 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
             </span>
           )}
           <div className="reihe">
-            <a className="knopf klein" href={ortLink('sammeln', b.anhang, b.marke.seite)}>
+            <a className="knopf klein" href={istBuch ? ortLink('sammeln', 'buch', b.anhang, b.marke.seite, b.marke.id) : ortLink('sammeln', b.anhang, b.marke.seite)}>
               Zur Stelle
             </a>
             <button type="button" className="knopf still klein" onClick={() => setBearbeiten(true)} aria-label={`${b.titel || stelle} umbenennen`}>
               Umbenennen
             </button>
-            <button type="button" className="knopf still klein" onClick={weg} title="Aus der Suche nehmen; die Markierung im Skript bleibt">
+            <button type="button" className="knopf still klein" onClick={weg} title="Aus der Suche nehmen; die Markierung bleibt">
               Weglegen
             </button>
           </div>

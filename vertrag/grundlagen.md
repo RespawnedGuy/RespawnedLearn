@@ -68,7 +68,7 @@ tags: [lernen/elektrotechnik]
 | `[[ID#abschnitt]]` | Link auf eine Überschrift (Slug) |
 | `[[ID#^anker]]` | Link auf eine Zeile mit Anker `^anker` am Zeilenende |
 | `[[ID#seite=12]]` | Link auf eine PDF-Seite |
-| `![[ID#seite=12&marke=a7k2c9\|Text]]` | markierte Stelle auf einer PDF-Seite, angezeigt als Ausschnitt (5.4) |
+| `![[ID#seite=12&marke=a7k2c9\|Text]]` | markierte Stelle auf einer PDF-Seite oder Seite eines Notizbuchs (ab Lernen 1.9), angezeigt als Ausschnitt (5.4) |
 | `![[ID]]` | Einbettung, immer der aktuelle Stand |
 
 - Links in Frontmatter-Feldern stehen als String in Anführungszeichen: `thema: "[[01J…]]"`.

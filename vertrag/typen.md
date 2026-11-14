@@ -141,6 +141,10 @@ anhang: "[[ID]]"
   - `#archiv` heißt weggelegt: Der Baustein erscheint nicht mehr unter „Offen“ und nicht in der Suche, die Markierung im Skript bleibt. Entfernt man `#archiv`, ist er wieder da. Die App löscht keinen Baustein.
   - Benennt man einen Baustein um, ändert die App nur Name und Schlagworte; Verweise bleiben stehen.
   - Ältere Apps lesen den Text weiter als Ganzes, darum bleibt das Format der Zeile gleich.
+- **Im Notizbuch** (ab Lernen 1.9): Auch eigene Seiten lassen sich markieren. Die Markierungen eines Buchs stehen in `lernen/markierungen/<buch-id>.md` (Kopf `buch: "[[ID]]"` statt `anhang`), eine Zeile je Stelle wie oben; `S.` ist die Buchseite (5.3). Weil Buchseiten nach unten wachsen, stehen alle vier Maße in Seitenbreiten: x und Breite zwischen 0 und 1, y und Höhe ab 0 und auch größer als 1 (auf einer A4-Seite reicht y bis 1,414). Die Stelle bleibt so an ihrem Platz, wenn die Seite länger wird. Jede Markierung im Buch ist ein Baustein wie im Skript; ein Verweis `![[<buch-id>#seite=2&marke=b7x2q1|…]]` zeigt den Ausschnitt der Buchseite mit Tinte und Bildern.
+  ```
+  - S. 2 · Eigene Herleitung #integral %%rn 0.080 1.120 0.840 0.260 2026-11-14%% ^b7x2q1
+  ```
 
 **Handschrift** pro Seite als SVG mit der Breite 1000 (`lernen/tinte/<anhang-id>/S001.svg`, Zeichenblätter in `lernen/blaetter/`, 5.3). Ein `<path>` pro Strich als gefüllter Umriss, dazu `data-farbe`, `data-w` (Breite) und `data-pts="x y druck,…"` für spätere Erkennung. Benannte Farben: `alltag` (Blau), `alltag_schwarz`, `wichtig` (Rot), `ergaenzung` (Grün).
 

@@ -99,6 +99,10 @@
 .ausschnitt { display: inline-block; vertical-align: middle; border-radius: 8px; border: 1px solid var(--linie); overflow: hidden; background: #fff; outline: 2px solid rgba(196, 80, 26, 0.35); outline-offset: -4px; max-width: 100%; }
 .ausschnitt img { display: block; max-width: 100%; max-height: 240px; }
 .ausschnitt .platz { display: block; width: 140px; height: 70px; background: var(--mulde); }
+.buch-ausschnitt-fenster { position: relative; overflow: hidden; width: 100%; background: #fff; }
+.buch-ausschnitt .blatt-flaeche { position: relative; pointer-events: none; }
+.buch-ausschnitt .ebene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.buch-ausschnitt .blatt-bild img { max-width: none; max-height: none; }
 
 /* Startseite: Module und Bücher, Favoriten oben */
 .lern-suche { margin: 0 0 16px; }
