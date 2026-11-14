@@ -140,6 +140,9 @@
   .spalte .fl-oben { order: 2; border-top: 1px solid var(--glas-haar); padding-top: 4px; }
   .spalte .fl-farben { flex-direction: column; gap: 2px; }
   .spalte .fl-farbe { flex-direction: column; gap: 3px; padding: 6px 2px; border-radius: 12px; font-size: 0.6875rem; }
+  /* Ruhend durchsichtig ohne Unschärfe, damit Markierungen und Schrift unter der Spalte sichtbar bleiben (Nils 14.11.);
+     unter Zeiger oder Tastaturfokus wieder volles Glas. Antippen mit Finger oder Stift wirkt sofort, wie bisher. */
+  .funktionsleiste.spalte:not(:hover):not(:focus-within) { opacity: 0.55; -webkit-backdrop-filter: none; backdrop-filter: none; }
   :root[data-stift='schreibt'] .funktionsleiste.spalte { opacity: 0.12; pointer-events: none; }
 }
 
@@ -149,9 +152,11 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --glas-flaeche: var(--flaeche); --glas-filter: none; }
+  :root:not([data-stift='schreibt']) .funktionsleiste.spalte { opacity: 1; }
 }
 @media (prefers-contrast: more) {
   :root { --glas-flaeche: var(--flaeche); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); }
+  :root:not([data-stift='schreibt']) .funktionsleiste.spalte { opacity: 1; }
 }
 @media (forced-colors: active) {
   .funktionsleiste, .kopf { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; }
