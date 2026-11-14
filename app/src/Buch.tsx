@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   A4,
   blattFormat,
+  benenneBuch,
   buchDokument,
   buchSeiteJson,
   buchSeitenNummern,
@@ -63,6 +64,11 @@ export async function neuesBuch(speicher: Speicher, b: { titel: string; lineatur
 
 export async function setzeBuchLineatur(speicher: Speicher, id: string, lineatur: Lineatur) {
   await speicher.aendere(pfade.buch(id), (t) => setzeFeld(setzeFeld(t, 'lineatur', lineatur), 'geaendert', new Date().toISOString()))
+}
+
+/** Notizbuch umbenennen: nur `titel`, ein leerer Name ändert nichts (Vertrag 5.3) */
+export async function benenneNotizbuch(speicher: Speicher, id: string, titel: string) {
+  await speicher.aendere(pfade.buch(id), (t) => benenneBuch(t, titel, new Date().toISOString()))
 }
 
 const aendereSeite = (speicher: Speicher, id: string, nr: number, f: (s: BuchSeite) => BuchSeite) =>

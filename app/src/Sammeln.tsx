@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { eingabeVon, liesBausteinText, liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
-import { karteAusStelle, korrigiereFrage, merkeLesestelle } from './wissen'
+import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle } from './wissen'
 import { useLernzeit } from './lernzeitMessen'
 import { SammelnPlan } from './SammelnPlan'
 import { frageVorschlagen, korrigiere } from './ki'
@@ -12,7 +12,8 @@ import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
 import { AnsichtKopf, Trenner, useAnordnung } from './Blaetter'
-import { BuchAnsicht, bildInsBuch, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur } from './Buch'
+import { BuchAnsicht, bildInsBuch, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur, benenneNotizbuch } from './Buch'
+import { NameFeld } from './NameFeld'
 import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
 import { hebeAn } from './anheben'
@@ -383,7 +384,9 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   return (
     <div>
       <div className="plan-leiste">
-        <h1 className="plan-titel">{quelle.titel}</h1>
+        <h1 className="plan-titel">
+          <NameFeld name={quelle.titel} art="Skript" leerErlaubt onName={(n) => void benenneSkript(speicher, bestand, quelle.id, n)} />
+        </h1>
         <InhaltKnopf quelle={quelle} seite={seite} />
         <span style={{ flex: 1 }} />
         {skriptZu ? (
@@ -439,7 +442,9 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
             >
               <AnsichtKopf
                 ansicht={v}
-                name={v.art === 'pdf' ? 'Skript' : (bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch')}
+                name={
+                  v.art === 'pdf' ? 'Skript' : <NameFeld name={bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch'} art="Notizbuch" onName={(n) => void benenneNotizbuch(speicher, v.id, n)} />
+                }
                 lineatur={v.art === 'buch' ? lineaturVon(bestand.dokumente.get(v.id)) : undefined}
                 erste={i === 0}
                 letzte={i === offen.length - 1}

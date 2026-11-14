@@ -19,6 +19,11 @@ import {
   liesAbrufe,
   archiviere,
   benenne,
+  benenneAnhang,
+  dateiTitel,
+  mitzubenennendeModule,
+  module as alleModule,
+  saubererName,
   liesMarken,
   mitVerweis,
   liesProtokoll,
@@ -145,6 +150,19 @@ export async function neuesModul(speicher: Speicher, p: { titel: string; ziel?: 
 
 export function setzeModulFeld(speicher: Speicher, m: Modul, feld: string, wert: Wert | undefined) {
   return aendere(speicher, m.pfad, (t) => setzeFeld(t, feld, wert), () => '')
+}
+
+/**
+ * Skript umbenennen: nur `name` im Sidecar (leer = wieder der Dateiname), Datei und ID bleiben. Ein Buch (Modul mit
+ * genau diesem PDF), das bisher genauso hieß, bekommt denselben Namen, damit Kachel und Übungsplatz übereinstimmen.
+ */
+export async function benenneSkript(speicher: Speicher, b: Bestand, id: string, name: string) {
+  const e = b.dokumente.get(id)
+  if (e?.typ !== 'anhang') return
+  const neu = saubererName(name) || dateiTitel(e)
+  await speicher.aendere(e.pfad, (t) => benenneAnhang(t, name))
+  if (neu === e.titel) return
+  for (const m of mitzubenennendeModule(alleModule(b), id, e.titel)) await setzeModulFeld(speicher, m, 'titel', neu)
 }
 
 export function setzeQuellen(speicher: Speicher, m: Modul, quellen: string[]) {
