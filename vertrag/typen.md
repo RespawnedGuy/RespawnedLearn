@@ -130,6 +130,17 @@ Die Seiten liegen im Ordner daneben: `lernen/buecher/<id>/S001.svg` (Tinte, Form
 anhang: "[[ID]]"
 ```
 - Der Text einer Stelle verweist auf die Karte, die daraus entstand. So zeigt „Nutzen“ die Spur zurück ins Skript.
+- **Baustein** (ab Lernen 1.8): Jede Markierung ist ein Baustein, den man in allen Skripten wiederfindet. Ihr Text besteht aus dem Namen, Schlagworten und Verweisen in beliebiger Reihenfolge, getrennt durch Leerzeichen: `#wort` ist ein Schlagwort (Buchstaben, Ziffern, `-`, `_`, `/`), `[[ID|Titel]]` ein Verweis auf eine Karte, der Rest ist der Name.
+  ```
+  - S. 12 · Stammfunktion umformen #integral #stammfunktion [[01JB…|Wie lautet die Stammfunktion von x^n?]] %%rn 0.100 0.400 0.700 0.100 2026-11-14%% ^c4n8q1
+  - S. 40 · %%rn 0.200 0.300 0.500 0.150 2026-11-14%% ^d5p9r2
+  - S. 7 · Alte Übung #archiv %%rn 0.100 0.100 0.800 0.300 2026-11-14%% ^e6q0s3
+  ```
+  - Name fehlt: Dann gilt der Titel des ersten Verweises. Der Text `Markiert` (so schrieb „Nur markieren“ bis Lernen 1.6) zählt als kein Name.
+  - **Offen** ist ein Baustein ohne Name, ohne Schlagwort und ohne Verweis. Die App zeigt offene Bausteine, damit man sie benennt oder weglegt.
+  - `#archiv` heißt weggelegt: Der Baustein erscheint nicht mehr unter „Offen“ und nicht in der Suche, die Markierung im Skript bleibt. Entfernt man `#archiv`, ist er wieder da. Die App löscht keinen Baustein.
+  - Benennt man einen Baustein um, ändert die App nur Name und Schlagworte; Verweise bleiben stehen.
+  - Ältere Apps lesen den Text weiter als Ganzes, darum bleibt das Format der Zeile gleich.
 
 **Handschrift** pro Seite als SVG mit der Breite 1000 (`lernen/tinte/<anhang-id>/S001.svg`, Zeichenblätter in `lernen/blaetter/`, 5.3). Ein `<path>` pro Strich als gefüllter Umriss, dazu `data-farbe`, `data-w` (Breite) und `data-pts="x y druck,…"` für spätere Erkennung. Benannte Farben: `alltag` (Blau), `alltag_schwarz`, `wichtig` (Rot), `ergaenzung` (Grün).
 
