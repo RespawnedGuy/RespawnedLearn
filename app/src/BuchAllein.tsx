@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { liesMarken, linkZiel, pfade, SEITE_BREITE, type Farbe } from '@rl/kern'
 import { Werkzeugleiste, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { AnsichtKopf } from './Blaetter'
-import { BuchAnsicht, fotosInsBuch, lineaturVon, setzeBuchLineatur } from './Buch'
+import { BuchAnsicht, benenneNotizbuch, fotosInsBuch, lineaturVon, setzeBuchLineatur } from './Buch'
+import { NameFeld } from './NameFeld'
 import { useLernzeit } from './lernzeitMessen'
 
 export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: number; marke?: string }) {
@@ -22,7 +23,9 @@ export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: 
   return (
     <div>
       <div className="plan-leiste">
-        <h1 className="plan-titel">{buch?.titel ?? 'Notizbuch'}</h1>
+        <h1 className="plan-titel">
+          <NameFeld name={buch?.titel ?? 'Notizbuch'} art="Notizbuch" onName={(n) => void benenneNotizbuch(speicher, id, n)} />
+        </h1>
         {modul && bestand.dokumente.get(modul) && bestand.dokumente.get(modul)!.titel !== buch?.titel && (
           <a className="knopf klein" href={`#/sammeln/modul/${encodeURIComponent(modul)}`}>
             {bestand.dokumente.get(modul)!.titel}

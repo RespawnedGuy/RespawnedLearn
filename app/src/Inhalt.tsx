@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import katex from 'katex'
-import { ankerParameter, calloutName, findeLinks, liesMarken, pfade, type Bestand } from '@rl/kern'
+import { ankerParameter, calloutName, findeLinks, liesMarken, pfade, stellenAnzeige, type Bestand } from '@rl/kern'
 import { ausschnitt, ortLink, useDaten } from '@rl/oberflaeche'
 import { BuchAusschnitt } from './BuchAusschnitt'
 
@@ -56,7 +56,7 @@ function zeileInline(text: string, bestand: Bestand): ReactNode[] {
       const e = bestand.dokumente.get(l.ziel)
       out.push(
         <a key={l.von} href={ortLink('nutzen', l.ziel)}>
-          {l.anzeige ?? e?.titel ?? 'nicht gefunden'}
+          {(e?.typ === 'anhang' ? stellenAnzeige(l.anzeige, p.seite, e.titel) : l.anzeige) ?? e?.titel ?? 'nicht gefunden'}
         </a>
       )
     }

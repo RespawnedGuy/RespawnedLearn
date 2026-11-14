@@ -27,7 +27,7 @@ name: Tafelbild Spannungsteiler        # optional, vom Nutzer vergeben
 beschreibung: "Aus der Vorlesung\nzweite Hälfte"   # optional, mehrzeilig als JSON-String mit \n
 ```
 
-`name` und `beschreibung` vergibt nur der Nutzer, `titel` bleibt der Dateiname. Andere Dateien verweisen auf Anhänge immer über die **ID des Sidecars**, nie über den Pfad; den Pfad pflegt nur das Sidecar.
+`name` und `beschreibung` vergibt nur der Nutzer, `titel` bleibt der Dateiname. Die App zeigt einen Anhang mit `name` unter diesem Namen, sonst unter `titel`; so wird ein Skript umbenannt, ohne Datei, Pfad oder ID zu ändern. Ein leerer Name nimmt das Feld heraus. Ein Buch (Modul mit genau diesem PDF), das bis dahin so hieß wie das PDF, bekommt beim Umbenennen denselben `titel`. Andere Dateien verweisen auf Anhänge immer über die **ID des Sidecars**, nie über den Pfad; den Pfad pflegt nur das Sidecar.
 
 ### 5.3 Typen der Lern-App
 
@@ -81,6 +81,7 @@ lineatur: kariert          # wie bei den Zeichenblättern; gilt für alle Seiten
 modul: "[[modul-id]]"      # optional: gehört zu diesem Modul, sonst frei
 status: archiviert         # optional: aus der Auswahl genommen; gelöscht wird ein Buch nie
 ```
+Umbenennen ändert nur `titel` (nie leer) und `geaendert`; Seiten, Markierungen und Verweise hängen an der ID.
 Die Seiten liegen im Ordner daneben: `lernen/buecher/<id>/S001.svg` (Tinte, Format 5.4, mindestens A4 hoch, wächst nach unten, kürzer wird sie nie) und `lernen/buecher/<id>/S001.json` mit den Bildern und Verweisen dieser Seite. Die Seiten sind fortlaufend nummeriert; eine Seite entsteht erst mit ihrem ersten Strich oder Bild, leere Seitendateien gibt es nicht.
 ```json
 {"bilder":   [{"id": "m2c8r7tb", "anhang": "01JSKRIPT…", "seite": 12, "bereich": {"x": 0.1, "y": 0.2, "b": 0.5, "h": 0.1}, "x": 48, "y": 380, "b": 600, "h": 120}],

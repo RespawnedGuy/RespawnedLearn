@@ -6,6 +6,7 @@ import { liesMarken, type Marke } from './marken'
 import { findeLinks } from './links'
 import { blockiertDurch, istAbgeschlossen, zustandAus, type Zustand } from './aufgaben'
 import { syncKopien } from './syncKopien'
+import { eigenerName } from './namen'
 
 export interface Eintrag {
   id: string
@@ -171,7 +172,8 @@ export class Bestand {
       const e: Eintrag = {
         id,
         typ: String(f.typ ?? ''),
-        titel: String(f.titel ?? pfad.split('/').pop()!.replace(/\.md$/, '')),
+        // Beim Anhang zeigt die App den Namen vom Nutzer vor dem Dateinamen (Vertrag 5.1); `felder.titel` bleibt der Dateiname
+        titel: (f.typ === 'anhang' && eigenerName(f)) || String(f.titel ?? pfad.split('/').pop()!.replace(/\.md$/, '')),
         pfad,
         felder: f,
         rumpf: d.rumpf
