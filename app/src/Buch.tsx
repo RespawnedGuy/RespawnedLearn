@@ -32,6 +32,7 @@ import {
 import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
 import { MarkeKnopf } from './MarkeKnopf'
+import { BuchMarken, type BuchAuswahl } from './BuchMarken'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
@@ -241,6 +242,9 @@ function BuchBlatt({
 }) {
   const { speicher, bestand } = useDaten()
   const [gewaehlt, setGewaehlt] = useState<string | null>(null)
+  // Markieren wie im Skript (Vertrag Lernen 1.9): Rechteck → Baustein
+  const [auswahl, setAuswahl] = useState<BuchAuswahl | null>(null)
+  const buch = bestand.dokumente.get(id)
   const tinte = pfade.buchTinte(id, nr)
   const format = blattFormat(speicher.text(tinte))
   const seite = liesBuchSeite(speicher.text(pfade.buchSeite(id, nr)))
@@ -300,11 +304,18 @@ function BuchBlatt({
             }}
           />
         ))}
-        <TintenEbene pfad={tinte} format={format} werkzeug={werkzeug === 'markieren' ? 'stift' : werkzeug} farbe={farbe} onStrich={(neu, alle) => {
+        <TintenEbene
+          pfad={tinte}
+          format={format}
+          werkzeug={werkzeug}
+          farbe={farbe}
+          onStrich={(neu, alle) => {
             markeNachStrich(speicher, id, nr, neu, alle, ziel)
             onGeschrieben?.(nr)
           }}
+          onRechteck={(bereich, punkt) => setAuswahl({ bereich, punkt })}
         />
+        {buch && <BuchMarken buch={buch} nr={nr} format={format} werkzeug={werkzeug} farbe={farbe} auswahl={auswahl} onAuswahl={setAuswahl} />}
       </div>
     </div>
   )

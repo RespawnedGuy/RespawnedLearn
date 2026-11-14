@@ -45,12 +45,15 @@ export function liesMarken(text: string): Marke[] {
   return out
 }
 
-const r = (n: number) => Math.min(1, Math.max(0, n)).toFixed(3)
+// x und Breite liegen immer zwischen 0 und 1. y und Höhe auf PDF-Seiten auch; in Notizbüchern (Lernen 1.9) stehen sie in
+// Seitenbreiten, weil Buchseiten nach unten wachsen, und dürfen größer als 1 sein.
+const r = (n: number, grenze = 1) => Math.min(grenze, Math.max(0, n)).toFixed(3)
+const HOCH = 99
 
 export function markenZeile(m: Omit<Marke, 'zeile'>): string {
   const text = m.text.replace(/\s+/g, ' ').trim()
   const { x, y, b, h } = m.bereich
-  return `- S. ${m.seite}${text ? ` · ${text}` : ''} %%rn ${r(x)} ${r(y)} ${r(b)} ${r(h)} ${m.datum}${m.farbe ? ` ${m.farbe}` : ''}%% ^${m.id}`
+  return `- S. ${m.seite}${text ? ` · ${text}` : ''} %%rn ${r(x)} ${r(y, HOCH)} ${r(b)} ${r(h, HOCH)} ${m.datum}${m.farbe ? ` ${m.farbe}` : ''}%% ^${m.id}`
 }
 
 /** Fügt eine Marke hinzu oder ersetzt die mit derselben ID. Andere Zeilen bleiben unberührt. */
@@ -73,4 +76,17 @@ export function entferneMarke(text: string, id: string): string {
 /** Verweis auf eine Stelle, für Journal und Lernkarten */
 export function stellenLink(anhangId: string, seite: number, markeId: string, anzeige: string): string {
   return `![[${anhangId}#seite=${seite}&marke=${markeId}|${anzeige}]]`
+}
+
+/**
+ * Bereich auf einer Buchseite (Vertrag Lernen 1.9, 5.4): Die Tinte liefert ihn relativ zur Höhe der Seite. Gespeichert
+ * wird er in Seitenbreiten, damit er an seiner Stelle bleibt, wenn die Seite nach unten wächst. `format` = Höhe / Breite.
+ */
+export function inSeitenbreiten(b: Bereich, format: number): Bereich {
+  return { x: b.x, y: b.y * format, b: b.b, h: b.h * format }
+}
+
+/** Gegenstück zu `inSeitenbreiten`: Bereich relativ zur jetzigen Höhe der Buchseite, zum Anzeigen */
+export function ausSeitenbreiten(b: Bereich, format: number): Bereich {
+  return { x: b.x, y: b.y / format, b: b.b, h: b.h / format }
 }

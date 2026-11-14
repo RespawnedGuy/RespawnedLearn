@@ -166,7 +166,7 @@ async function aendere(speicher: Speicher, pfad: string, f: (t: string) => strin
   await speicher.aendere(pfad, (alt) => setzeFeld(f(alt || neu()), 'geaendert', zeitstempel()))
 }
 
-/** Stelle im Skript markieren und daraus eine Karte machen */
+/** Stelle im Skript oder im eigenen Notizbuch markieren und daraus eine Karte machen; im Buch steht `bereich` in Seitenbreiten (Lernen 1.9) */
 export async function karteAusStelle(
   speicher: Speicher,
   p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link' | 'nur'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string; markeId?: string; name?: string }
@@ -197,7 +197,13 @@ export async function karteAusStelle(
   await aendere(
     speicher,
     pfade.marken('lernen', p.quelle.id),
-    (t) => setzeMarke(t, { id: markeId, seite: p.seite, text: markenText(p.name ?? '', karteId, anzeige), bereich: p.bereich, datum: tag(), farbe: p.farbe }),
+    (t) => {
+      // Gibt es die Markierung schon (Baustein im Buch wieder angetippt), bleiben Lage, Datum und bisherige Verweise
+      const alt = liesMarken(t).find((m) => m.id === markeId)
+      if (!alt) return setzeMarke(t, { id: markeId, seite: p.seite, text: markenText(p.name ?? '', karteId, anzeige), bereich: p.bereich, datum: tag(), farbe: p.farbe })
+      const benannt = p.name?.trim() ? benenne(alt.text, p.name) : alt.text
+      return setzeMarke(t, { ...alt, text: karteId ? mitVerweis(benannt, karteId, anzeige) : benannt })
+    },
     () =>
       neuesDokument([
         ['id', ulid()],
@@ -205,7 +211,8 @@ export async function karteAusStelle(
         ['erstellt', jetzt],
         ['geaendert', jetzt],
         ['titel', `Stellen in ${p.quelle.titel}`],
-        ['anhang', `[[${p.quelle.id}]]`]
+        // im eigenen Notizbuch `buch` (Vertrag Lernen 1.9), sonst das Skript
+        [p.quelle.typ === 'notizbuch' ? 'buch' : 'anhang', `[[${p.quelle.id}]]`]
       ])
   )
   return karteId

@@ -2,9 +2,17 @@ import { useEffect, useState, type ReactNode } from 'react'
 import katex from 'katex'
 import { ankerParameter, calloutName, findeLinks, liesMarken, pfade, type Bestand } from '@rl/kern'
 import { ausschnitt, ortLink, useDaten } from '@rl/oberflaeche'
+import { BuchAusschnitt } from './BuchAusschnitt'
 
 /** Bild einer markierten Stelle im Skript */
-export function Ausschnitt({ anhangId, seite, markeId, breite = 520, titel }: { anhangId: string; seite: number; markeId: string; breite?: number; titel?: string }) {
+/** Ausschnitt einer markierten Stelle: aus einem Skript (Bild über pdf.js) oder aus dem eigenen Notizbuch (Lernen 1.9) */
+export function Ausschnitt(p: { anhangId: string; seite: number; markeId: string; breite?: number; titel?: string }) {
+  const { bestand } = useDaten()
+  if (bestand.dokumente.get(p.anhangId)?.typ === 'notizbuch') return <BuchAusschnitt buchId={p.anhangId} seite={p.seite} markeId={p.markeId} breite={p.breite} titel={p.titel} />
+  return <SkriptAusschnitt {...p} />
+}
+
+function SkriptAusschnitt({ anhangId, seite, markeId, breite = 520, titel }: { anhangId: string; seite: number; markeId: string; breite?: number; titel?: string }) {
   const { speicher, bestand } = useDaten()
   const [url, setUrl] = useState<string | null>(null)
   const datei = bestand.dokumente.get(anhangId)?.felder.datei

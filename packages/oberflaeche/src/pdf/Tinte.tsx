@@ -294,7 +294,7 @@ export function TintenEbene({
       ))}
       {aktiv && <path d={aktiv.d} fill={FARBEN[aktiv.farbe]} />}
       {rechteck && (
-        <rect x={rechteck.x * SEITE_BREITE} y={rechteck.y * hoehe} width={rechteck.b * SEITE_BREITE} height={rechteck.h * hoehe} fill="rgba(106,79,196,0.06)" stroke="currentColor" strokeDasharray="8 6" strokeWidth={2} style={{ color: 'var(--akzent)' }} />
+        <rect x={rechteck.x * SEITE_BREITE} y={rechteck.y * hoehe} width={rechteck.b * SEITE_BREITE} height={rechteck.h * hoehe} fill="rgba(196,80,26,0.06)" stroke="currentColor" strokeDasharray="8 6" strokeWidth={2} style={{ color: 'var(--akzent)' }} />
       )}
     </svg>
   )
