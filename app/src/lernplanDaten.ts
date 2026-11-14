@@ -15,6 +15,7 @@ import {
   zeitIn,
   type Bestand,
   type Eintrag,
+  type LernAbschnitt,
   type Lesestand,
   type Modul,
   type PlanAbschnitt,
@@ -70,26 +71,29 @@ export function modulTempo(b: Bestand, m: Pick<Modul, 'id' | 'quellen'>): Tempo 
   return tempo(alle.filter((a) => gehoertZu(a, m))) ?? tempo(alle)
 }
 
+/** Plan eines Moduls aus dem Bestand und den geladenen Seitenzahlen (für Modulseite und Übersicht) */
+export function rechneModulPlan(bestand: Bestand, m: Modul, quellen: Eintrag[], seiten: Record<string, number>, paketMinuten: number, stand: Lesestand = lesestand(bestand), zeiten: LernAbschnitt[] = alleLernzeiten(bestand)): ModulPlan {
+  const t = modulTempo(bestand, m)
+  const minutenJeSeite = t?.minutenJeSeite ?? START_MINUTEN_JE_SEITE
+  const teile = quellen.map((q) => ({ anhang: q.id, titel: q.titel, seiten: seiten[q.id] ?? 0, kapitel: inhaltVon(bestand, q.id)?.kapitel ?? [] }))
+  const stundenJeEcts = liesStundenJeEcts(bestand.texte.get(pfade.lernzeitEinstellung()))
+  return {
+    plan: rechnePlan({ teile, minutenJeSeite, paketMinuten, schwer: m.schwer }),
+    stand,
+    minutenJeSeite,
+    tempo: t,
+    zeit: zeitIn(zeiten, m),
+    umfang: umfangStunden(m, stundenJeEcts),
+    stundenJeEcts
+  }
+}
+
 export function useModulPlan(m: Modul, quellen: Eintrag[]): ModulPlan {
   const { bestand } = useDaten()
   const seiten = useSeitenzahlen(quellen)
   const paketMinuten = pomodoroEinstellungen().lernen
   const seitenSchluessel = quellen.map((q) => seiten[q.id]).join(',')
-  return useMemo(() => {
-    const t = modulTempo(bestand, m)
-    const minutenJeSeite = t?.minutenJeSeite ?? START_MINUTEN_JE_SEITE
-    const teile = quellen.map((q) => ({ anhang: q.id, titel: q.titel, seiten: seiten[q.id] ?? 0, kapitel: inhaltVon(bestand, q.id)?.kapitel ?? [] }))
-    const stundenJeEcts = liesStundenJeEcts(bestand.texte.get(pfade.lernzeitEinstellung()))
-    return {
-      plan: rechnePlan({ teile, minutenJeSeite, paketMinuten, schwer: m.schwer }),
-      stand: lesestand(bestand),
-      minutenJeSeite,
-      tempo: t,
-      zeit: zeitIn(alleLernzeiten(bestand), m),
-      umfang: umfangStunden(m, stundenJeEcts),
-      stundenJeEcts
-    }
-  }, [bestand, m.id, paketMinuten, seitenSchluessel])
+  return useMemo(() => rechneModulPlan(bestand, m, quellen, seiten, paketMinuten), [bestand, m.id, paketMinuten, seitenSchluessel])
 }
 
 /** „S. 7–11“ */

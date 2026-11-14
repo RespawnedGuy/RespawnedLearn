@@ -45,3 +45,18 @@ rechnet die App mit 5 Minuten je Seite (eine Schätzung), danach mit deinem Temp
 Hast du einen Abschnitt fertig gelesen und gibt es dazu schon Kapitelfragen oder Lernkarten, erscheint im Skript oben
 ein kleiner Knopf „Übung?“. Er führt zu den Fragen. Ignorierst du ihn, passiert nichts; mit ✕ verschwindet er für diesen
 Abschnitt. Für Module ohne Übungen schaltest du den Vorschlag im ganzen Plan ab.
+
+## Übersicht über alle Module
+
+Der Tab „Übersicht“ ganz links (am Handy „Heute“) zeigt alle Module auf einen Blick:
+
+- **Jetzt dran**: je Modul das nächste Paket. Antippen öffnet das Skript an dieser Seite. Module, die hinter dem Plan
+  liegen, stehen oben, danach die mit dem nächsten Termin, dann die zuletzt gelesenen.
+- **Diese Woche**: gemessene Lernzeit seit Montag, verglichen mit den Stunden pro Woche aller laufenden Module.
+- **Module**: je Modul gelesene Seiten, Termin, ob es bis zur Wiederholung reicht, offene eigene Einheiten und fällige
+  Karten. Antippen öffnet die Modulseite. Abgeschlossene Module fehlen hier.
+
+Die Übersicht rechnet mit denselben Zahlen wie die Modulseite und schreibt nichts.
+
+Unter Einstellungen › Beim Öffnen stellst du je Gerät ein, ob die App mit der Übersicht startet oder gleich im zuletzt
+offenen Skript weitermacht.

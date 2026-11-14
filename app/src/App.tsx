@@ -1,5 +1,7 @@
 import { Fehlergrenze, Funktionsleiste, Kopf, Meldungen, geheZu, ortLink, Symbol, useDaten, useOrt, type KopfZiel } from '@rl/oberflaeche'
 import { Sammeln } from './Sammeln'
+import { Uebersicht } from './Uebersicht'
+import { startort, startZiel } from './startort'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
 import { Konflikte } from './Konflikte'
@@ -22,7 +24,12 @@ export function App() {
   useEffect(() => verbindeOrdner(speicher), [speicher])
   // Vertragsmarke im Datenordner (Lernen 1.6): warnt, wenn ein anderes Gerät eine neuere App hat
   const neuererVertrag = useNeuererVertrag(speicher)
-  const bereich = ort[0] ?? 'sammeln'
+  // Start ohne Adresse: Übersicht oder zuletzt offenes Skript, je nach Einstellung des Geräts (startort.ts)
+  useEffect(() => {
+    const ziel = startZiel(location.hash, startort(), bestand)
+    if (ziel) location.replace(ziel) // nur einmal beim Öffnen
+  }, [])
+  const bereich = ort[0] ?? 'uebersicht'
   const quelle = bereich === 'sammeln' && ort[1] && ort[1] !== 'modul' && ort[1] !== 'mitschrift' ? bestand.dokumente.get(ort[1]) : undefined
   const mitschrift = bereich === 'sammeln' && ort[1] === 'mitschrift' && ort[2] ? bestand.dokumente.get(ort[2]) : undefined
   const mitschriftModul = mitschrift ? linkZiel(mitschrift.felder.thema) : null
@@ -33,6 +40,7 @@ export function App() {
   // Bereiche als Tabs oben, am Handy wie am PC (Stil „Linie“, Nils 13.11.). Vorfragen und Kapitelfragen kündigen
   // sich als Hinweis über der Lernrunde an, Module und Bücher stehen auf der Startseite unter Sammeln.
   const ziele: KopfZiel[] = [
+    { titel: 'Übersicht', kurz: 'Heute', ziel: ortLink('uebersicht'), aktiv: bereich === 'uebersicht' },
     { titel: 'Sammeln', ziel: ortLink('sammeln'), aktiv: bereich === 'sammeln' },
     { titel: 'Lernen', ziel: ortLink('lernen'), aktiv: bereich === 'lernen', zahl: faellig },
     { titel: 'Nutzen', ziel: ortLink('nutzen'), aktiv: bereich === 'nutzen' }
@@ -52,6 +60,7 @@ export function App() {
     : bereich === 'nutzen' && ort[1] ? ortLink('nutzen')
     : bereich === 'konflikte' || bereich === 'einstellungen' ? ortLink('sammeln')
     : bereich === 'sammeln' && !ort[1] ? null
+    : bereich === 'uebersicht' ? null
     : ortLink('sammeln')
 
   return (
@@ -82,7 +91,7 @@ export function App() {
       <main id="inhalt">
       <AppHinweise neuererVertrag={neuererVertrag} inEinstellungen={bereich === 'einstellungen'} />
       <Fehlergrenze ort={ort.join('/')}>
-        {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : <Sammeln ort={ort} />}
+        {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : bereich === 'uebersicht' ? <Uebersicht /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
       </main>
       {leiste.length > 0 && (

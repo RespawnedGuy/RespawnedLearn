@@ -180,7 +180,8 @@ function Kachel({ z }: { z: Lernziel }) {
         <span style={{ flex: 1 }} />
         {uebersicht && (
           <a className="knopf klein" href={uebersicht}>
-            Übersicht
+            {/* nicht „Übersicht“: so heißt seit v0.25.0 der Tab mit allen Modulen */}
+            Details
           </a>
         )}
         {weiter && (

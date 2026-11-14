@@ -6,14 +6,16 @@ import { setzeSchreibhand, useSchreibhand } from './schreibhand'
 import { EinstellungenAktualisierung } from './Aktualisierung'
 import { EinstellungenPomodoro } from './EinstellungenPomodoro'
 import { EinstellungenLernzeit } from './EinstellungenLernzeit'
+import { setzeStartort, useStartort } from './startort'
 
-/** `#/einstellungen`: Datenordner, Schreibhand, Pomodoro, Lernzeit, KI-Zugang dieses Geräts, Anweisungen an die KI */
+/** `#/einstellungen`: Datenordner, Start, Schreibhand, Pomodoro, Lernzeit, KI-Zugang dieses Geräts, Anweisungen an die KI */
 export function Einstellungen() {
   return (
     <div className="lernen-seite einstellungen">
       <h1>Einstellungen</h1>
       <KonfliktHinweis />
       <Datenordner />
+      <Start />
       <Schreiben />
       <EinstellungenPomodoro />
       <EinstellungenLernzeit />
@@ -41,6 +43,24 @@ function KonfliktHinweis() {
       <a className="knopf haupt" href={ortLink('konflikte')}>
         {h ? 'Sync prüfen' : `${k} Konflikt${k > 1 ? 'e' : ''} ansehen`}
       </a>
+    </section>
+  )
+}
+
+/** Geräte-Einstellung: womit die App startet (Nils 14.11.) */
+function Start() {
+  const s = useStartort()
+  return (
+    <section className="einstellungen-teil">
+      <h2>Beim Öffnen</h2>
+      <div className="segmente klein" role="radiogroup" aria-label="Beim Öffnen zeigen">
+        {(['uebersicht', 'skript'] as const).map((o) => (
+          <button key={o} type="button" role="radio" aria-checked={s === o} className={s === o ? 'aktiv' : ''} onClick={() => setzeStartort(o)}>
+            {o === 'uebersicht' ? 'Übersicht' : 'Zuletzt offenes Skript'}
+          </button>
+        ))}
+      </div>
+      <p className="klein-leise">Mit „Zuletzt offenes Skript“ geht es gleich an der Stelle weiter, an der du aufgehört hast; ohne gelesene Stelle startet die Übersicht. Gilt nur für dieses Gerät.</p>
     </section>
   )
 }

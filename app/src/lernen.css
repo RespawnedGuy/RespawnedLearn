@@ -440,6 +440,9 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
   font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
   transition: background-color 400ms ease, color 400ms ease;
 }
+/* Schmale Handys: vier Tabs, Uhr und Zahnrad nebeneinander (geprüft bis 320 px) */
+@media (max-width: 374px) { .pomodoro-chip { min-width: 32px; padding: 0 4px; } }
+@media (max-width: 339px) { .pomodoro-chip { min-width: 28px; padding: 0 2px; } }
 .pomodoro-chip:hover { background: var(--glas-marke, var(--mulde-hell)); color: var(--tinte); }
 .pomodoro-chip.lernt, .pomodoro-chip.pause { color: var(--tinte); }
 /* Lernzeit oder Pause um: einmal still orange, kein Blinken, kein Ton */
@@ -492,3 +495,15 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .baustein-name .eingabe { width: 100%; }
 .baustein-name .eintrag-titel { overflow-wrap: anywhere; }
 .baustein .reihe, .nutzen-suche > .reihe { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* Übersicht über alle Module (Uebersicht.tsx) */
+.paket-modul { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.uebersicht-woche { display: flex; flex-direction: column; gap: 6px; font-size: 0.9375rem; }
+.uebersicht-balken { height: 6px; border-radius: 3px; background: var(--linie); overflow: hidden; }
+.uebersicht-balken > span { display: block; height: 100%; background: var(--akzent); border-radius: 3px; }
+.uebersicht-module { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.uebersicht-modul { background: var(--flaeche); border-radius: 12px; box-shadow: var(--schatten); }
+.uebersicht-modul-link { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; min-height: 44px; text-decoration: none; color: inherit; }
+.uebersicht-modul-kopf { display: flex; gap: 8px; align-items: baseline; }
+.uebersicht-modul-titel { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.uebersicht-modul.lage-fertig .uebersicht-balken > span, .uebersicht-modul.lage-vorbei .uebersicht-balken > span { background: var(--leise); }
