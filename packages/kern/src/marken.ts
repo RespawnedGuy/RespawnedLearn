@@ -101,3 +101,43 @@ export function inSeitenbreiten(b: Bereich, format: number): Bereich {
 export function ausSeitenbreiten(b: Bereich, format: number): Bereich {
   return { x: b.x, y: b.y / format, b: b.b, h: b.h / format }
 }
+
+/** Woran eine gewählte Markierung gezogen wird: die Fläche (verschieben) oder eine Ecke (Größe) */
+export type Griff = 'mitte' | 'lo' | 'ro' | 'lu' | 'ru'
+
+/** Kleinste Markierung, die sich noch antippen lässt (Anteile der Seite) */
+export const KLEINSTER_BEREICH = { b: 0.03, h: 0.015 }
+
+const zwischen = (n: number, von: number, bis: number) => Math.min(bis, Math.max(von, n))
+
+/**
+ * Markierung verschieben oder an einer Ecke größer/kleiner ziehen (Lernen 1.10, 5.4). Alles in Anteilen der
+ * angezeigten Seite (0 bis 1); die Markierung bleibt ganz auf der Seite und nie kleiner als `KLEINSTER_BEREICH`.
+ * Die gegenüberliegende Ecke bleibt beim Ziehen an einer Ecke stehen.
+ */
+export function rueckeBereich(b: Bereich, griff: Griff, dx: number, dy: number, min = KLEINSTER_BEREICH): Bereich {
+  if (griff === 'mitte') return { x: zwischen(b.x + dx, 0, 1 - b.b), y: zwischen(b.y + dy, 0, 1 - b.h), b: b.b, h: b.h }
+  let l = b.x
+  let r = b.x + b.b
+  let o = b.y
+  let u = b.y + b.h
+  if (griff === 'lo' || griff === 'lu') l = zwischen(l + dx, 0, r - min.b)
+  else r = zwischen(r + dx, l + min.b, 1)
+  if (griff === 'lo' || griff === 'ro') o = zwischen(o + dy, 0, u - min.h)
+  else u = zwischen(u + dy, o + min.h, 1)
+  return { x: l, y: o, b: r - l, h: u - o }
+}
+
+/**
+ * Welche Markierung liegt unter dem Finger? `p` in Anteilen der angezeigten Seite; die zuletzt gesetzte gewinnt. Mit 1 %
+ * Zugabe, damit schmale Markierungen auch mit dem Finger zu treffen sind. Mit `format` (Notizbuch) stehen die Maße in
+ * Seitenbreiten; zurück kommt der Bereich, wie er angezeigt wird.
+ */
+export function markeAn(marken: Marke[], p: { x: number; y: number }, format?: number): { marke: Marke; bereich: Bereich } | null {
+  for (let i = marken.length - 1; i >= 0; i--) {
+    if (marken[i].anker) continue
+    const b = format ? ausSeitenbreiten(marken[i].bereich, format) : marken[i].bereich
+    if (p.x >= b.x - 0.01 && p.x <= b.x + b.b + 0.01 && p.y >= b.y - 0.01 && p.y <= b.y + b.h + 0.01) return { marke: marken[i], bereich: b }
+  }
+  return null
+}

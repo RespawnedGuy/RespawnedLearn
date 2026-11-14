@@ -372,6 +372,18 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 .marke.wichtig { border-color: var(--stift-wichtig); background: rgba(224, 68, 58, 0.08); }
 .marke.ergaenzung { border-color: var(--stift-ergaenzung); background: rgba(47, 158, 91, 0.08); }
 .marke.gewaehlt { box-shadow: 0 0 0 3px rgba(210, 86, 28, 0.3); }
+/* Gewählte Markierung (Lernen 1.10): der Rahmen liegt darüber, die alte Lage verschwindet, solange gewählt */
+.marke.gewaehlt.verschiebbar { visibility: hidden; }
+.marke-rahmen { position: absolute; z-index: 15; border: 2px solid var(--akzent); background: rgba(210, 86, 28, 0.1); border-radius: 4px; box-shadow: 0 0 0 3px rgba(210, 86, 28, 0.25); touch-action: none; cursor: move; }
+.marke-rahmen.wichtig { border-color: var(--stift-wichtig); }
+.marke-rahmen.ergaenzung { border-color: var(--stift-ergaenzung); }
+/* Griffe: sichtbar 14 px, Trefferfläche 44 px (WCAG 2.5.5) */
+.marke-griff { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; touch-action: none; }
+.marke-griff::after { content: ''; position: absolute; left: 15px; top: 15px; width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid var(--akzent); box-sizing: border-box; }
+.marke-griff.lo { left: 0; top: 0; cursor: nwse-resize; }
+.marke-griff.ro { left: 100%; top: 0; cursor: nesw-resize; }
+.marke-griff.lu { left: 0; top: 100%; cursor: nesw-resize; }
+.marke-griff.ru { left: 100%; top: 100%; cursor: nwse-resize; }
 .marke .nummer { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--akzent); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(196, 80, 26, 0.06); border-radius: 3px; pointer-events: none; }
 .schwebe { position: absolute; z-index: 20; background: var(--flaeche); border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }

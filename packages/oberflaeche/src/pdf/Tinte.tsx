@@ -48,7 +48,8 @@ export function TintenEbene({
   finger,
   breite: strichBreite,
   onZoom,
-  onStrich
+  onStrich,
+  vorTippen
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -67,6 +68,11 @@ export function TintenEbene({
   onZoom?: (faktor: number) => void
   /** Ein Strich ist abgesetzt (nach dem Sichern der Tinte); `alle` sind alle Striche der Seite, der neue eingeschlossen */
   onStrich?: (neu: Strich, alle: Strich[]) => void
+  /**
+   * Vor jedem Finger- oder Mausdruck (nie beim Stift): Ort in Anteilen der Seite und Art des Zeigers. Gibt der Aufrufer
+   * true zurück (z. B. eine Markierung getroffen), übernimmt er den Druck und die Ebene zeichnet nichts.
+   */
+  vorTippen?: (p: { x: number; y: number }, art: string) => boolean
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -143,6 +149,14 @@ export function TintenEbene({
 
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {
     if (werkzeug === 'lesen') return
+    // Finger und Maus dürfen eine Markierung wählen; der Stift schreibt immer durch sie hindurch
+    if (vorTippen && e.pointerType !== 'pen' && (e.buttons & 32) === 0 && beruehrt.current.size === 0 && !modus.current && ref.current) {
+      const r = ref.current.getBoundingClientRect()
+      if (vorTippen({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }, e.pointerType)) {
+        e.preventDefault()
+        return
+      }
+    }
     if (e.pointerType === 'touch' && istHandballen(e.pointerId)) {
       e.preventDefault()
       return

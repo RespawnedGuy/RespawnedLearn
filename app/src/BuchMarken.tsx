@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { ausSeitenbreiten, eingabeVon, inSeitenbreiten, kurzId, liesBausteinText, liesMarken, pfade, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
 import { melde, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { BausteinMenue, Verlinken, karteVon, schwebeLage } from './BausteinMenue'
-import { karteAusStelle } from './wissen'
+import { karteAusStelle, setzeBereich } from './wissen'
+import { MarkeRahmen } from './MarkeRahmen'
 
 /** Gezogenes Rechteck (relativ zur jetzigen Seitenhöhe) oder eine angetippte Markierung */
 export interface BuchAuswahl {
@@ -34,8 +35,9 @@ export function BuchMarken({
 }) {
   const { speicher, bestand } = useDaten()
   const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', buch.id)) ?? '').filter((m) => m.seite === nr)
-  // Wie im Skript (PdfAnsicht): Antippen öffnet den Baustein wieder, nur beim Stift geht man durch die Markierung hindurch
-  const antippbar = werkzeug !== 'stift'
+  // Beim Lesen öffnet Antippen die Markierung; in den anderen Werkzeugen wählt die Tinte sie über `markeAn` (Buch.tsx)
+  const antippbar = werkzeug === 'lesen'
+  const gewaehlt = auswahl?.marke
   return (
     <>
       {marken.map((m) => {
@@ -45,16 +47,30 @@ export function BuchMarken({
           <button
             type="button"
             key={m.id}
-            className={`marke ${m.farbe ?? ''}${auswahl?.marke?.id === m.id ? ' gewaehlt' : ''}`}
+            className={`marke ${m.farbe ?? ''}${gewaehlt?.id === m.id ? ' gewaehlt verschiebbar' : ''}`}
             title={t.name || t.verweise[0]?.titel || 'Baustein ohne Namen'}
             aria-label={`Baustein ${t.name || 'ohne Namen'}`}
             style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.b * 100}%`, height: `${b.h * 100}%`, pointerEvents: antippbar ? 'auto' : 'none' }}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onAuswahl({ bereich: b, marke: m })}
+            onClick={(e) => {
+              // der Stift wählt nie (Nils 2026-11-14)
+              if ((e.nativeEvent as PointerEvent).pointerType !== 'pen') onAuswahl({ bereich: b, marke: m })
+            }}
           />
         )
       })}
-      {auswahl && <Menue key={`${auswahl.marke?.id ?? ''}|${auswahl.bereich.x}|${auswahl.bereich.y}`} buch={buch} nr={nr} format={format} farbe={farbe} auswahl={auswahl} onZu={() => onAuswahl(null)} speicher={speicher} />}
+      {gewaehlt && (
+        <MarkeRahmen
+          bereich={auswahl.bereich}
+          farbe={gewaehlt.farbe}
+          onFertig={(neu) => {
+            const inBreiten = inSeitenbreiten(neu, format)
+            onAuswahl({ bereich: neu, marke: { ...gewaehlt, bereich: inBreiten } })
+            void setzeBereich(speicher, buch.id, gewaehlt.id, inBreiten)
+          }}
+        />
+      )}
+      {auswahl && <Menue key={auswahl.marke?.id ?? `${auswahl.bereich.x}|${auswahl.bereich.y}`} buch={buch} nr={nr} format={format} farbe={farbe} auswahl={auswahl} onZu={() => onAuswahl(null)} speicher={speicher} />}
     </>
   )
 }
@@ -145,3 +161,4 @@ function Menue({ buch, nr, format, farbe, auswahl, onZu, speicher }: { buch: Ein
     </>
   )
 }
+

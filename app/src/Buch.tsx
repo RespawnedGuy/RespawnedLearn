@@ -12,6 +12,8 @@ import {
   ohneMarkeImBuch,
   liesTinte,
   liesBuchSeite,
+  liesMarken,
+  markeAn,
   pfade,
   platzFuerMarkierung,
   platzImBuch,
@@ -30,7 +32,7 @@ import {
   type Strich,
   type Ziel
 } from '@rl/kern'
-import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
+import { TintenEbene, geheZu, hatStift, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
 import { MarkeKnopf } from './MarkeKnopf'
 import { BuchMarken, type BuchAuswahl } from './BuchMarken'
@@ -320,6 +322,15 @@ function BuchBlatt({
             onGeschrieben?.(nr)
           }}
           onRechteck={(bereich, punkt) => setAuswahl({ bereich, punkt })}
+          vorTippen={(p, art) => {
+            // Finger und Maus wählen eine Markierung beim Markieren; auf Geräten mit Stift wählt der Finger auch sonst,
+            // weil er dort ohnehin nicht schreibt. Der Stift kommt hier nie an (TintenEbene).
+            const darf = werkzeug === 'markieren' || (art === 'touch' && hatStift())
+            const treffer = darf && buch ? markeAn(liesMarken(bestand.texte.get(pfade.marken('lernen', id)) ?? '').filter((m) => m.seite === nr), p, format) : null
+            if (treffer) setAuswahl(treffer)
+            else if (auswahl?.marke) setAuswahl(null)
+            return !!treffer
+          }}
         />
         {buch && <BuchMarken buch={buch} nr={nr} format={format} werkzeug={werkzeug} farbe={farbe} auswahl={auswahl} onAuswahl={setAuswahl} />}
       </div>

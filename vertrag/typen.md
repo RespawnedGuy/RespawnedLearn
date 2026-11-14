@@ -146,6 +146,7 @@ anhang: "[[ID]]"
   ```
   - S. 2 · Eigene Herleitung #integral %%rn 0.080 1.120 0.840 0.260 2026-11-14%% ^b7x2q1
   ```
+- **Verschieben und skalieren** (Skript und Notizbuch): Der Nutzer darf den Bereich einer Rechteck-Markierung nachträglich ändern. Die App ersetzt dann nur die vier Maße in ihrer Zeile; Text, Datum, Farbe und ID bleiben, Verweise auf die Markierung zeigen danach den neuen Ausschnitt. Das Format ändert sich dadurch nicht.
 - **In der Mitschrift** (ab Lernen 1.10): Markierter Text einer Mitschrift (`notiz`, 5.3) wird ein Baustein. Die App setzt an die letzte Zeile seines Absatzes eine Blockkennung `^anker` (wie für Lernkarten aus der Mitschrift) und schreibt in `lernen/markierungen/<notiz-id>.md` (Kopf `notiz: "[[ID]]"`) eine Zeile mit der Kennung statt Seite und Bereich, danach das Datum und optional die Farbe:
   ```
   - ^k3m9 · Maschenregel #kirchhoff %%rt 2026-11-14%% ^b7x2q1
