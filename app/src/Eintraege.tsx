@@ -8,7 +8,7 @@ const OHNE = 'ohne-thema'
 /** Lernstand in Worten: neu, fällig oder bis wann eine Karte sitzt */
 export function standText(st: Lernstand | undefined): { text: string; art: '' | 'akzent' | 'rot' } {
   if (!st) return { text: 'neu', art: '' }
-  const due = st.karte.due
+  const due = st.karte.dueAt
   if (due.getTime() <= Date.now()) return { text: 'fällig', art: 'rot' }
   return { text: `sitzt bis ${kurzDatum(tag(due))}`, art: 'akzent' }
 }
