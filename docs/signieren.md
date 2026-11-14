@@ -12,7 +12,7 @@ Wer auf `main` pushen kann, bekäme sonst über die Action ein echt signiertes U
    - *Required reviewers:* dich selbst eintragen, *Prevent self-review* aus lassen (du gibst deine eigenen Läufe frei).
    - *Deployment branches and tags:* „Selected branches and tags“ → `main`.
    - *Environment secrets:* alle Secrets aus den Abschnitten unten hier anlegen (`ANDROID_KEY_*`, `TAURI_SIGNING_*`,
-     später `WINDOWS_PFX_*`). Die Variable `TAURI_UPDATER_PUBKEY` ist öffentlich und darf eine Repository-Variable bleiben.
+     später `WINDOWS_PFX_*`). Die Variable `TAURI_UPDATER_PUBKEY` ist öffentlich und muss eine Repository-Variable sein, nicht im Environment: Der Schritt „Release“ läuft ohne Environment und fände sie sonst nicht.
    - Danach die alten **Repository-Secrets** gleichen Namens löschen (Settings → Secrets and variables → Actions).
 2. **`main` schützen:** Settings → Rules → Rulesets → New branch ruleset, Name `main`, *Enforcement* „Active“,
    *Target branches* „Include default branch“. Anhaken: *Restrict deletions*, *Block force pushes*, *Require a pull
