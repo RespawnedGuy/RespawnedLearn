@@ -1,5 +1,15 @@
 // Daten der Lern-App: Karten anlegen, Lernstand aus dem Protokoll berechnen (FSRS), Spuren finden.
-import { createEmptyCard, fsrs, Rating, type Card, type Grade } from 'ts-fsrs'
+import { dateChrono, defineScheduler, Rating, type Grade } from 'ts-fsrs'
+import {
+  schedulerDesiredRetentionMiddleware,
+  schedulerFuzzingMiddleware,
+  schedulerLearningStepsMiddleware,
+  schedulerMaximumIntervalMiddleware,
+  schedulerMonotonicIntervalMiddleware,
+  schedulerScheduledDaysMiddleware,
+  schedulerStatsMiddleware
+} from 'ts-fsrs/middlewares'
+import { FSRS6Model, migrateFSRS6Parameters } from 'ts-fsrs/models/fsrs-6'
 import {
   findeLinks,
   lernPdfs,
@@ -216,11 +226,38 @@ export function korrigiereFrage(speicher: Speicher, karteId: string, alt: string
 
 // ---------- Lernstand (FSRS aus dem Protokoll aller Geräte) ----------
 
-const planer = fsrs({ enable_fuzz: false })
+// Modell FSRS-6 mit den Einstellungen, die bis ts-fsrs 5 Standard waren (Leitfaden „Migrating to v6“): Middlewares in der
+// Reihenfolge des Leitfadens, ohne Zufall, damit alle Geräte aus demselben Protokoll dieselben Termine berechnen.
+// FSRS-7 wäre ein eigener Schritt; der Lernstand steht nirgends, er wird bei jedem Wechsel neu aus dem Protokoll gerechnet.
+const planer = defineScheduler({ model: FSRS6Model, chrono: dateChrono })
+  .use(
+    schedulerDesiredRetentionMiddleware,
+    schedulerFuzzingMiddleware,
+    schedulerStatsMiddleware,
+    schedulerScheduledDaysMiddleware,
+    schedulerLearningStepsMiddleware,
+    schedulerMaximumIntervalMiddleware,
+    schedulerMonotonicIntervalMiddleware
+  )
+  .create({
+    config: {
+      weights: migrateFSRS6Parameters(),
+      fractionalDays: false,
+      enableShortTerm: true,
+      desiredRetention: 0.9,
+      learningSteps: ['1m', '10m'],
+      relearningSteps: ['10m'],
+      numRelearningSteps: 1,
+      enableFuzz: false,
+      maximumInterval: 36500,
+      clearStatsOnForget: false
+    }
+  })
+export type Karte = ReturnType<typeof planer.newCard>
 const NOTE: Record<Note, Grade> = { nochmal: Rating.Again, schwer: Rating.Hard, gut: Rating.Good, leicht: Rating.Easy }
 
 export interface Lernstand {
-  karte: Card
+  karte: Karte
   zuletzt: string | null
   anzahl: number
 }
@@ -230,8 +267,8 @@ export function lernstaende(b: Bestand): Map<string, Lernstand> {
   alle.sort((x, y) => x.am.localeCompare(y.am))
   const out = new Map<string, Lernstand>()
   for (const w of alle) {
-    const alt = out.get(w.karte) ?? { karte: createEmptyCard(new Date(w.am)), zuletzt: null, anzahl: 0 }
-    const r = planer.next(alt.karte, new Date(w.am), NOTE[w.note] ?? Rating.Good)
+    const alt = out.get(w.karte) ?? { karte: planer.newCard({ now: new Date(w.am), cardId: w.karte }), zuletzt: null, anzahl: 0 }
+    const r = planer.review({ card: alt.karte, now: new Date(w.am), grade: NOTE[w.note] ?? Rating.Good })
     out.set(w.karte, { karte: r.card, zuletzt: w.am, anzahl: alt.anzahl + 1 })
   }
   return out
@@ -254,9 +291,10 @@ export function abstandText(ms: number): string {
 /** Wann die Karte je Bewertung wiederkommt (FSRS-Vorschau, wie unter den Knöpfen bei Anki üblich) */
 export function naechsteAbstaende(b: Bestand, karteId: string, jetzt = new Date()): Record<Note, string> {
   const st = lernstaende(b).get(karteId)
-  const karte: Card = st ? st.karte : createEmptyCard(jetzt)
-  const v = planer.repeat(karte, jetzt)
-  const t = (n: Note) => abstandText(v[NOTE[n]].card.due.getTime() - jetzt.getTime())
+  const karte = st ? st.karte : planer.newCard({ now: jetzt, cardId: karteId })
+  const termin = new Map<Grade, Date>()
+  for (const v of planer.preview({ card: karte, now: jetzt })) termin.set(v.grade, v.card.dueAt)
+  const t = (n: Note) => abstandText(termin.get(NOTE[n])!.getTime() - jetzt.getTime())
   return { nochmal: t('nochmal'), schwer: t('schwer'), gut: t('gut'), leicht: t('leicht') }
 }
 
@@ -280,8 +318,8 @@ export function faellige(b: Bestand, neu = 10): Lernkarte[] {
   const st = lernstaende(b)
   const jetzt = Date.now()
   const karten = lernkarten(b)
-  const alt = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.due.getTime() <= jetzt)
-  alt.sort((x, y) => st.get(x.e.id)!.karte.due.getTime() - st.get(y.e.id)!.karte.due.getTime())
+  const alt = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.dueAt.getTime() <= jetzt)
+  alt.sort((x, y) => st.get(x.e.id)!.karte.dueAt.getTime() - st.get(y.e.id)!.karte.dueAt.getTime())
   const frisch = karten.filter((k) => !st.has(k.e.id)).slice(0, neu)
   return [...alt, ...frisch]
 }

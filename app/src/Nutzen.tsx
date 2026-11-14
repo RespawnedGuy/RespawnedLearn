@@ -179,7 +179,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
   // Lernstand der Karte selbst oder ihrer Lernkarten
   const fragen = bestand.nachTyp('frage').filter((f) => String(f.felder.thema ?? '').includes(e.id))
   const stand = eigen ?? fragen.map((f) => st.get(f.id)).find(Boolean)
-  const sitzt = stand && stand.karte.due.getTime() > Date.now()
+  const sitzt = stand && stand.karte.dueAt.getTime() > Date.now()
   const sp = spuren(bestand, e.id)
   const ms = mitschriftSpur(bestand, e)
   const alsMitschrift = e.typ === 'notiz' && bestand.dokumente.get(linkZiel(e.felder.thema) ?? '')?.typ === 'modul'

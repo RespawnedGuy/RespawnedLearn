@@ -104,7 +104,7 @@ export function modulRunde(b: Bestand, a: Auswahl, neu = 15): Lernkarte[] {
   const st = lernstaende(b)
   const jetzt = Date.now()
   const karten = kartenFuer(b, a)
-  const faellig = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.due.getTime() <= jetzt)
+  const faellig = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.dueAt.getTime() <= jetzt)
   const frisch = karten.filter((k) => !st.has(k.e.id)).slice(0, neu)
   return [...mische(faellig), ...frisch]
 }
@@ -113,7 +113,7 @@ export function modulRunde(b: Bestand, a: Auswahl, neu = 15): Lernkarte[] {
 export function faelligZahl(b: Bestand, a: Auswahl): number {
   const st = lernstaende(b)
   const jetzt = Date.now()
-  return kartenFuer(b, a).filter((k) => !st.has(k.e.id) || st.get(k.e.id)!.karte.due.getTime() <= jetzt).length
+  return kartenFuer(b, a).filter((k) => !st.has(k.e.id) || st.get(k.e.id)!.karte.dueAt.getTime() <= jetzt).length
 }
 
 /**
@@ -125,7 +125,7 @@ export function allgemeineRunde(b: Bestand, neu = 10): Lernkarte[] {
   const st = lernstaende(b)
   const jetzt = Date.now()
   const karten = lernkarten(b).map((k) => ({ ...k, ort: einordnen(b, k.e) }))
-  const faellig = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.due.getTime() <= jetzt)
+  const faellig = karten.filter((k) => st.has(k.e.id) && st.get(k.e.id)!.karte.dueAt.getTime() <= jetzt)
   const stapel = new Map<string, typeof karten>()
   for (const k of karten.filter((x) => !st.has(x.e.id)).sort((x, y) => x.ort.reihe.localeCompare(y.ort.reihe))) {
     const s = k.ort.modul ?? ''

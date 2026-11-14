@@ -88,4 +88,6 @@ Bauplan von Nils freigegeben („Go“ 2026-11-13), nacheinander:
 - Echtes Syncthing zum Gegenprüfen (1.30.0) im Container zu starten blockiert der Auto-Modus, bis Nils es ausdrücklich erlaubt.
 - Unschärfe (`backdrop-filter`) sieht nur bis zum nächsten Vorfahren mit `opacity`, `filter` oder `view-transition-name`: Übergangsnamen nur auf das Glas-Element selbst setzen, nie auf einen Vorfahren.
 - Vite liefert nach `git stash`/`stash pop` manchmal den alten Stand aus: Dev-Server neu starten, bevor man Screenshots glaubt.
+- ts-fsrs ab 6 verlangt laut `engines` Node 24, läuft aber auf Node 22 (npm warnt nur, `EBADENGINE`). Planung nur über `defineScheduler` mit `FSRS6Model` (`app/src/wissen.ts`), nie die veraltete `fsrs()`/`createEmptyCard`; feste Termine in `app/test/planung.test.ts`. FSRS-7 wäre ein eigener Schritt mit Nils' Okay.
+- `package-lock.json` enthält noch Einträge `apps/lernen` und `apps/arbeit` aus VX; darum legt npm manche Pakete (ts-fsrs, katex) unter `app/node_modules` ab. Harmlos.
 - Konfliktname von Syncthing: `<name>.sync-conflict-JJJJMMTT-HHMMSS-<7 Zeichen>.<endung>`; `.syncthing.*.tmp` wird nicht verteilt.
