@@ -17,7 +17,7 @@ function alle(dir, pre = '') {
   return out
 }
 
-export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'/daten'" } = {}) {
+export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'/daten'", warnung = null, standardInhalt = 'leer' } = {}) {
   const dateien = alle(wurzel)
   if (konflikt) {
     const orig = 'lernen/karten/01JBEISPIEL0000KARTERUF001.md'
@@ -43,7 +43,7 @@ export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'
       convertFileSrc(p) { return p },
       async invoke(cmd, args, opts) {
         switch (cmd) {
-          case 'stand': return { ordner: ${ordner}, plattform: '${plattform}' };
+          case 'stand': return { ordner: ${ordner}, plattform: '${plattform}', standard: '${plattform === 'android' ? '/storage/emulated/0/RespawnedLearn' : 'C:\\\\Users\\\\du\\\\Documents\\\\RespawnedLearn'}', standard_inhalt: '${standardInhalt}', warnung: ${JSON.stringify(warnung)} };
           case 'dateien': return [...platte].map(([pfad, d]) => ({ pfad, groesse: d.inhalt.length, geaendert: d.geaendert })).sort((a,b)=>a.pfad.localeCompare(b.pfad));
           case 'texte_lesen': return args.pfade.filter(p => platte.has(p)).map(p => { const d = platte.get(p); return { pfad: p, groesse: d.inhalt.length, geaendert: d.geaendert, stempel: stempel(p), text: dec.decode(d.inhalt) } });
           case 'datei_lesen': { const d = platte.get(args.pfad); if (!d) throw args.pfad + ': nicht gefunden'; return d.inhalt.slice().buffer }
@@ -57,6 +57,9 @@ export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'
           case 'konflikt_loeschen': platte.delete(args.pfad); return null;
           case 'ordner_setzen': return null;
           case 'ordner_waehlen': return true;
+          case 'ordner_standard': return null;
+          case 'ordner_vormerken': return { pfad: args.wahl === 'pfad' ? args.pfad : 'D:\\\\Sync\\\\Lernen', inhalt: 'leer' };
+          case 'ordner_uebernehmen': return 42;
           case 'tresor_kennung': return null;
           case 'ki_zugang_lesen': return null;
           case 'ki_zugang_setzen': return null;

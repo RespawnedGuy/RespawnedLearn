@@ -296,6 +296,10 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .einstellungen-teil .version { font-size: inherit; color: inherit; }
 .einstellungen-teil p { margin: 0; }
 .ordner-pfad { font-family: ui-monospace, monospace; font-size: 0.875rem; overflow-wrap: anywhere; }
+.ordner-karte { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: 16px; margin-top: 4px; }
+.ordner-karte p { margin: 0; line-height: 1.45; }
+.ordner-warnung { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.ordner-warnung p { margin: 0; }
 .ki-stand { font-size: 0.875rem; padding: 10px 12px; border-radius: 10px; background: var(--mulde-hell); color: var(--leise); }
 .ki-stand.an { background: var(--akzent-weich); color: var(--akzent-dunkel); }
 .anbieter-liste { display: flex; flex-direction: column; gap: 8px; }
@@ -390,6 +394,7 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 
 /* Updates (Aktualisierung.tsx): Hinweis über dem Inhalt, gleiche Breite wie die Seiten */
 .app-hinweise { max-width: 820px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 10px; }
+.app-hinweise:empty { display: none; }
 .app-hinweis { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: 16px; }
 .app-hinweis p { margin: 0; line-height: 1.45; }
 .app-hinweis.warnung { border-left: 4px solid var(--akzent); }

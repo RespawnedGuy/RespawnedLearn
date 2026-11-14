@@ -13,7 +13,7 @@ use std::time::UNIX_EPOCH;
 
 /// Ordner, die nie zu den Daten gehören: eigener Index, Syncthing-Verwaltung, Git, Zwischenspeicher von Dropbox
 /// (help.dropbox.com/delete-restore/cache-folder: „.dropbox.cache“ im Wurzelordner)
-const AUSGENOMMEN: &[&str] = &[".index", ".stfolder", ".stversions", ".git", ".geheim", ".dropbox.cache"];
+pub const AUSGENOMMEN: &[&str] = &[".index", ".stfolder", ".stversions", ".git", ".geheim", ".dropbox.cache"];
 
 /// Ein Eintrag der Dateiliste, Pfad relativ zum Datenordner mit `/`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

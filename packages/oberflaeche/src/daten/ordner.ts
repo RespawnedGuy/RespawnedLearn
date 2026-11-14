@@ -8,6 +8,21 @@ export interface OrdnerStand {
   ordner: string | null
   /** windows, android, linux, macos … */
   plattform: string
+  /** vorgeschlagener Ort: PC „Dokumente/RespawnedLearn“, Android im Gerätespeicher */
+  standard?: string | null
+  /** was am vorgeschlagenen Ort schon liegt; fehlt, wenn er sich nicht lesen lässt */
+  standard_inhalt?: OrdnerInhalt | null
+  /** liegt der Ordner an einem gesperrten Ort (z. B. Programmordner), der Grund */
+  warnung?: string | null
+}
+
+/** leer = nichts außer Verwaltung anderer Programme, lerndaten = Daten von RespawnedLearn, fremd = andere Dateien */
+export type OrdnerInhalt = 'leer' | 'lerndaten' | 'fremd'
+
+/** Neuer Ordner in den Einstellungen, geprüft, aber noch nicht übernommen */
+export interface Vormerkung {
+  pfad: string
+  inhalt: OrdnerInhalt
 }
 
 export interface OrdnerEintrag {
@@ -49,6 +64,17 @@ export const ordnerStand = () => invoke<OrdnerStand>('stand')
 export const setzeOrdner = (pfad: string) => invoke<void>('ordner_setzen', { pfad })
 /** Am PC: Rust öffnet den Ordnerdialog und setzt die Wahl; false = abgebrochen */
 export const waehleOrdner = () => invoke<boolean>('ordner_waehlen')
+/** Erster Start: den vorgeschlagenen Ort anlegen und nutzen */
+export const nimmStandardOrdner = () => invoke<void>('ordner_standard')
+/** Ordnerwechsel, Schritt 1: Dialog (PC), Standardort oder Pfad (Android) prüfen; null = abgebrochen */
+export const merkeOrdnerVor = (wahl: 'dialog' | 'standard' | 'pfad', pfad?: string) =>
+  invoke<Vormerkung | null>('ordner_vormerken', { wahl, pfad: pfad ?? null })
+/** Ordnerwechsel, Schritt 2: übernehmen, mit `mitnehmen` vorher alles kopieren und prüfen; liefert die Zahl der Dateien */
+export const uebernimmOrdner = (mitnehmen: boolean) => invoke<number>('ordner_uebernehmen', { mitnehmen })
+/** Fortschritt des Umzugs [fertig, gesamt]; liefert die Abmeldung */
+export function beobachteUmzug(f: (fertig: number, gesamt: number) => void): Promise<() => void> {
+  return listen<[number, number]>('umzug-fortschritt', (e) => f(e.payload[0], e.payload[1]))
+}
 
 const bytes = (inhalt: Uint8Array | string) => (typeof inhalt === 'string' ? new TextEncoder().encode(inhalt) : inhalt)
 

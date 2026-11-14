@@ -5,8 +5,10 @@ mod aktualisieren;
 mod kopien;
 mod ollama;
 mod ordner;
+mod ordnerbefehle;
 mod ordnerwahl;
 mod tresor;
+mod umzug;
 mod zugang;
 
 use notify::{RecursiveMode, Watcher};
@@ -26,12 +28,8 @@ struct Einstellungen {
 struct Zustand {
     einstellungen: Mutex<Einstellungen>,
     beobachter: Mutex<Option<notify::RecommendedWatcher>>,
-}
-
-#[derive(Serialize)]
-struct Stand {
-    ordner: Option<String>,
-    plattform: &'static str,
+    /// in den Einstellungen gewählter neuer Datenordner, bis der Nutzer entscheidet (ordnerbefehle.rs)
+    vorgemerkt: Mutex<Option<PathBuf>>,
 }
 
 fn einstellungs_datei(app: &AppHandle) -> Result<PathBuf, String> {
@@ -66,13 +64,10 @@ fn beobachte(app: &AppHandle, z: &State<Zustand>, ordner: PathBuf) -> Result<(),
     Ok(())
 }
 
-#[tauri::command]
-fn stand(z: State<Zustand>) -> Stand {
-    Stand { ordner: z.einstellungen.lock().unwrap().ordner.clone(), plattform: std::env::consts::OS }
-}
-
-/// Setzt den Datenordner, nachdem geprüft ist, dass die App dort schreiben darf
+/// Setzt den Datenordner, nachdem geprüft ist, dass er an keinem gesperrten Ort liegt (ordnerbefehle.rs) und die App
+/// dort schreiben darf. Jede Wahl des Datenordners läuft hier durch.
 fn setze_ordner(app: &AppHandle, z: &State<Zustand>, p: PathBuf) -> Result<(), String> {
+    ordnerbefehle::pruefe_ort(app, &p)?;
     std::fs::create_dir_all(&p).map_err(|e| format!("Ordner lässt sich nicht anlegen: {e}"))?;
     ordner::pruefe_schreibbar(&p)?;
     let neu = Einstellungen { ordner: Some(p.to_string_lossy().into_owned()) };
@@ -81,41 +76,6 @@ fn setze_ordner(app: &AppHandle, z: &State<Zustand>, p: PathBuf) -> Result<(), S
     std::fs::write(&datei, serde_json::to_vec_pretty(&neu).unwrap()).map_err(|e| e.to_string())?;
     *z.einstellungen.lock().unwrap() = neu;
     beobachte(app, z, p)
-}
-
-/// Unter Android: getippter Pfad, nur Unterordner des gemeinsamen Speichers (ordnerwahl.rs). Am PC gibt es diesen Weg
-/// nicht, dort wählt nur der Dialog (`ordner_waehlen`), damit die Oberfläche keinen beliebigen Ordner setzen kann.
-#[tauri::command]
-fn ordner_setzen(app: AppHandle, z: State<Zustand>, pfad: String) -> Result<(), String> {
-    #[cfg(mobile)]
-    return setze_ordner(&app, &z, ordnerwahl::android_ordner(&pfad)?);
-    #[cfg(desktop)]
-    {
-        let _ = (app, z, pfad);
-        Err("Den Ordner bitte über „Ordner wählen“ aussuchen.".into())
-    }
-}
-
-/// Am PC: öffnet den Ordnerdialog des Systems und setzt den gewählten Ordner. `false` = abgebrochen.
-#[tauri::command]
-async fn ordner_waehlen(app: AppHandle) -> Result<bool, String> {
-    #[cfg(desktop)]
-    {
-        use tauri_plugin_dialog::DialogExt;
-        let a = app.clone();
-        let gewaehlt = tauri::async_runtime::spawn_blocking(move || a.dialog().file().set_title("Datenordner wählen").blocking_pick_folder())
-            .await
-            .map_err(|e| e.to_string())?;
-        let Some(ordner) = gewaehlt else { return Ok(false) };
-        let p = ordner.into_path().map_err(|e| e.to_string())?;
-        setze_ordner(&app, &app.state::<Zustand>(), p)?;
-        Ok(true)
-    }
-    #[cfg(mobile)]
-    {
-        let _ = app;
-        Err("nicht-moeglich".into())
-    }
 }
 
 #[tauri::command]
@@ -278,7 +238,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, ordner_waehlen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren, aktualisieren::release_seite_oeffnen])
+        .invoke_handler(tauri::generate_handler![ordnerbefehle::stand, ordnerbefehle::ordner_setzen, ordnerbefehle::ordner_waehlen, ordnerbefehle::ordner_standard, ordnerbefehle::ordner_vormerken, ordnerbefehle::ordner_uebernehmen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren, aktualisieren::release_seite_oeffnen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }
