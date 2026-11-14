@@ -57,9 +57,17 @@
   /* Kein Platz für den Konflikt-Text neben den Tabs: roter Punkt am Zahnrad (App.tsx) */
   .kopf .sync .chip.rot { display: none; }
 }
-@media (max-width: 359px) {
-  .kopf-reiter-knopf { padding: 0 6px; }
-  .kopf-strich { left: 6px; right: 6px; }
+/* Schmale Handys (bis 374 px): Tabs etwas enger, damit Pomodoro-Uhr und Zahnrad daneben passen (geprüft bis 320 px) */
+@media (max-width: 374px) {
+  .kopf-reiter-knopf { padding: 0 5px; font-size: 0.8125rem; }
+  .kopf-strich { left: 5px; right: 5px; }
+  .kopf-zahnrad { width: 36px; }
+}
+@media (max-width: 339px) {
+  .kopf-reiter-knopf { padding: 0 3px; }
+  .kopf-strich { left: 3px; right: 3px; }
+  .kopf-zahnrad { width: 32px; }
+  .kopf-rechts { gap: 2px; }
 }
 
 /* ---------- Funktionsleiste ---------- */

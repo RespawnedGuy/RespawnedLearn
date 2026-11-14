@@ -401,3 +401,54 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .app-hinweis-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .schalter-zeile { display: flex; gap: 10px; align-items: center; min-height: 44px; }
 .schalter-zeile input { width: 20px; height: 20px; accent-color: var(--akzent); }
+
+/* ---------- Pomodoro (Pomodoro.tsx): leiser Chip neben dem Zahnrad ---------- */
+.pomodoro { position: relative; flex: none; }
+.pomodoro-chip {
+  min-width: 40px; height: 40px; padding: 0 8px; border: none; border-radius: 10px; background: transparent;
+  display: grid; place-items: center; color: var(--auf-glas-leise, var(--leise)); font: inherit; cursor: pointer;
+  font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+  transition: background-color 400ms ease, color 400ms ease;
+}
+.pomodoro-chip:hover { background: var(--glas-marke, var(--mulde-hell)); color: var(--tinte); }
+.pomodoro-chip.lernt, .pomodoro-chip.pause { color: var(--tinte); }
+/* Lernzeit oder Pause um: einmal still orange, kein Blinken, kein Ton */
+.pomodoro-chip.abgelaufen, .pomodoro-chip.pauseVorbei { background: var(--akzent-weich); color: var(--akzent-dunkel); animation: pomodoro-ein 600ms ease-out both; }
+@keyframes pomodoro-ein { from { background-color: transparent; } }
+.pomodoro-frage {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; width: max-content; max-width: min(280px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 6px; padding: 10px;
+  background: var(--flaeche); border: 1px solid var(--linie); border-radius: 14px; box-shadow: var(--schatten-hoch);
+  animation: ue-auftauchen 200ms var(--feder, ease-out) both;
+}
+.pomodoro-frage .knopf { white-space: normal; text-align: center; justify-content: center; }
+@media (prefers-reduced-motion: reduce) {
+  .pomodoro-chip { transition: none; }
+  .pomodoro-chip.abgelaufen, .pomodoro-chip.pauseVorbei, .pomodoro-frage { animation: none; }
+}
+@media (forced-colors: active) {
+  .pomodoro-chip.abgelaufen, .pomodoro-chip.pauseVorbei { border: 2px solid CanvasText; }
+}
+.pomodoro-kurz { display: none; }
+.pomodoro-ring { position: relative; width: 30px; height: 30px; display: grid; place-items: center; }
+.pomodoro-ring svg { position: absolute; inset: 0; }
+.pomodoro-ring circle { fill: none; stroke-width: 2.5; }
+.pomodoro-ring-grund { stroke: var(--linie); }
+.pomodoro-ring-rest { stroke: var(--akzent); stroke-linecap: round; }
+.pomodoro-chip.pause .pomodoro-ring-rest { stroke: var(--leise); }
+.pomodoro-zahl { position: relative; font-size: 0.75rem; font-weight: 700; letter-spacing: -0.02em; }
+/* Handy: Tabs und Zahnrad lassen nur Platz für so viel wie das Uhrsymbol (geprüft bis 320 px) */
+@media (max-width: 720px) {
+  .pomodoro-chip { min-width: 36px; width: 36px; padding: 0; }
+  .pomodoro-text { display: none; }
+  .pomodoro-kurz { display: grid; place-items: center; }
+}
+@media (max-width: 339px) {
+  .pomodoro-chip { min-width: 32px; width: 32px; }
+}
+.pomodoro-felder { display: flex; gap: 12px; flex-wrap: wrap; }
+.pomodoro-feld { flex: 1 1 120px; max-width: 180px; }
+.pomodoro-minuten { display: flex; align-items: center; gap: 8px; font-weight: 400; color: var(--leise); }
+.pomodoro-minuten .eingabe { width: 100%; min-width: 0; }
+.pomodoro-standard { align-self: flex-start; }
+.pomodoro-stille { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }

@@ -8,6 +8,12 @@ interface AndroidBruecke {
   oeffnen?(adresse: string): void
   /** ab v0.21.0: Ordnerauswahl des Systems, Antwort als Ereignis `respawned-ordner` */
   ordnerWaehlen?(): void
+  /** ab v0.22.0: „Nicht stören“ während der Pomodoro-Lernzeit (ab Android 10) */
+  stilleMoeglich?(): boolean
+  stilleErlaubt?(): boolean
+  stilleAnfragen?(): void
+  stilleAn?(ende: number): boolean
+  stilleAus?(): void
 }
 
 /** Ergebnis der Ordnerauswahl: echter Pfad im Gerätespeicher, abgebrochen oder Fehler (SD-Karte, Cloud …) */
@@ -58,4 +64,31 @@ export function auswahlFehler(fehler: string): string {
   return fehler === 'nur-geraetespeicher'
     ? 'Bitte einen Ordner im Gerätespeicher wählen. SD-Karten und Cloud-Ordner kann die App nicht direkt nutzen.'
     : 'Die Ordnerauswahl ließ sich nicht öffnen. Bitte den Pfad eintippen.'
+}
+
+/** true, wenn dieses Gerät „Nicht stören“ für die Lernzeit kann (Android ab 10 mit App ab v0.22.0); am PC nie */
+export function stilleMoeglich(): boolean {
+  const b = bruecke()
+  return typeof b?.stilleMoeglich === 'function' && b.stilleMoeglich()
+}
+
+/** Hat der Nutzer den „Zugriff auf Nicht stören“ erteilt? */
+export function stilleErlaubt(): boolean {
+  const b = bruecke()
+  return typeof b?.stilleErlaubt === 'function' && b.stilleErlaubt()
+}
+
+/** Öffnet die Systemseite „Zugriff auf Nicht stören“ */
+export function stilleAnfragen(): void {
+  bruecke()?.stilleAnfragen?.()
+}
+
+/** Schaltet die eigene Regel „Lernzeit“ bis `ende` an; ein Wecker des Systems schaltet sie zur Endzeit ab */
+export function stilleAn(ende: number): boolean {
+  const b = bruecke()
+  return typeof b?.stilleAn === 'function' && b.stilleAn(ende)
+}
+
+export function stilleAus(): void {
+  bruecke()?.stilleAus?.()
 }
