@@ -136,6 +136,36 @@
 .modul-pdf-titel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: inherit; }
 .modul-seite .reihe { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+/* Umfang, Termin und Lernplan im Modul (Vertrag Lernen 1.7) */
+.umfang { display: flex; flex-direction: column; gap: 8px; }
+.umfang-felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.umfang-feld .eingabe { width: 100%; min-width: 0; }
+.umfang-stand { display: flex; flex-direction: column; gap: 2px; font-size: 0.9375rem; }
+.umfang-warnung { font-size: 0.8125rem; color: var(--gelb-text); font-weight: 600; }
+.pakete { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.paket { background: var(--flaeche); border-radius: 12px; box-shadow: var(--schatten); }
+.paket.jetzt { outline: 2px solid var(--akzent-weich); }
+.paket-zeile { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; min-height: 44px; box-sizing: border-box; text-decoration: none; color: inherit; flex-wrap: wrap; }
+.paket-seiten { font-weight: 700; white-space: nowrap; }
+.paket-abschnitt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.einheiten { list-style: none; margin: 0; padding: 2px 14px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 0.9375rem; }
+.lernplan > .einheiten { padding: 6px 0; }
+.einheiten label { display: flex; gap: 8px; align-items: flex-start; min-height: 32px; }
+.einheiten input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--akzent); }
+.einheiten .erledigt { text-decoration: line-through; color: var(--leise); }
+.einheit-neu { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.einheit-neu .eingabe { flex: 1 1 200px; min-width: 0; }
+.einheit-neu .einheit-seite { flex: 0 0 80px; }
+.ganzer-plan { margin-top: 10px; }
+.ganzer-plan summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.plan-schalter { display: flex; gap: 8px; align-items: flex-start; font-size: 0.875rem; margin: 4px 0 12px; }
+.plan-abschnitt { padding: 8px 0; border-top: 1px solid var(--linie); }
+.plan-abschnitt-kopf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.plan-abschnitt-kopf label { display: inline-flex; gap: 4px; align-items: center; min-height: 32px; }
+.plan-pakete { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip.erledigt { text-decoration: line-through; }
+.uebung-hinweis { display: inline-flex; gap: 2px; align-items: center; }
+
 /* Vollbild im Übungsplatz: Kopf und Leiste weg, Seite und Blatt passen ganz auf den Schirm */
 body.vollbild-an .kopf, body.vollbild-an .plan-leiste, body.vollbild-an .daumenleiste { display: none; }
 body.vollbild-an { padding-bottom: 0; }

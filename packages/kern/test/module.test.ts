@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Bestand } from '../src/bestand'
-import { lernziele, lesestand, merkeStelle, ordneLernziele } from '../src/module'
+import { lernziele, lesestand, liesStundenJeEcts, merkeStelle, module, ordneLernziele, stundenJeEctsText, umfangStunden } from '../src/module'
 
 const pdf = (id: string, titel: string) => `---\nid: ${id}\ntyp: anhang\ntitel: ${titel}\ndatei: anhaenge/2026/10/${id}.pdf\nart: skript\n---\n`
 const modul = (id: string, titel: string, quellen: string[], extra = '') =>
@@ -49,5 +49,33 @@ describe('module', () => {
     const neu = merkeStelle(JSON.stringify({ P2: { seite: 1, am: 'x' } }), 'P1', 5, '2026-10-21T08:00:00Z')
     expect(JSON.parse(neu)).toEqual({ P2: { seite: 1, am: 'x' }, P1: { seite: 5, am: '2026-10-21T08:00:00Z' } })
     expect(JSON.parse(merkeStelle('kaputt', 'P1', 2, 'y'))).toEqual({ P1: { seite: 2, am: 'y' } })
+  })
+})
+
+describe('Umfang (Vertrag Lernen 1.7)', () => {
+  it('liest ECTS, Stunden, Termin und Plan-Felder; Unsinn wird übergangen', () => {
+    const b = new Bestand(
+      new Map([
+        ['lernen/module/M1.md', modul('M1', 'ET', [], 'ects: 2.5\ntermin: 2027-02-10\nstundenProWoche: 12\nschwer: ["3 Wechselstrom"]\nuebungen: false\n')],
+        ['lernen/module/M2.md', modul('M2', 'Kurs', [], 'ects: -1\nstunden: abc\ntermin: Februar\n')]
+      ])
+    )
+    const [m1, m2] = module(b)
+    expect(m1).toMatchObject({ ects: 2.5, stunden: null, termin: '2027-02-10', stundenProWoche: 12, schwer: ['3 Wechselstrom'], uebungen: false })
+    expect(m2).toMatchObject({ ects: null, stunden: null, termin: null, stundenProWoche: null, schwer: [], uebungen: true })
+  })
+  it('Stunden haben Vorrang, sonst ECTS mal Stunden je ECTS', () => {
+    expect(umfangStunden({ ects: 5, stunden: null })).toBe(150)
+    expect(umfangStunden({ ects: 5, stunden: null }, 25)).toBe(125)
+    expect(umfangStunden({ ects: 5, stunden: 40 })).toBe(40)
+    expect(umfangStunden({ ects: null, stunden: null })).toBeNull()
+  })
+  it('Stunden je ECTS aus der Einstellung, Standard 30, nur 10 bis 60', () => {
+    expect(liesStundenJeEcts(undefined)).toBe(30)
+    expect(liesStundenJeEcts('{"stundenJeEcts": 25}')).toBe(25)
+    expect(liesStundenJeEcts('{"stundenJeEcts": 500}')).toBe(30)
+    expect(liesStundenJeEcts('kaputt')).toBe(30)
+    expect(stundenJeEctsText('{"anderes": 1}', 25)).toBe('{"anderes":1,"stundenJeEcts":25}\n')
+    expect(stundenJeEctsText('{"stundenJeEcts": 25}', 30)).toBe('{}\n')
   })
 })

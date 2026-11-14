@@ -5,6 +5,9 @@ import { KapitelUebersicht, kapitelKurz } from './Kapitel'
 import { faelligZahl, kartenFuer, kartenImModul } from './modulkarten'
 import { LineaturBild } from './Blaetter'
 import { modulVonBuch, neuesBuch, notizbuecher, seitenText, seitenVon } from './Buch'
+import { useModulPlan } from './lernplanDaten'
+import { ModulUmfang } from './ModulUmfang'
+import { Lernplan } from './Lernplan'
 import { neueMitschrift, neuesModul, schalteFavorit, setzeModulFeld, setzeQuellen } from './wissen'
 
 /** Wohin ein Klick auf ein Lernziel führt: an die letzte Stelle, sonst an den Anfang des ersten PDFs */
@@ -375,6 +378,7 @@ export function ModulSeite({ id }: { id: string }) {
           }}
         />
       </label>
+      <ModulPlanTeil m={m} quellen={z.quellen} />
 
       <Mitschriften modulId={m.id} />
       <Notizbuecher modul={m.id} />
@@ -443,6 +447,17 @@ export function ModulSeite({ id }: { id: string }) {
         </Dialog>
       )}
     </div>
+  )
+}
+
+/** Umfang, Fortschritt und Lernplan (Vertrag Lernen 1.7) */
+function ModulPlanTeil({ m, quellen }: { m: Modul; quellen: Eintrag[] }) {
+  const p = useModulPlan(m, quellen)
+  return (
+    <>
+      <ModulUmfang m={m} p={p} />
+      <Lernplan m={m} p={p} />
+    </>
   )
 }
 

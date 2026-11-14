@@ -16,6 +16,17 @@ export interface Modul {
   quellen: string[]
   favorit: boolean
   abgeschlossen: boolean
+  /** Leistungspunkte (Vertrag Lernen 1.7) */
+  ects: number | null
+  /** geplanter Aufwand in Stunden, hat Vorrang vor `ects` */
+  stunden: number | null
+  /** Prüfung oder Abgabe, JJJJ-MM-TT */
+  termin: string | null
+  stundenProWoche: number | null
+  /** Kapitel, die doppelt so viel Zeit je Seite bekommen */
+  schwer: string[]
+  /** Hinweis „Übung?“ nach einem Abschnitt */
+  uebungen: boolean
 }
 
 /** Etwas, das man lernt: ein Modul oder ein PDF, das noch keinem Modul gehört (zählt wie ein Buch) */
@@ -59,10 +70,55 @@ export function module(b: Bestand): Modul[] {
       ziel: typeof e.felder.ziel === 'string' ? e.felder.ziel : '',
       quellen: q.map((w) => linkZiel(w)).filter((x): x is string => !!x),
       favorit: e.felder.favorit === true,
-      abgeschlossen: e.felder.status === 'abgeschlossen'
+      abgeschlossen: e.felder.status === 'abgeschlossen',
+      ects: positiv(e.felder.ects),
+      stunden: positiv(e.felder.stunden),
+      termin: typeof e.felder.termin === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.felder.termin) ? e.felder.termin : null,
+      stundenProWoche: positiv(e.felder.stundenProWoche),
+      schwer: (Array.isArray(e.felder.schwer) ? e.felder.schwer : []).filter((x): x is string => typeof x === 'string'),
+      uebungen: e.felder.uebungen !== false
     })
   }
   return out.sort((a, c) => a.titel.localeCompare(c.titel, 'de'))
+}
+
+function positiv(w: unknown): number | null {
+  return typeof w === 'number' && Number.isFinite(w) && w > 0 ? w : null
+}
+
+/** Standard: 30 Stunden je Leistungspunkt (ECTS Users' Guide 2015: 25–30 h; KMK-Rahmenvorgaben 2000/2004: 30 h) */
+export const STUNDEN_JE_ECTS = 30
+export const STUNDEN_JE_ECTS_GRENZEN = { min: 10, max: 60 }
+
+/** `lernen/einstellungen/lernzeit.json` (Vertrag Lernen 1.7); Unlesbares und Werte außerhalb der Grenzen gelten als Standard */
+export function liesStundenJeEcts(text: string | undefined): number {
+  try {
+    const w = (JSON.parse(text ?? '') as { stundenJeEcts?: unknown }).stundenJeEcts
+    if (typeof w === 'number' && w >= STUNDEN_JE_ECTS_GRENZEN.min && w <= STUNDEN_JE_ECTS_GRENZEN.max) return w
+  } catch {
+    // kein oder kaputtes JSON: Standard
+  }
+  return STUNDEN_JE_ECTS
+}
+
+/** Neuer Inhalt der Einstellungsdatei; andere Schlüssel bleiben erhalten, der Standard steht nicht drin */
+export function stundenJeEctsText(alt: string | undefined, wert: number | null): string {
+  let o: Record<string, unknown> = {}
+  try {
+    const j = JSON.parse(alt ?? '') as unknown
+    if (j && typeof j === 'object' && !Array.isArray(j)) o = j as Record<string, unknown>
+  } catch {
+    o = {}
+  }
+  if (wert === null || wert === STUNDEN_JE_ECTS) delete o.stundenJeEcts
+  else o.stundenJeEcts = wert
+  return JSON.stringify(o) + '\n'
+}
+
+/** Umfang in Stunden: eigene Stunden, sonst ECTS mal Stunden je ECTS, sonst unbekannt */
+export function umfangStunden(m: Pick<Modul, 'ects' | 'stunden'>, stundenJeEcts = STUNDEN_JE_ECTS): number | null {
+  if (m.stunden) return m.stunden
+  return m.ects ? m.ects * stundenJeEcts : null
 }
 
 /** Lesestand aller Geräte zusammengeführt: pro PDF gewinnt der jüngste Eintrag */
