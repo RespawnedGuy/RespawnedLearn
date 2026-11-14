@@ -17,7 +17,10 @@ import {
   type Lernziel,
   type Modul,
   liesAbrufe,
+  archiviere,
+  benenne,
   liesMarken,
+  mitVerweis,
   liesProtokoll,
   neuesDokument,
   pfade,
@@ -166,9 +169,10 @@ async function aendere(speicher: Speicher, pfad: string, f: (t: string) => strin
 /** Stelle im Skript markieren und daraus eine Karte machen */
 export async function karteAusStelle(
   speicher: Speicher,
-  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link' | 'nur'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string; markeId?: string }
+  p: { quelle: Eintrag; seite: number; bereich: Bereich; art: 'wissen' | 'frage' | 'link' | 'nur'; titel: string; ziel?: Eintrag; farbe: string | null; ki?: string; markeId?: string; name?: string }
 ): Promise<string> {
-  // „nur“: nur markieren, ohne Karte (Vertrag Lernen 1.3, 5.4); die Markierung kann ins Notizbuch gehen
+  // „nur“: nur der Baustein, ohne Karte (Vertrag Lernen 1.8, 5.4); die Markierung kann ins Notizbuch gehen.
+  // `name`: Name und Schlagworte des Bausteins, wie getippt („Potenzregel #integral“)
   const markeId = p.markeId ?? kurzId()
   const ausschnitt = stellenLink(p.quelle.id, p.seite, markeId, `${p.quelle.titel}, S. ${p.seite}`)
   const jetzt = zeitstempel()
@@ -193,7 +197,7 @@ export async function karteAusStelle(
   await aendere(
     speicher,
     pfade.marken('lernen', p.quelle.id),
-    (t) => setzeMarke(t, { id: markeId, seite: p.seite, text: karteId ? `[[${karteId}|${anzeige.replace(/[\]|]/g, '')}]]` : anzeige, bereich: p.bereich, datum: tag(), farbe: p.farbe }),
+    (t) => setzeMarke(t, { id: markeId, seite: p.seite, text: markenText(p.name ?? '', karteId, anzeige), bereich: p.bereich, datum: tag(), farbe: p.farbe }),
     () =>
       neuesDokument([
         ['id', ulid()],
@@ -205,6 +209,31 @@ export async function karteAusStelle(
       ])
   )
   return karteId
+}
+
+/** Text der Markierung: Name und Schlagworte des Bausteins, dahinter der Verweis auf die Karte, falls es eine gibt */
+export function markenText(name: string, karteId: string, anzeige: string): string {
+  const baustein = benenne('', name)
+  return karteId ? mitVerweis(baustein, karteId, anzeige) : baustein
+}
+
+/** Baustein benennen: nur Name und Schlagworte ändern sich, Verweise und Weggelegt bleiben (Vertrag Lernen 1.8) */
+export function benenneBaustein(speicher: Speicher, anhang: string, markeId: string, eingabe: string) {
+  return aendereMarke(speicher, anhang, markeId, (text) => benenne(text, eingabe))
+}
+
+/** Baustein weglegen oder zurückholen (`#archiv`); gelöscht wird nichts */
+export function legeBausteinWeg(speicher: Speicher, anhang: string, markeId: string, weg: boolean) {
+  return aendereMarke(speicher, anhang, markeId, (text) => archiviere(text, weg))
+}
+
+function aendereMarke(speicher: Speicher, anhang: string, markeId: string, neu: (text: string) => string) {
+  return speicher.aendere(pfade.marken('lernen', anhang), (t) => {
+    const m = liesMarken(t).find((x) => x.id === markeId)
+    if (!m) return t
+    const text = neu(m.text)
+    return text === m.text ? t : setzeMarke(t, { ...m, text })
+  })
 }
 
 /**

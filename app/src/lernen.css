@@ -482,3 +482,13 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .pomodoro-minuten .eingabe { width: 100%; min-width: 0; }
 .pomodoro-standard { align-self: flex-start; }
 .pomodoro-stille { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+/* Bausteine (Vertrag Lernen 1.8): gefundene und offene Markierungen in „Nutzen“ */
+.bausteine { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.baustein-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.baustein { padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.baustein .ausschnitt { align-self: flex-start; }
+.baustein-name { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.baustein-name .eingabe { width: 100%; }
+.baustein-name .eintrag-titel { overflow-wrap: anywhere; }
+.baustein .reihe, .nutzen-suche > .reihe { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

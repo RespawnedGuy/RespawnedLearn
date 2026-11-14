@@ -6,6 +6,7 @@ import { Bearbeiten } from './Bearbeiten'
 import { Eintraege, standText } from './Eintraege'
 import { TYPNAME, alleEintraege, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
 import { kartenImModul, modulVonEintrag } from './modulkarten'
+import { BausteinTreffer, OffeneBausteine, anzahlOffen, findeBausteine, useBausteine } from './Bausteine'
 
 const FARBNAME: Record<string, string> = { wichtig: 'Wichtig', ergaenzung: 'Ergänzung' }
 
@@ -23,6 +24,11 @@ export function Nutzen({ id }: { id?: string }) {
   // Mit Modul: nur dessen Wissen (Mitschriften, Karten, Erklärungen aus seinen PDFs)
   const treffer = suche(bestand, q).filter((e) => !aktiv || modulVonEintrag(bestand, e) === aktiv)
   const zeige = gewaehlt ?? treffer[0]
+  // Bausteine (Vertrag Lernen 1.7): offene zeigt der Knopf „Offen n“, gefundene stehen unter dem Wissen
+  const bausteine = useBausteine()
+  const nOffen = anzahlOffen(bausteine, bestand, aktiv)
+  const [offenZeigen, setOffenZeigen] = useState(false)
+  const bausteinTreffer = q.trim() ? findeBausteine(bausteine, bestand, q, aktiv) : []
   const waehle = (m: string | null) => {
     setModul(m)
     merkeModul(m)
@@ -47,23 +53,43 @@ export function Nutzen({ id }: { id?: string }) {
             if (id) geheZu('nutzen')
           }}
         />
-        {module.length > 0 && (
-          <select className="chip chip-wahl nutzen-modul" aria-label="Modul" value={aktiv ?? ''} onChange={(ev) => waehle(ev.target.value || null)}>
-            <option value="">Alle Module</option>
-            {module.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.titel}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="reihe">
+          {module.length > 0 && (
+            <select className="chip chip-wahl nutzen-modul" aria-label="Modul" value={aktiv ?? ''} onChange={(ev) => waehle(ev.target.value || null)}>
+              <option value="">Alle Module</option>
+              {module.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.titel}
+                </option>
+              ))}
+            </select>
+          )}
+          {nOffen > 0 && (
+            <button type="button" className={`chip${offenZeigen ? ' aktiv' : ''}`} aria-pressed={offenZeigen} onClick={() => setOffenZeigen((o) => !o)} title="Markierungen ohne Namen: benennen oder weglegen">
+              Offen {nOffen}
+            </button>
+          )}
+        </div>
       </div>
-      {zeige ? (
-        <Karte key={zeige.id} e={zeige} weitere={treffer.filter((t) => t.id !== zeige.id).slice(0, 12)} />
+      {offenZeigen ? (
+        <div className="nutzen-alle">
+          <OffeneBausteine modul={aktiv} onZu={() => setOffenZeigen(false)} />
+        </div>
       ) : (
-        q && <div className="leer">Nichts gefunden{aktiv ? ' in diesem Modul' : ''}.</div>
+        <>
+          {zeige ? (
+            <Karte key={zeige.id} e={zeige} weitere={treffer.filter((t) => t.id !== zeige.id).slice(0, 12)} />
+          ) : (
+            q && !bausteinTreffer.length && <div className="leer">Nichts gefunden{aktiv ? ' in diesem Modul' : ''}.</div>
+          )}
+          {bausteinTreffer.length > 0 && (
+            <div className="nutzen-alle">
+              <BausteinTreffer treffer={bausteinTreffer} />
+            </div>
+          )}
+          {!q && !zeige && <div className="nutzen-alle">{aktiv ? <ModulWissen modulId={aktiv} /> : <Eintraege />}</div>}
+        </>
       )}
-      {!q && !zeige && <div className="nutzen-alle">{aktiv ? <ModulWissen modulId={aktiv} /> : <Eintraege />}</div>}
     </div>
   )
 }

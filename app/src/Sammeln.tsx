@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
+import { liesBausteinText, liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, geheZu, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
@@ -86,6 +86,14 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const [auswahl, setAuswahl] = useState<{ seite: number; bereich: Bereich; punkt: { x: number; y: number } } | null>(null)
   const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link' | 'erklaeren'>('wahl')
   const [titel, setTitel] = useState('')
+  // Name und Schlagworte des Bausteins (Vertrag Lernen 1.8), „…“ zeigt die übrigen Wege
+  const [name, setName] = useState('')
+  const [mehr, setMehr] = useState(false)
+  useEffect(() => {
+    if (auswahl) return
+    setName('')
+    setMehr(false)
+  }, [auswahl])
   // Vorschlag der KI für die Frage einer Lernkarte (null = noch keiner, '' = keiner zu haben)
   const [vorschlag, setVorschlag] = useState<string | null>(null)
   const [vollbild, setVollbild] = useState(false)
@@ -253,9 +261,11 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const fertig = async (art: 'wissen' | 'frage' | 'link' | 'nur', ziel?: Eintrag) => {
     if (!auswahl) return
     const eigen = titel.trim()
-    const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : art === 'nur' ? 'Markiert' : 'Stelle')
+    // Wissenskarte ohne eigenen Begriff: der Name des Bausteins
+    const text = eigen || (art === 'wissen' && liesBausteinText(name).name) || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
     const markeId = kurzId()
-    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null, markeId })
+    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null, markeId, name })
+    if (art === 'nur') melde(name.trim() ? 'Baustein gemerkt' : 'Baustein gemerkt, der Name fehlt noch (Nutzen › Offen)')
     void markierungAuchInsBuch({ seite: auswahl.seite, bereich: auswahl.bereich, marke: markeId })
     // Selbst getippte Fragen: Schreibfehler nachträglich korrigieren, die Karte ist schon da
     if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(speicher, eigen).then((neu) => {
@@ -292,31 +302,57 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           {auswahl?.seite === nr && (
             <>
               <div className="auswahl" style={{ left: `${auswahl.bereich.x * 100}%`, top: `${auswahl.bereich.y * 100}%`, width: `${auswahl.bereich.b * 100}%`, height: `${auswahl.bereich.h * 100}%` }} />
-              <div className="schwebe" style={{ left: Math.max(8, auswahl.punkt.x - 150), top: auswahl.punkt.y + 12 }}>
+              <div className="schwebe" style={{ left: `max(8px, min(${auswahl.punkt.x - 150}px, calc(100% - 308px)))`, top: auswahl.punkt.y + 12 }}>
                 {modus === 'wahl' && (
-                  <div className="reihe">
-                    <button type="button" className="knopf klein" onClick={() => void fertig('nur')} title="Die Stelle markieren, ohne Karte; ist ein Notizbuch aktiv, steht sie auch dort">
-                      Nur markieren
-                    </button>
-                    <button type="button" className="knopf haupt klein" onClick={() => setModus('wissen')}>
-                      Wissenskarte
-                    </button>
-                    <button type="button" className="knopf klein" onClick={() => setModus('link')}>
-                      Verlinken
-                    </button>
-                    <button type="button" className="knopf klein" onClick={() => setModus('frage')}>
-                      Lernkarte
-                    </button>
-                    <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
-                      Erklären
-                    </button>
-                    <button type="button" className="knopf klein" onClick={() => void insBuch()} title="Die Stelle als Bild ins Notizbuch legen, um dort daran zu arbeiten">
-                      Ins Buch
-                    </button>
-                    <button type="button" className="knopf still klein" onClick={() => setAuswahl(null)}>
-                      ×
-                    </button>
-                  </div>
+                  <>
+                    <label className="unsichtbar" htmlFor="baustein-name">
+                      Name des Bausteins
+                    </label>
+                    <input
+                      id="baustein-name"
+                      className="eingabe"
+                      // am Handy nicht: die Tastatur würde die Stelle verdecken, der Name ist freiwillig
+                      autoFocus={!mitFinger()}
+                      enterKeyHint="done"
+                      placeholder="Name, z. B. Potenzregel #integral"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void fertig('nur')
+                        if (e.key === 'Escape') setAuswahl(null)
+                      }}
+                    />
+                    <div className="reihe">
+                      <button type="button" className="knopf haupt klein" onClick={() => void fertig('nur')} title="Als Baustein merken: findet sich in allen Skripten wieder; ist ein Notizbuch aktiv, steht die Stelle auch dort">
+                        Baustein
+                      </button>
+                      <button type="button" className="knopf klein" onClick={() => setModus('frage')} title="Baustein mit Lernkarte: die Stelle ist die Antwort">
+                        Lernkarte
+                      </button>
+                      <button type="button" className="knopf klein" aria-expanded={mehr} onClick={() => setMehr((m) => !m)} title="Weitere: Wissenskarte, Verlinken, Erklären, Ins Buch">
+                        …
+                      </button>
+                      <button type="button" className="knopf still klein" onClick={() => setAuswahl(null)} aria-label="Nicht markieren">
+                        ×
+                      </button>
+                    </div>
+                    {mehr && (
+                      <div className="reihe">
+                        <button type="button" className="knopf klein" onClick={() => setModus('wissen')}>
+                          Wissenskarte
+                        </button>
+                        <button type="button" className="knopf klein" onClick={() => setModus('link')}>
+                          Verlinken
+                        </button>
+                        <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
+                          Erklären
+                        </button>
+                        <button type="button" className="knopf klein" onClick={() => void insBuch()} title="Die Stelle als Bild ins Notizbuch legen, um dort daran zu arbeiten">
+                          Ins Buch
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
                 {(modus === 'wissen' || modus === 'frage') && (
                   <>
