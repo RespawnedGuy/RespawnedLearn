@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { VERTRAG } from '@rl/kern'
 import { inTauri, ortLink } from '@rl/oberflaeche'
-import { eigeneVersion, hole, pruefenBeimStart, setzePruefenBeimStart, spaeter, suche, sucheBeimStart, useAktualisierung } from './aktualisierungStand'
+import { eigeneVersion, hole, oeffneReleaseSeite, pruefenBeimStart, setzePruefenBeimStart, spaeter, suche, sucheBeimStart, useAktualisierung } from './aktualisierungStand'
 
 /** Über dem Inhalt: neue Version (beim Start gefunden) und Warnung, wenn der Datenordner neuer ist als die App */
 export function AppHinweise({ neuererVertrag, inEinstellungen }: { neuererVertrag: string | null; inEinstellungen: boolean }) {
@@ -48,12 +48,24 @@ export function AppHinweise({ neuererVertrag, inEinstellungen }: { neuererVertra
   )
 }
 
-/** „Installieren“ am PC, „Herunterladen“ unter Android; ohne eingebauten Update-Schlüssel nur ein Satz */
+/** „Installieren“ am PC, „Herunterladen“ unter Android. Ohne eingebauten Update-Schlüssel (Testbau aus den Actions)
+ *  erklärt ein Satz den Weg über den Installer aus dem Release, der Knopf öffnet dessen Seite im Browser. */
 function HoleKnopf() {
   const lage = useAktualisierung()
   if (lage.art !== 'neu') return null
   const android = navigator.userAgent.includes('Android')
-  if (!android && !lage.installierbar) return <span className="klein-leise">Dieser Bau kann sich nicht selbst aktualisieren.</span>
+  if (!android && !lage.installierbar)
+    return (
+      <>
+        <span className="klein-leise">
+          Dies ist ein Testbau ohne Update-Schlüssel, er kann sich nicht selbst aktualisieren. Installiere einmal den Installer aus dem
+          Release, danach kommen Updates von selbst.
+        </span>
+        <button type="button" className="knopf klein" onClick={() => void oeffneReleaseSeite()}>
+          Release-Seite öffnen
+        </button>
+      </>
+    )
   return (
     <button type="button" className="knopf haupt klein" onClick={() => void hole(lage.neuigkeit)}>
       {android ? 'APK herunterladen' : 'Installieren und neu starten'}

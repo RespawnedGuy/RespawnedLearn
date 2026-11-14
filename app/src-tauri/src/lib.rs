@@ -278,7 +278,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, ordner_waehlen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren])
+        .invoke_handler(tauri::generate_handler![stand, ordner_setzen, ordner_waehlen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren, aktualisieren::release_seite_oeffnen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

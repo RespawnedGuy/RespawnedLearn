@@ -11,6 +11,20 @@
 /// Muss mit `plugins.updater.endpoints` in tauri.conf.json und `NEUESTE_ADRESSE` in kern übereinstimmen (Tests)
 pub const NEUESTE_ADRESSE: &str = "https://github.com/RespawnedGuy/RespawnedLearn/releases/latest/download/latest.json";
 
+/// Release-Seite für Bauten ohne Update-Schlüssel (Testbauten aus den Actions): dort liegt der Installer, der sich
+/// danach selbst aktualisiert. Fest im Code, die Oberfläche kann keine andere Adresse öffnen lassen.
+pub const RELEASE_SEITE: &str = "https://github.com/RespawnedGuy/RespawnedLearn/releases/latest";
+
+/// Öffnet die Release-Seite im Standardbrowser (nur Windows; unter Android öffnet die Oberfläche die APK selbst).
+/// `explorer.exe` meldet auch bei Erfolg den Code 1, darum zählt nur, ob er gestartet ist.
+#[tauri::command]
+pub fn release_seite_oeffnen() -> Result<(), String> {
+    #[cfg(windows)]
+    return std::process::Command::new("explorer").arg(RELEASE_SEITE).spawn().map(|_| ()).map_err(|e| e.to_string());
+    #[cfg(not(windows))]
+    return Err("nur-windows".into());
+}
+
 /// Öffentlicher Update-Schlüssel dieses Baus; leer in Bauten ohne Schlüssel (Forks, `npm run tauri dev`)
 #[cfg(desktop)]
 fn eingebauter_schluessel(app: &tauri::AppHandle) -> String {
@@ -172,5 +186,11 @@ mod tests {
         // der Updater muss die Konfiguration lesen können, sonst startet die App nicht
         let u: tauri_plugin_updater::Config = serde_json::from_value(konf["plugins"]["updater"].clone()).unwrap();
         assert!(u.require_signed_version && !u.allow_downgrades);
+    }
+
+    #[test]
+    fn release_seite_gehoert_zum_selben_repo_wie_die_versionsliste() {
+        assert!(NEUESTE_ADRESSE.starts_with(RELEASE_SEITE));
+        assert!(RELEASE_SEITE.starts_with("https://github.com/") && !RELEASE_SEITE.contains(char::is_whitespace));
     }
 }
