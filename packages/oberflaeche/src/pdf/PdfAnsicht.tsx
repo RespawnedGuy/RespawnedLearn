@@ -22,6 +22,8 @@ export interface PdfAnsichtProps {
   maxHoehe?: number
   onRechteck?: (seite: number, b: Bereich, punkt: { x: number; y: number }) => void
   onMarke?: (m: Marke) => void
+  /** Finger oder Maus drückt auf die Seite (nie der Stift): true = übernommen, die Tinte zeichnet nichts */
+  vorTippen?: (seite: number, p: { x: number; y: number }, art: string) => boolean
   onSeiten?: (n: number) => void
   /** zusätzlicher Inhalt pro Seite (z. B. Schwebe-Dialog an der Auswahl) */
   zusatz?: (seite: number) => ReactNode
@@ -251,16 +253,21 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
         werkzeug={p.werkzeug}
         farbe={p.farbe}
         onRechteck={(b, pt) => p.onRechteck?.(p.nr, b, pt)}
+        vorTippen={p.vorTippen ? (pt, art) => p.vorTippen!(p.nr, pt, art) : undefined}
         onZoom={p.onZoom}
       />
       {marken.map((m) => (
         <button
           type="button"
           key={m.id}
-          className={`marke ${m.farbe ?? ''}${p.gewaehlt === m.id ? ' gewaehlt' : ''}`}
+          className={`marke ${m.farbe ?? ''}${p.gewaehlt === m.id ? (p.vorTippen ? ' gewaehlt verschiebbar' : ' gewaehlt') : ''}`}
           title={m.text}
-          style={{ left: `${m.bereich.x * 100}%`, top: `${m.bereich.y * 100}%`, width: `${m.bereich.b * 100}%`, height: `${m.bereich.h * 100}%`, pointerEvents: p.werkzeug === 'stift' ? 'none' : 'auto' }}
-          onClick={() => p.onMarke?.(m)}
+          // Mit `vorTippen` wählt die Tinte die Markierung (Finger, Maus); antippbar bleibt sie dann nur beim Lesen, ohne Stift
+          style={{ left: `${m.bereich.x * 100}%`, top: `${m.bereich.y * 100}%`, width: `${m.bereich.b * 100}%`, height: `${m.bereich.h * 100}%`, pointerEvents: (p.vorTippen ? p.werkzeug === 'lesen' : p.werkzeug !== 'stift') ? 'auto' : 'none' }}
+          onClick={(e) => {
+            if ((e.nativeEvent as PointerEvent).pointerType === 'pen') return
+            p.onMarke?.(m)
+          }}
         >
           {p.app === 'arbeit' && <span className="nummer">{alleNummern.get(m.id)}</span>}
           {p.markenInhalt?.(m)}

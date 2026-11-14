@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Bestand, alleBausteine, buchDokument, inSeitenbreiten, liesMarken, offeneBausteine, pfade, sucheBausteine } from '@rl/kern'
 import { Speicher } from '../../packages/oberflaeche/src/daten/speicher'
 import { Platte, ablageImSpeicher } from '../../packages/oberflaeche/src/daten/ablageImSpeicher'
-import { benenneBaustein, karteAusStelle, spuren } from '../src/wissen'
+import { benenneBaustein, karteAusStelle, setzeBereich, spuren } from '../src/wissen'
 
 const offen: Speicher[] = []
 afterEach(async () => {
@@ -71,5 +71,24 @@ describe('Bausteine im Notizbuch', () => {
     const k1 = await karteAusStelle(s, { quelle: buch, seite: 2, bereich, art: 'frage', titel: 'F1', farbe: null, markeId: 'bu0004', name: 'Satz' })
     const k2 = await karteAusStelle(s, { quelle: buch, seite: 2, bereich, art: 'wissen', titel: 'W2', farbe: null, markeId: 'bu0004', name: 'Satz' })
     expect(marken(s)[0].text).toBe(`Satz [[${k1}|F1]] [[${k2}|W2]]`)
+  })
+})
+
+describe('Markierung verschieben (Lernen 1.10)', () => {
+  it('setzeBereich ändert nur die Maße dieser Zeile, alles andere bleibt byte-gleich', async () => {
+    const s = await geraet()
+    const buch = new Bestand(s.alleTexte()).dokumente.get(B)!
+    await karteAusStelle(s, { quelle: buch, seite: 2, bereich, art: 'nur', titel: 'Stelle', farbe: 'wichtig', markeId: 'bu0009', name: 'Potenzregel #integral' })
+    await karteAusStelle(s, { quelle: buch, seite: 3, bereich, art: 'nur', titel: 'Stelle', farbe: null, markeId: 'bu0010', name: 'Andere' })
+    const vorher = s.text(pfade.marken('lernen', B))!
+    await setzeBereich(s, B, 'bu0009', { x: 0.3, y: 1.25, b: 0.2, h: 0.05 })
+    const nachher = s.text(pfade.marken('lernen', B))!
+    const m = liesMarken(nachher)
+    expect(m[0]).toMatchObject({ id: 'bu0009', text: 'Potenzregel #integral', farbe: 'wichtig', datum: liesMarken(vorher)[0].datum, bereich: { x: 0.3, y: 1.25, b: 0.2, h: 0.05 } })
+    // die andere Zeile und der Kopf bis auf `geaendert` bleiben
+    expect(nachher.split('\n').filter((z) => z.includes('bu0010'))).toEqual(vorher.split('\n').filter((z) => z.includes('bu0010')))
+    // unbekannte Marke: nichts
+    await setzeBereich(s, B, 'gibtsnicht', { x: 0, y: 0, b: 1, h: 1 })
+    expect(s.text(pfade.marken('lernen', B))).toBe(nachher)
   })
 })

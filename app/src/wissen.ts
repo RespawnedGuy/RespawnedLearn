@@ -284,6 +284,19 @@ export function legeBausteinWeg(speicher: Speicher, anhang: string, markeId: str
   return aendereMarke(speicher, anhang, markeId, (text) => archiviere(text, weg))
 }
 
+/**
+ * Markierung verschoben oder skaliert (Lernen 1.10, 5.4): nur der Bereich ändert sich, Text, Datum und Farbe bleiben.
+ * Im Notizbuch steht `bereich` in Seitenbreiten, im Skript relativ zur Seite.
+ */
+export function setzeBereich(speicher: Speicher, anhang: string, markeId: string, bereich: Bereich) {
+  return speicher.aendere(pfade.marken('lernen', anhang), (t) => {
+    const m = liesMarken(t).find((x) => x.id === markeId)
+    if (!m || m.anker) return t
+    const neu = setzeMarke(t, { ...m, bereich })
+    return neu === t ? t : neu
+  })
+}
+
 function aendereMarke(speicher: Speicher, anhang: string, markeId: string, neu: (text: string) => string) {
   return speicher.aendere(pfade.marken('lernen', anhang), (t) => {
     const m = liesMarken(t).find((x) => x.id === markeId)

@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { eingabeVon, liesBausteinText, liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
-import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
+import { eingabeVon, liesBausteinText, liesMarken, markeAn, modulVon, pfade, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
+import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, hatStift, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
-import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle } from './wissen'
+import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle, setzeBereich } from './wissen'
 import { useLernzeit } from './lernzeitMessen'
 import { SammelnPlan } from './SammelnPlan'
 import { frageVorschlagen, korrigiere } from './ki'
@@ -19,6 +19,7 @@ import { BuchAlleinSeite } from './BuchAllein'
 import { hebeAn } from './anheben'
 import { RueckwegKnopf, useRueckwege } from './Rueckweg'
 import { BausteinMenue, Verlinken, karteVon, schwebeLage } from './BausteinMenue'
+import { MarkeRahmen } from './MarkeRahmen'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -295,9 +296,20 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         onSeite={sichtbar}
         scrollFlaeche={breit ? skriptFlaeche : null}
         onSeiten={setSeiten}
+        gewaehlt={auswahl?.marke?.id ?? null}
         onMarke={(m) => {
           setAuswahl({ seite: m.seite, bereich: m.bereich, marke: m })
           setModus('wahl')
+        }}
+        vorTippen={(nr, p, art) => {
+          // wie im Notizbuch (Buch.tsx): Finger und Maus wählen beim Markieren, mit Stift-Gerät der Finger auch sonst
+          const darf = werkzeug === 'markieren' || (art === 'touch' && hatStift())
+          const treffer = darf ? markeAn(marken.filter((m) => m.seite === nr), p) : null
+          if (treffer) {
+            setAuswahl({ seite: nr, bereich: treffer.bereich, marke: treffer.marke })
+            setModus('wahl')
+          } else if (auswahl?.marke) setAuswahl(null)
+          return !!treffer
         }}
         onRechteck={(nr, bereich, punkt) => {
           setAuswahl({ seite: nr, bereich, punkt })
@@ -308,6 +320,17 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           {wege.get(nr) && <RueckwegKnopf wege={wege.get(nr)!} onOeffne={oeffneStelle} />}
           {auswahl?.seite === nr && (
             <>
+              {auswahl.marke && (
+                <MarkeRahmen
+                  bereich={auswahl.bereich}
+                  farbe={auswahl.marke.farbe}
+                  onFertig={(neu) => {
+                    const m = auswahl.marke!
+                    setAuswahl({ ...auswahl, bereich: neu, punkt: undefined, marke: { ...m, bereich: neu } })
+                    void setzeBereich(speicher, quelle.id, m.id, neu)
+                  }}
+                />
+              )}
               {!auswahl.marke && <div className="auswahl" style={{ left: `${auswahl.bereich.x * 100}%`, top: `${auswahl.bereich.y * 100}%`, width: `${auswahl.bereich.b * 100}%`, height: `${auswahl.bereich.h * 100}%` }} />}
               <div className="schwebe" style={schwebeLage(auswahl.bereich, auswahl.punkt)}>
                 {modus === 'wahl' && (
