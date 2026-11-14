@@ -279,7 +279,7 @@ await karte('01JBEISPIEL0000KARTEFRAGE1', { typ: 'frage', titel: 'Wie groß ist 
 await karte('01JBEISPIEL0000KARTEFRAGE2', { typ: 'frage', titel: 'Was ist Spannung?', thema: '[[01JBEISPIEL0000KARTESPANNG]]' }, '?? Was ist elektrische Spannung?\n:: Die Arbeit je Ladung beim Verschieben zwischen zwei Punkten, U = W / Q.\n')
 
 // Lehrgang ohne Skript: Modul mit Mitschrift, Lernkarten zeigen auf Stellen darin (Vertrag 5.3, Mitschrift)
-await schreibe('lernen/module/01JBEISPIEL0000MODULRUF01.md', kopf({ id: '01JBEISPIEL0000MODULRUF01', typ: 'modul', erstellt: zeit(vor(12)), geaendert: zeit(vor(12)), titel: 'Fachkraft für Rufanlagen', ziel: 'Lehrgang Rufanlagen nach DIN VDE 0834', favorit: true, quellen: [] }))
+await schreibe('lernen/module/01JBEISPIEL0000MODULRUF01.md', kopf({ id: '01JBEISPIEL0000MODULRUF01', typ: 'modul', erstellt: zeit(vor(12)), geaendert: zeit(vor(12)), titel: 'Fachkraft für Rufanlagen', ziel: 'Lehrgang Rufanlagen nach DIN VDE 0834', favorit: true, quellen: [], termin: vor(-21) }))
 await karte(
   '01JBEISPIEL0000MITSCHRIFT1',
   { typ: 'notiz', titel: 'Mitschrift Tag 1', thema: '[[01JBEISPIEL0000MODULRUF01]]' },

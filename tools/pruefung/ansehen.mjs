@@ -29,6 +29,7 @@ const axe = existsSync(axePfad) ? readFileSync(axePfad, 'utf8') : null
 
 // IDs aus beispieldaten.mjs
 const ANSICHTEN = {
+  uebersicht: '#/uebersicht',
   start: '#/sammeln',
   modul: '#/sammeln/modul/01JBEISPIEL0000MODULRUF01',
   studium: '#/sammeln/modul/01JBEISPIEL0000MODULET1001',

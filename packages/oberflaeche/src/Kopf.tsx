@@ -6,6 +6,8 @@ import { kannZurueck, ortLink, zurueck } from './ort'
 /** Ein festes Ziel im Kopf (Bereich als Tab, am Handy wie am PC) */
 export interface KopfZiel {
   titel: string
+  /** kürzerer Name für schmale Handys (bis 459 px), wenn der Titel dort nicht passt */
+  kurz?: string
   ziel: string
   aktiv?: boolean
   /** Zähler, nur gezeigt wenn größer 0 */
@@ -57,7 +59,14 @@ export function Kopf({
           <nav className="kopf-reiter" aria-label="Hauptmenü">
             {ziele.map((z) => (
               <a key={z.ziel} className={`kopf-reiter-knopf${z.aktiv ? ' aktiv' : ''}`} href={z.ziel} aria-current={z.aktiv ? 'page' : undefined}>
-                <span className="kopf-reiter-text">{z.titel}</span>
+                {z.kurz ? (
+                  <span className="kopf-reiter-text">
+                    <span className="kopf-text-lang">{z.titel}</span>
+                    <span className="kopf-text-kurz">{z.kurz}</span>
+                  </span>
+                ) : (
+                  <span className="kopf-reiter-text">{z.titel}</span>
+                )}
                 {!!z.zahl && <span className="kopf-zahl">{z.zahl}</span>}
                 {z.aktiv && <span className="kopf-strich" aria-hidden="true" />}
               </a>

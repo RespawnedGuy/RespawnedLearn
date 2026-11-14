@@ -57,17 +57,28 @@
   /* Kein Platz für den Konflikt-Text neben den Tabs: roter Punkt am Zahnrad (App.tsx) */
   .kopf .sync .chip.rot { display: none; }
 }
-/* Schmale Handys (bis 374 px): Tabs etwas enger, damit Pomodoro-Uhr und Zahnrad daneben passen (geprüft bis 320 px) */
+/* Schmale Handys: vier Tabs (Übersicht, Sammeln, Lernen, Nutzen) neben Zurück, Pomodoro-Uhr und Zahnrad.
+   Kurzer Tab-Name („Heute“ für „Übersicht“), solange der lange nicht passt; Abstände gemessen von 320 bis 480 px. */
+.kopf-text-kurz { display: none; }
+/* Abstand der Tabs wächst mit der Breite (je Pixel Breite 1/8 px je Seite und Tab), statt in Stufen zu springen */
+@media (max-width: 459px) {
+  .kopf-text-lang { display: none; }
+  .kopf-text-kurz { display: inline; }
+  .kopf-reiter-knopf { padding: 0 clamp(2px, calc((100vw - 355px) / 8), 9px); }
+  .kopf-strich { left: 6px; right: 6px; }
+}
 @media (max-width: 374px) {
-  .kopf-reiter-knopf { padding: 0 5px; font-size: 0.8125rem; }
-  .kopf-strich { left: 5px; right: 5px; }
-  .kopf-zahnrad { width: 36px; }
+  .kopf-reiter-knopf { padding: 0 clamp(2px, calc((100vw - 322px) / 8), 6px); font-size: 0.75rem; }
+  .kopf-strich { left: 2px; right: 2px; }
+  .kopf-zahnrad { width: 34px; }
+  .zurueck-pfeil { width: 26px; }
+  .kopf-rechts { gap: 2px; }
 }
 @media (max-width: 339px) {
-  .kopf-reiter-knopf { padding: 0 3px; }
-  .kopf-strich { left: 3px; right: 3px; }
-  .kopf-zahnrad { width: 32px; }
-  .kopf-rechts { gap: 2px; }
+  .kopf-zeile { padding: 0 6px; gap: 4px; }
+  .kopf-reiter-knopf { font-size: 0.71875rem; }
+  .kopf-zahnrad { width: 30px; }
+  .zurueck-pfeil { width: 24px; }
 }
 
 /* ---------- Funktionsleiste ---------- */
