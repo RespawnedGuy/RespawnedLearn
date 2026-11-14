@@ -6,7 +6,12 @@ interface AndroidBruecke {
   anfragen(): void
   /** ab v0.20.0: öffnet eine Release-Adresse dieses Repos im Browser (Download der neuen APK) */
   oeffnen?(adresse: string): void
+  /** ab v0.21.0: Ordnerauswahl des Systems, Antwort als Ereignis `respawned-ordner` */
+  ordnerWaehlen?(): void
 }
+
+/** Ergebnis der Ordnerauswahl: echter Pfad im Gerätespeicher, abgebrochen oder Fehler (SD-Karte, Cloud …) */
+export type OrdnerAuswahl = { pfad: string } | { abgebrochen: true } | { fehler: string }
 
 const bruecke = (): AndroidBruecke | undefined =>
   typeof window === 'undefined' ? undefined : (window as unknown as { RespawnedAndroid?: AndroidBruecke }).RespawnedAndroid
@@ -27,4 +32,30 @@ export function oeffneDownload(adresse: string): void {
   const b = bruecke()
   if (b?.oeffnen) b.oeffnen(adresse)
   else window.open(adresse, '_blank', 'noopener')
+}
+
+/** true, wenn die App die Ordnerauswahl des Systems anbieten kann (Android ab v0.21.0) */
+export function kannOrdnerAuswaehlen(): boolean {
+  return typeof bruecke()?.ordnerWaehlen === 'function'
+}
+
+/** Öffnet die Ordnerauswahl des Systems; der Pfad wird danach in Rust geprüft wie ein getippter (ordnerwahl.rs) */
+export function ordnerAuswaehlen(): Promise<OrdnerAuswahl> {
+  const b = bruecke()
+  if (!b?.ordnerWaehlen) return Promise.resolve({ fehler: 'keine-auswahl' })
+  return new Promise((fertig) => {
+    const hoere = (e: Event) => {
+      window.removeEventListener('respawned-ordner', hoere)
+      fertig((e as CustomEvent<OrdnerAuswahl>).detail)
+    }
+    window.addEventListener('respawned-ordner', hoere)
+    b.ordnerWaehlen!()
+  })
+}
+
+/** Meldung zu einem Fehler der Ordnerauswahl */
+export function auswahlFehler(fehler: string): string {
+  return fehler === 'nur-geraetespeicher'
+    ? 'Bitte einen Ordner im Gerätespeicher wählen. SD-Karten und Cloud-Ordner kann die App nicht direkt nutzen.'
+    : 'Die Ordnerauswahl ließ sich nicht öffnen. Bitte den Pfad eintippen.'
 }

@@ -2,6 +2,7 @@
 import { useEffect } from 'react'
 import { VERTRAG } from '@rl/kern'
 import { inTauri, ortLink } from '@rl/oberflaeche'
+import { OrdnerWarnung } from './OrdnerWechsel'
 import { eigeneVersion, hole, oeffneReleaseSeite, pruefenBeimStart, setzePruefenBeimStart, spaeter, suche, sucheBeimStart, useAktualisierung } from './aktualisierungStand'
 
 /** Über dem Inhalt: neue Version (beim Start gefunden) und Warnung, wenn der Datenordner neuer ist als die App */
@@ -10,9 +11,10 @@ export function AppHinweise({ neuererVertrag, inEinstellungen }: { neuererVertra
   useEffect(() => sucheBeimStart(), [])
   // In den Einstellungen steht die neue Version im Teil „Updates“
   const neu = lage.art === 'neu' && !inEinstellungen ? lage : null
-  if (!neu && !neuererVertrag) return null
   return (
     <div className="app-hinweise">
+      {/* In den Einstellungen steht die Warnung beim Datenordner */}
+      {!inEinstellungen && <OrdnerWarnung />}
       {neuererVertrag && (
         <div className="karte app-hinweis warnung" role="alert">
           <p>

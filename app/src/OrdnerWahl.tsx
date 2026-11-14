@@ -1,18 +1,31 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { dateizugriff, dateizugriffAnfragen, inTauri, ordnerStand, setzeOrdner, waehleOrdner, type OrdnerStand } from '@rl/oberflaeche'
+import {
+  auswahlFehler,
+  dateizugriff,
+  dateizugriffAnfragen,
+  inTauri,
+  kannOrdnerAuswaehlen,
+  nimmStandardOrdner,
+  ordnerAuswaehlen,
+  ordnerStand,
+  setzeOrdner,
+  waehleOrdner,
+  type OrdnerStand
+} from '@rl/oberflaeche'
 import { startSchritt } from './ersterStart'
 
 /** Vorschlag unter Android: ein Ordner im gemeinsamen Speicher, den Syncthing ebenfalls erreicht */
 const ANDROID_VORSCHLAG = '/storage/emulated/0/RespawnedLearn'
 
 /**
- * Erster Start: Ohne Datenordner geht nichts. Am PC wählt man ihn im Dateidialog, unter Android tippt man den Pfad
- * (der Dateidialog liefert dort keinen echten Pfad). Läuft die Oberfläche ohne Tauri im Browser, zeigt sie direkt die App.
+ * Erster Start: Ohne Datenordner geht nichts. Vorgeschlagen ist ein Ort außerhalb des Programmordners (PC: Dokumente,
+ * Android: Gerätespeicher), den Rust bestimmt. Am PC wählt man sonst im Dateidialog, unter Android über die
+ * Ordnerauswahl des Systems oder per getipptem Pfad. Läuft die Oberfläche ohne Tauri im Browser, zeigt sie direkt die App.
  * Unter Android erklärt sie vorher, wofür „Zugriff auf alle Dateien“ nötig ist, und fragt erst auf Knopfdruck.
  */
 export function OrdnerWahl({ children }: { children: ReactNode }) {
   const [stand, setStand] = useState<OrdnerStand | null>(null)
-  const [pfad, setPfad] = useState(ANDROID_VORSCHLAG)
+  const [pfad, setPfad] = useState<string | null>(null)
   const [fehler, setFehler] = useState('')
   const [zugriff, setZugriff] = useState(dateizugriff)
   const tauri = inTauri()
@@ -46,6 +59,14 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
     }
   }
   const android = stand.plattform === 'android'
+  const vorhanden = stand.standard_inhalt === 'lerndaten'
+  const auswahl = () =>
+    uebernimm(async () => {
+      const a = await ordnerAuswaehlen()
+      if ('pfad' in a) return setzeOrdner(a.pfad)
+      if ('fehler' in a) throw auswahlFehler(a.fehler)
+      return false
+    })
 
   return (
     <main className="ordner-wahl karte">
@@ -57,32 +78,54 @@ export function OrdnerWahl({ children }: { children: ReactNode }) {
       <p className="klein-leise">
         Mehrere Geräte? Lass den Ordner von Syncthing abgleichen. Das ist freiwillig, ohne bleibt alles auf diesem Gerät.
       </p>
+      {stand.standard && !android && (
+        <p className="klein-leise">
+          {vorhanden ? 'Im vorgeschlagenen Ordner liegen schon Lerndaten, etwa von einer früheren Installation:' : 'Vorschlag:'}{' '}
+          <span className="ordner-pfad">{stand.standard}</span>
+        </p>
+      )}
       {android ? (
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            void uebernimm(() => setzeOrdner(pfad.trim()))
+            void uebernimm(() => setzeOrdner((pfad ?? stand.standard ?? ANDROID_VORSCHLAG).trim()))
           }}
         >
+          {kannOrdnerAuswaehlen() && (
+            <button type="button" className="knopf haupt" onClick={() => void auswahl()}>
+              Ordner auswählen
+            </button>
+          )}
           <label>
-            Ordner (Pfad im Gerätespeicher)
-            <input className="eingabe" value={pfad} onChange={(e) => setPfad(e.target.value)} spellCheck={false} autoCapitalize="off" />
+            {kannOrdnerAuswaehlen() ? 'Oder Pfad im Gerätespeicher eintippen' : 'Ordner (Pfad im Gerätespeicher)'}
+            <input
+              className="eingabe"
+              value={pfad ?? stand.standard ?? ANDROID_VORSCHLAG}
+              onChange={(e) => setPfad(e.target.value)}
+              spellCheck={false}
+              autoCapitalize="off"
+            />
           </label>
-          <button type="submit" className="knopf haupt">Übernehmen</button>
+          <button type="submit" className={kannOrdnerAuswaehlen() ? 'knopf' : 'knopf haupt'}>
+            Übernehmen
+          </button>
         </form>
       ) : (
-        <button
-          type="button"
-          className="knopf haupt"
-          onClick={() => void uebernimm(waehleOrdner)}
-        >
-          Ordner wählen
-        </button>
+        <div className="anbieter-knoepfe">
+          {stand.standard && (
+            <button type="button" className="knopf haupt" onClick={() => void uebernimm(nimmStandardOrdner)}>
+              {vorhanden ? 'Weiter mit diesen Daten' : 'Hier anlegen'}
+            </button>
+          )}
+          <button type="button" className={stand.standard ? 'knopf' : 'knopf haupt'} onClick={() => void uebernimm(waehleOrdner)}>
+            Anderen Ordner wählen
+          </button>
+        </div>
       )}
       {fehler && (
         <p className="ordner-fehler" role="alert">
           {fehler}
-          {android && ' Prüfe den Pfad: Er muss im Gerätespeicher liegen, zum Beispiel wie im Vorschlag.'}
+          {android && !String(fehler).includes('Gerätespeicher') && ' Prüfe den Pfad: Er muss im Gerätespeicher liegen, zum Beispiel wie im Vorschlag.'}
         </p>
       )}
     </main>
