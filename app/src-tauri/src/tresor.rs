@@ -259,7 +259,9 @@ mod tests {
     #[test]
     fn kein_klartext_in_der_datei() {
         let (datei, g) = anlegen_mit("ein langer Satz als Passwort", INHALT, BILLIG).unwrap();
-        for teil in ["sk-ant", "geheim", "1234", "anthropic", "opus", "Passwort", &g.schluessel] {
+        // Nur Proben, die in Hex-Text nicht zufällig vorkommen können: „1234“ allein stand in rund 1 % der Dateien
+        // zufällig im Hex der Schlüssel und Nonces. Die Ziffern prüft darum „geheim-1234“ mit.
+        for teil in ["sk-ant", "geheim", "geheim-1234", "anthropic", "opus", "Passwort", &g.schluessel] {
             assert!(!datei.contains(teil), "{teil} steht im Klartext in der Datei");
         }
     }
