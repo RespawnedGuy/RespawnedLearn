@@ -50,6 +50,7 @@ export function konfliktBeschreibung(pfad: string, text?: string): Beschreibung 
     else if (pfad.startsWith('lernen/fragen/') || pfad.startsWith('lernen/vorfragen/')) art = 'Erzeugte Fragen'
     else if (pfad.startsWith('lernen/stand/') || pfad.startsWith('lernen/fragen-stand/')) art = 'Lernstand'
     else if (pfad.startsWith('reviews/')) art = 'Lernprotokoll'
+    else if (pfad.startsWith('lernen/zeit/')) art = 'Lernzeit'
     else art = 'Datei'
   }
   const t = typeof f.titel === 'string' && f.titel.trim() ? f.titel.trim() : name

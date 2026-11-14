@@ -3,6 +3,8 @@ import { liesMarken, modulVon, pfade, type Bereich, type Eintrag, type Farbe } f
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, geheZu, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { karteAusStelle, korrigiereFrage, merkeLesestelle, WISSEN } from './wissen'
+import { useLernzeit } from './lernzeitMessen'
+import { SammelnPlan } from './SammelnPlan'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
 import { ModulSeite, Start } from './Start'
@@ -101,6 +103,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return () => clearTimeout(t)
   }, [seite])
   const ziel = skriptZu ? null : { anhang: quelle.id, seite: stabil }
+  useLernzeit({ ziel: modul?.id ?? quelle.id, art: 'sammeln', quelle: quelle.id, ...(skriptZu ? {} : { seite: stabil }) })
 
   // Aktives Buch: offen und in den letzten 15 Minuten beschrieben. Dorthin geht jede neue Markierung als Ausschnitt.
   const aktiv = useRef<{ id: string; nr: number; zeit: number } | null>(null)
@@ -373,6 +376,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
             {seiten ? ` / ${seiten}` : ''}
           </span>
         )}
+        {modul && !skriptZu && <SammelnPlan modul={modul} quelle={quelle} seite={stabil} />}
         <BuchWahl quelle={quelle} modul={modul?.id ?? null} offen={alleOffen.filter((v) => v.art === 'buch').map((v) => v.id)} onWahl={ansichten.zeigeBuch} />
         <button type="button" className="knopf klein" onClick={vollbildUmschalten} title="Kopf ausblenden, ganze Seite zeigen">
           ⤢ Vollbild

@@ -52,6 +52,10 @@ export const pfade = {
   kiPrompts: () => 'lernen/einstellungen/ki-prompts.json',
   /** KI-Zugang aller eigenen Geräte, mit Passwort verschlüsselt (Vertrag Lernen 1.2, 5.8) */
   kiZugang: () => 'lernen/einstellungen/ki-zugang.verschluesselt.json',
+  /** Lernzeit eines Geräts in einem Monat, nur anhängen (Vertrag Lernen 1.7) */
+  lernzeit: (monat: string, geraet: string) => `lernen/zeit/${monat}.${geraet}.jsonl`,
+  /** Stunden je ECTS, nur wenn vom Standard abweichend (Vertrag Lernen 1.7) */
+  lernzeitEinstellung: () => 'lernen/einstellungen/lernzeit.json',
   reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
 }
 

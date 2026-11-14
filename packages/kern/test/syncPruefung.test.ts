@@ -49,6 +49,8 @@ describe('automatisch: nur wo nichts verloren gehen kann', () => {
     })
     // Kopie enthält nichts Neues
     expect(automatisch('reviews/2026-11.pc-ab12.jsonl', a, a.split('\n')[0] + '\n')).toEqual({ art: 'weg' })
+    // Lernzeit (Vertrag Lernen 1.7) wird genauso vereinigt
+    expect(automatisch('lernen/zeit/2026-11.pc-ab12.jsonl', a, b)).toMatchObject({ art: 'zusammen' })
     // Nur Protokolle: ein anderes JSONL wird nicht still vereinigt
     expect(automatisch('lernen/x.jsonl', a, b)).toBeNull()
   })

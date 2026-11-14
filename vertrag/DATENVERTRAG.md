@@ -1,7 +1,7 @@
 # DATENVERTRAG – RespawnedLearn
 
 Verbindliche Referenz für alles, was den Datenordner von RespawnedLearn liest oder schreibt.
-Vertragsversion: **Lernen 1.6 (2026-11-13)**. Änderungen nur über eine neue Version mit Eintrag in `aenderungen.md`.
+Vertragsversion: **Lernen 1.7 (2026-11-14)**. Änderungen nur über eine neue Version mit Eintrag in `aenderungen.md`.
 
 Entstanden aus dem Datenvertrag 0.46 von RespawnedNotes VX (Lernteile). Die Dateiformate sind dieselben, Daten aus VX
 lassen sich unverändert übernehmen. Die Abschnittsnummern bleiben gleich, damit Verweise im Code („Vertrag 5.3“) stimmen;
@@ -11,7 +11,7 @@ Nummern, die nur die Arbeits-App betrafen (5.2, 5.6, 9), fehlen.
 |---|---|---|
 | 1–4 | Grundsätze, Ordnerstruktur, Dateien und Pflichtfelder, Links | `grundlagen.md` |
 | 5.1 | Quelle, Anhang | `typen.md` |
-| 5.3 | Notiz, Mitschrift, Modul, Lesestand, Notizbuch, Anordnung, alte Zeichenblätter und Anheben, Heft, Inhaltsverzeichnis | `typen.md` |
+| 5.3 | Notiz, Mitschrift, Modul mit Umfang und Lernplan, Lesestand, Lernzeit, Notizbuch, Anordnung, alte Zeichenblätter und Anheben, Heft, Inhaltsverzeichnis | `typen.md` |
 | 5.4, 5.5 | Markierungen, Handschrift, Lernkarten und Protokoll | `typen.md` |
 | 5.7, 5.8 | Fragen zum Kapitel, Vorfragen, Rückmeldung, Erklären, KI-Anweisungen, gemeinsamer KI-Zugang | `typen.md` |
 | 6–8, 10 | Eigentum, Löschen, Sync und Konflikte, Vertragsmarke, offene Punkte | `grundlagen.md` |

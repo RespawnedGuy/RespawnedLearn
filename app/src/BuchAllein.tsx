@@ -4,6 +4,7 @@ import { linkZiel, type Farbe } from '@rl/kern'
 import { Werkzeugleiste, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { AnsichtKopf } from './Blaetter'
 import { BuchAnsicht, fotosInsBuch, lineaturVon, setzeBuchLineatur } from './Buch'
+import { useLernzeit } from './lernzeitMessen'
 
 export function BuchAlleinSeite({ id }: { id: string }) {
   const { speicher, bestand } = useDaten()
@@ -11,6 +12,7 @@ export function BuchAlleinSeite({ id }: { id: string }) {
   const [farbe, setFarbe] = useState<Farbe>('alltag')
   const buch = bestand.dokumente.get(id)
   const modul = linkZiel(buch?.felder.modul)
+  useLernzeit(modul ? { ziel: modul, art: 'sammeln' } : null)
   return (
     <div>
       <div className="plan-leiste">

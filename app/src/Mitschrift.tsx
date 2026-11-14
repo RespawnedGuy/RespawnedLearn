@@ -6,6 +6,7 @@ import { useHilfen } from './Bearbeiten'
 import { aendereEintrag, karteAusMitschrift } from './wissen'
 import { frageZurMitschrift } from './ki'
 import { hebeHervor, kartenStelle, mitschriftErweiterung, mitschriftQuellen, setzeAnker, type KartenStelle } from './mitschriftEditor'
+import { useLernzeit } from './lernzeitMessen'
 import { useMeldePlus, type PlusZiel } from './plus'
 
 /**
@@ -42,6 +43,7 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
   const karten = kartenAus(bestand, e.id)
   const modulId = linkZiel(aktuell.felder.thema)
   const modul = modulId ? bestand.dokumente.get(modulId) : undefined
+  useLernzeit(modulId ? { ziel: modulId, art: 'mitschrift' } : null)
 
   // Speichern wie beim Bearbeiten: entprellt, beim Verlassen sofort
   const offen = useRef<{ titel?: string; rumpf?: string }>({})

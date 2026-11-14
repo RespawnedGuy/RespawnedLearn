@@ -10,6 +10,7 @@ import { Vorfragen, VorfragenHinweis } from './Vorfragen'
 import { mitschriftSpur } from './Nutzen'
 import { bewerte, lernkarten, naechsteAbstaende, type Lernkarte } from './wissen'
 import { allgemeineRunde, einordnen, modulRunde, type Auswahl } from './modulkarten'
+import { useLernzeit } from './lernzeitMessen'
 
 const SICHER = [
   ['unsicher', 'unsicher'],
@@ -69,6 +70,8 @@ export function Lernen({ ort }: { ort: string[] }) {
   const [offen, setOffen] = useState(false)
   const [bearbeiten, setBearbeiten] = useState(false)
   const k = runde[i]
+  const lernModul = auswahl?.modul ?? (k ? einordnen(bestand, k.e).modul : null)
+  useLernzeit(!ansicht || ansicht === 'modul' ? (lernModul ? { ziel: lernModul, art: 'lernen' } : null) : null)
 
   if (ansicht === 'fragen') return <KapitelFragen />
   if (ansicht === 'vorfragen') return <Vorfragen />

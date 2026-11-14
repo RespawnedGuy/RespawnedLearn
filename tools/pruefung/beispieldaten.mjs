@@ -317,4 +317,16 @@ await karte('01JBEISPIEL0000KARTERUF001', { typ: 'frage', titel: 'Was muss eine 
 await karte('01JBEISPIEL0000KARTERUF002', { typ: 'frage', titel: 'Welche Lichter hat ein Ruftaster?', thema: '[[01JBEISPIEL0000MODULRUF01]]', stelle: '[[01JBEISPIEL0000MITSCHRIFT1#^ruf002]]' }, '?? Welche Lichter hat ein Ruftaster?\n:: Findelicht (Nachtfindbarkeit) und Beruhigungslampe (Rückmeldung).\n')
 await karte('01JBEISPIEL0000KARTERUF003', { typ: 'frage', titel: 'Wie gut muss eine Zimmersignalleuchte erkennbar sein?', thema: '[[01JBEISPIEL0000MODULRUF01]]', stelle: '[[01JBEISPIEL0000MITSCHRIFT1#^ruf003]]' }, '?? Wie gut muss eine Zimmersignalleuchte erkennbar sein?\n:: Aus 20 m bei 500 lx Umgebung; der Ruf erscheint innerhalb 1 s.\n')
 
+// Studienmodul mit Umfang, Termin, Lernzeit und eigenen Einheiten (Vertrag Lernen 1.7)
+await schreibe(
+  'lernen/module/01JBEISPIEL0000MODULET1001.md',
+  kopf({ id: '01JBEISPIEL0000MODULET1001', typ: 'modul', erstellt: zeit(vor(30)), geaendert: zeit(vor(1)), titel: 'Elektrotechnik 1', ziel: 'Klausur im Februar', quellen: ['"[[01JBEISPIEL0000000SKRIPET1]]"'], ects: 5, termin: vor(-70), stundenProWoche: 6 }) +
+    '\n## Lernplan\n- [ ] S. 1: Einheit Volt = Joule je Coulomb\n- [x] S. 2: Elementarladung e ≈ 1,602 · 10⁻¹⁹ C\n'
+)
+await schreibe('lernen/inhalt/01JBEISPIEL0000000SKRIPET1.json', JSON.stringify({ herkunft: 'pdf', version: 1, kapitel: [{ titel: '2.3 Elektrische Spannung', seite: 1, ebene: 1 }, { titel: '2.4 Elementarladung', seite: 2, ebene: 1 }] }))
+await schreibe(
+  `lernen/zeit/${vor(2).slice(0, 7)}.beispiel.jsonl`,
+  [3, 2, 1].map((n) => JSON.stringify({ ziel: '01JBEISPIEL0000MODULET1001', art: 'sammeln', am: `${vor(n)}T08:00:00.000Z`, bis: `${vor(n)}T09:15:00.000Z`, quelle: '01JBEISPIEL0000000SKRIPET1', seiten: [1, 1] })).join('\n') + '\n'
+)
+
 console.log(`Beispieldaten in ${ziel}`)

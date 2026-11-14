@@ -31,6 +31,7 @@ const axe = existsSync(axePfad) ? readFileSync(axePfad, 'utf8') : null
 const ANSICHTEN = {
   start: '#/sammeln',
   modul: '#/sammeln/modul/01JBEISPIEL0000MODULRUF01',
+  studium: '#/sammeln/modul/01JBEISPIEL0000MODULET1001',
   uebungsplatz: '#/sammeln/01JBEISPIEL0000000SKRIPET1/1',
   lernen: '#/lernen',
   nutzen: '#/nutzen',

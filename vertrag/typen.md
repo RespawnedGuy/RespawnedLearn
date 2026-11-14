@@ -50,10 +50,28 @@ quellen: ["[[anhang-id]]", "[[anhang-id]]"]   # PDFs in Lesereihenfolge; ein PDF
 ziel: Klausur Elektrotechnik 2 im Februar      # optional: was damit erreicht werden soll
 favorit: true                                 # optional: steht auf der Startseite und im Menü ganz oben
 status: abgeschlossen                         # optional; fehlt das Feld, wird noch daran gelernt
+ects: 5                                       # optional ab Lernen 1.7: Leistungspunkte, Zahl > 0 (auch 2.5)
+stunden: 40                                   # optional ab 1.7: geplanter Aufwand in Stunden, hat Vorrang vor ects
+termin: 2027-02-10                            # optional ab 1.7: Prüfung oder Abgabe (JJJJ-MM-TT)
+stundenProWoche: 12                           # optional ab 1.7: so viel Zeit ist je Woche eingeplant
+schwer: ["3 Wechselstrom"]                    # optional ab 1.7: Kapitel (Titel aus dem Inhaltsverzeichnis), die doppelt so viel Zeit je Seite bekommen
+uebungen: false                               # optional ab 1.7: kein Hinweis „Übung?“ nach einem Abschnitt; fehlt das Feld, gilt true
+```
+**Umfang und Lernplan** (ab Lernen 1.7): Der Umfang in Stunden ist `stunden`, sonst `ects` mal Stunden je ECTS (`lernen/einstellungen/lernzeit.json`, `{"stundenJeEcts": 30}`, nur wenn vom Standard 30 abweichend; erlaubt 10 bis 60). Der Lernplan wird nicht gespeichert, sondern aus Inhaltsverzeichnis, Seitenzahl der PDFs, Lesestand, Tempo (Lernzeit) und den Feldern oben jederzeit neu gerechnet: Abschnitte sind dieselbe Kapitel-Einheit wie bei den Kapitelfragen (5.7), Pakete Seitenbereiche von etwa 25 Minuten. Ein Paket ist erledigt, wenn der Lesestand über seine letzte Seite hinaus ist. Eigene Einheiten stehen als Aufgabenliste unter der Überschrift `## Lernplan` im Rumpf des Moduls, eine Zeile je Fakt oder Aufgabe, optional mit Seite; die App ändert dort nur das Kästchen einer Zeile und hängt neue Zeilen an:
+```markdown
+## Lernplan
+- [ ] S. 13: Effektivwert = Spitzenwert / √2
+- [x] S. 21: Aufgabe 3.4 rechnen
 ```
 Module werden nie gelöscht (Abschnitt 7). Ein herausgenommenes PDF bleibt mit allem Herausgearbeiteten erhalten.
 
 **Lesestand** `lernen/stand/<geraet>.json`: pro PDF die zuletzt gelesene Seite und die Zeit, `{"<anhang-id>": {"seite": 12, "am": "2026-10-21T08:00:00Z"}}`. Jedes Gerät schreibt nur seine eigene Datei, gelesen wird über alle Geräte, der jüngste Eintrag gewinnt. Daraus ergeben sich „Zuletzt bearbeitet“ und die Stelle, an der ein Klick weitermacht. Ohne Lesestand zählt die jüngste Markierung im PDF.
+
+**Lernzeit** `lernen/zeit/JJJJ-MM.<geraet>.jsonl` (ab Lernen 1.7): wie lange an etwas gelernt wurde, eine Zeile je Abschnitt, nur anhängen, jedes Gerät seine eigene Datei; der Monat ist der von `am`. Gemessen wird nur, solange die App sichtbar ist und in den letzten 5 Minuten etwas getan wurde; ein Abschnitt endet nach 5 Minuten ohne Eingabe, beim Verlassen der Ansicht oder der App und wird spätestens alle 5 Minuten geschrieben.
+```json
+{"ziel": "<modul- oder anhang-id>", "art": "sammeln", "am": "2026-11-14T08:00:00.000Z", "bis": "2026-11-14T08:42:00.000Z", "quelle": "<anhang-id>", "seiten": [12, 19]}
+```
+`ziel` ist das Lernziel (Modul-ID, bei einem losen PDF die Anhang-ID; zum Modul zählt auch, was `ziel` oder `quelle` auf eines seiner PDFs hat). `art`: `sammeln` (Skript und Notizbücher), `mitschrift` oder `lernen` (Karten, Kapitelfragen). `quelle` und `seiten` (erste und letzte Skriptseite des Abschnitts) nur, wenn ein Skript offen war. Unlesbare Zeilen werden übergangen.
 
 **`notizbuch`** (`lernen/buecher/<id>.md`, ab Lernen 1.3): Schreibseiten, die nicht an einer Skriptseite hängen. Ein Buch gehört keinem Skript; es steht frei oder in einem Modul. Beim Schreiben merkt es sich, welche Skriptseite gerade offen war (Verweise), und Markierungen aus dem Skript landen als Ausschnitt darin.
 ```yaml
