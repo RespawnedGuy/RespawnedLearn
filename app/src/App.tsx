@@ -12,6 +12,7 @@ import { useEffect } from 'react'
 import { verbindeOrdner } from './kianbieter/zugang'
 import { AppHinweise } from './Aktualisierung'
 import { useNeuererVertrag } from './vertragsmarke'
+import { PomodoroChip } from './Pomodoro'
 
 /** Lern-App: drei Bereiche. Sie kennt keine Projekte. */
 export function App() {
@@ -61,6 +62,9 @@ export function App() {
         ort={quelle ? quelle.titel : mitschrift ? mitschrift.titel : modul ? modul.titel : bereich === 'konflikte' ? 'Konflikte' : bereich === 'einstellungen' ? 'Einstellungen' : ziele.find((z) => z.aktiv)?.titel ?? 'Lernen'}
         ziele={ziele}
         rechts={
+          <>
+          {/* Pomodoro (Nils 14.11.): beim Sammeln und Lernen, läuft er, auch in den anderen Bereichen */}
+          <PomodoroChip zeigen={bereich === 'sammeln' || bereich === 'lernen'} />
           <a
             className={`kopf-zahnrad${bereich === 'einstellungen' ? ' aktiv' : ''}`}
             href={ortLink('einstellungen')}
@@ -71,6 +75,7 @@ export function App() {
             {/* Am Handy ist neben den Tabs kein Platz für den Konflikt-Text: roter Punkt, der Text steht in den Einstellungen */}
             {konflikte > 0 && <span className="zahnrad-punkt nur-schmal" aria-hidden="true" />}
           </a>
+          </>
         }
       />
       {/* Stürzt eine Ansicht ab, bleiben Kopf und Leiste bedienbar */}

@@ -4,8 +4,9 @@ import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
 import { EinstellungenAktualisierung } from './Aktualisierung'
+import { EinstellungenPomodoro } from './EinstellungenPomodoro'
 
-/** `#/einstellungen`: Datenordner, KI-Zugang dieses Geräts, Anweisungen an die KI */
+/** `#/einstellungen`: Datenordner, Schreibhand, Pomodoro, KI-Zugang dieses Geräts, Anweisungen an die KI */
 export function Einstellungen() {
   return (
     <div className="lernen-seite einstellungen">
@@ -13,6 +14,7 @@ export function Einstellungen() {
       <KonfliktHinweis />
       <Datenordner />
       <Schreiben />
+      <EinstellungenPomodoro />
       <EinstellungenKi />
       <EinstellungenPrompts />
       <EinstellungenAktualisierung />
