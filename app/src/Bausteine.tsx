@@ -1,7 +1,7 @@
 // Bausteine in „Nutzen“ (Vertrag Lernen 1.8, 5.4): Jede Markierung ist ein Baustein. Die Suche findet sie in allen
 // Skripten; „Offen“ fragt nach denen ohne Namen: benennen oder weglegen. Gelöscht wird nichts.
 import { useMemo, useState } from 'react'
-import { alleBausteine, eingabeVon, linkZiel, modulVon, offeneBausteine, sucheBausteine, type Baustein, type Bestand } from '@rl/kern'
+import { absatzAmAnker, alleBausteine, eingabeVon, linkZiel, modulVon, offeneBausteine, sucheBausteine, type Baustein, type Bestand } from '@rl/kern'
 import { melde, ortLink, useDaten } from '@rl/oberflaeche'
 import { Ausschnitt } from './Inhalt'
 import { benenneBaustein, legeBausteinWeg } from './wissen'
@@ -15,7 +15,8 @@ function imModul(bestand: Bestand, b: Baustein, modul: string | null) {
   if (!modul) return true
   // Ein Notizbuch gehört über sein Feld `modul` zum Modul, ein Skript über die Quellen des Moduls
   const doc = bestand.dokumente.get(b.anhang)
-  return (doc?.typ === 'notizbuch' ? linkZiel(doc.felder.modul) : modulVon(bestand, b.anhang)?.id) === modul
+  const von = doc?.typ === 'notizbuch' ? linkZiel(doc.felder.modul) : doc?.typ === 'notiz' ? linkZiel(doc.felder.thema) : modulVon(bestand, b.anhang)?.id
+  return von === modul
 }
 
 export function anzahlOffen(alle: Baustein[], bestand: Bestand, modul: string | null) {
@@ -87,8 +88,15 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
   const [eingabe, setEingabe] = useState(() => eingabeVon(b))
   const doc = bestand.dokumente.get(b.anhang)
   const istBuch = doc?.typ === 'notizbuch'
+  // Textstelle einer Mitschrift (Lernen 1.10): Blockkennung statt Seite
+  const anker = b.marke.anker
   const quelle = doc?.titel ?? 'Skript'
-  const stelle = `${quelle}, S. ${b.marke.seite}`
+  const stelle = anker ? quelle : `${quelle}, S. ${b.marke.seite}`
+  const zurStelle = anker
+    ? ortLink('sammeln', 'mitschrift', b.anhang, anker)
+    : istBuch
+      ? ortLink('sammeln', 'buch', b.anhang, b.marke.seite, b.marke.id)
+      : ortLink('sammeln', b.anhang, b.marke.seite)
   const merken = () => {
     if (!eingabe.trim()) return
     void benenneBaustein(speicher, b.anhang, b.marke.id, eingabe)
@@ -100,7 +108,13 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
   }
   return (
     <article className="karte baustein">
-      <Ausschnitt anhangId={b.anhang} seite={b.marke.seite} markeId={b.marke.id} breite={480} titel={stelle} />
+      {anker ? (
+        <a className="ausschnitt mitschrift-ausschnitt" href={zurStelle} title={stelle}>
+          {(doc && absatzAmAnker(doc.rumpf, anker)) ?? 'Die Stelle steht nicht mehr in der Mitschrift.'}
+        </a>
+      ) : (
+        <Ausschnitt anhangId={b.anhang} seite={b.marke.seite} markeId={b.marke.id} breite={480} titel={stelle} />
+      )}
       {bearbeiten ? (
         <div className="baustein-name">
           <label className="unsichtbar" htmlFor={`bs-${b.marke.id}`}>
@@ -146,7 +160,7 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
             </span>
           )}
           <div className="reihe">
-            <a className="knopf klein" href={istBuch ? ortLink('sammeln', 'buch', b.anhang, b.marke.seite, b.marke.id) : ortLink('sammeln', b.anhang, b.marke.seite)}>
+            <a className="knopf klein" href={zurStelle}>
               Zur Stelle
             </a>
             <button type="button" className="knopf still klein" onClick={() => setBearbeiten(true)} aria-label={`${b.titel || stelle} umbenennen`}>

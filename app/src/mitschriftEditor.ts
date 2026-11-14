@@ -16,6 +16,8 @@ export interface KartenStelle {
 }
 
 export interface MitschriftAktionen {
+  /** Markierter Text wird ein Baustein (Vertrag Lernen 1.10), wie das Rechteck im Skript und im Buch */
+  baustein(s: KartenStelle): void
   lernkarte(s: KartenStelle): void
   foto(): void
 }
@@ -89,22 +91,29 @@ const markierung = StateField.define<boolean>({
     )
 })
 
+// Knöpfe unter der Markierung, in derselben Reihenfolge wie das Menü im Skript: „Baustein“, dann „Lernkarte“
 function kartenKnopf(view: EditorView) {
   const dom = document.createElement('div')
   dom.className = 'cm-markier-knopf'
-  const b = document.createElement('button')
-  b.type = 'button'
-  b.textContent = 'Lernkarte'
-  b.setAttribute('aria-label', 'Aus dem markierten Text eine Lernkarte machen')
-  const behalte = (e: Event) => e.preventDefault()
-  b.addEventListener('pointerdown', behalte)
-  b.addEventListener('mousedown', behalte)
-  b.addEventListener('click', () => {
-    const s = kartenStelle(view.state)
-    const a = view.state.facet(aktionen)
-    if (s && a) a.lernkarte(s)
-  })
-  dom.append(b)
+  const knopf = (text: string, hilfe: string, tun: (a: MitschriftAktionen, s: KartenStelle) => void) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = text
+    b.setAttribute('aria-label', hilfe)
+    const behalte = (e: Event) => e.preventDefault()
+    b.addEventListener('pointerdown', behalte)
+    b.addEventListener('mousedown', behalte)
+    b.addEventListener('click', () => {
+      const s = kartenStelle(view.state)
+      const a = view.state.facet(aktionen)
+      if (s && a) tun(a, s)
+    })
+    return b
+  }
+  dom.append(
+    knopf('Baustein', 'Den markierten Text als Baustein merken', (a, s) => a.baustein(s)),
+    knopf('Lernkarte', 'Aus dem markierten Text eine Lernkarte machen', (a, s) => a.lernkarte(s))
+  )
   return { dom }
 }
 

@@ -57,8 +57,16 @@ export function BausteinMenue({
         value={name}
         onChange={(e) => onName(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onBaustein()
-          if (e.key === 'Escape') onAbbrechen()
+          // Ohne preventDefault ginge das Enter nach dem Schließen an den Editor der Mitschrift, der die Markierung
+          // dann durch einen Zeilenumbruch ersetzt (Text weg); Escape schlösse sonst zusätzlich den Dialog doppelt
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            onBaustein()
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onAbbrechen()
+          }
         }}
       />
       <div className="reihe">

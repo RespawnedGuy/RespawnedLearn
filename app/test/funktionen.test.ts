@@ -12,13 +12,13 @@ describe('Funktionsleiste: Belegung je Ansicht', () => {
     for (const ort of [['sammeln'], ['sammeln', 'SKRIPT', '1'], ['nutzen'], ['einstellungen'], []]) expect(lernFunktionen(ort)).toEqual([])
   })
 
-  it('Mitschrift: Lernkarte, Kamera, Foto, nur solange die Mitschrift sie anbietet', () => {
+  it('Mitschrift: Baustein, Lernkarte, Kamera, Foto, nur solange die Mitschrift sie anbietet', () => {
     expect(mitschriftFunktionen(null)).toEqual([])
     const aufgerufen: string[] = []
-    const f = mitschriftFunktionen({ lernkarte: () => aufgerufen.push('k'), kamera: () => aufgerufen.push('c'), foto: () => aufgerufen.push('f') })
-    expect(f.map((x) => x.id)).toEqual(['lernkarte', 'kamera', 'foto'])
+    const f = mitschriftFunktionen({ baustein: () => aufgerufen.push('b'), lernkarte: () => aufgerufen.push('k'), kamera: () => aufgerufen.push('c'), foto: () => aufgerufen.push('f') })
+    expect(f.map((x) => x.id)).toEqual(['baustein', 'lernkarte', 'kamera', 'foto'])
     expect(f.every((x) => x.aktiv === undefined)).toBe(true)
     for (const x of f) if (typeof x.ziel === 'function') x.ziel()
-    expect(aufgerufen).toEqual(['k', 'c', 'f'])
+    expect(aufgerufen).toEqual(['b', 'k', 'c', 'f'])
   })
 })

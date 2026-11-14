@@ -82,7 +82,7 @@ export function zeigeNeuigkeit(n: Neuigkeit | null, eigene: string, weggeklickt:
 // ── Vertragsmarke (Vertrag Lernen 1.6, 8) ────────────────────────────────────────────────────────────────────────
 
 /** Vertragsversion, nach der diese App liest und schreibt */
-export const VERTRAG = '1.9'
+export const VERTRAG = '1.10'
 export const VERTRAG_PFAD = 'lernen/vertrag.json'
 
 /** Immer derselbe Text für dieselbe Version: schreiben zwei Geräte gleichzeitig, ist der Inhalt gleich */

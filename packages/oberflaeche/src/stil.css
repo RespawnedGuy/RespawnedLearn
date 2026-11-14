@@ -376,6 +376,9 @@ label.feld { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125r
 .auswahl { position: absolute; border: 2px dashed var(--akzent); background: rgba(196, 80, 26, 0.06); border-radius: 3px; pointer-events: none; }
 .schwebe { position: absolute; z-index: 20; background: var(--flaeche); border-radius: 14px; box-shadow: var(--schatten-hoch); padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 32px); }
 .schwebe .reihe { display: flex; gap: 4px; flex-wrap: wrap; }
+.schwebe-inhalt { display: flex; flex-direction: column; gap: 8px; }
+.schwebe-inhalt .reihe { display: flex; gap: 4px; flex-wrap: wrap; }
+.mitschrift-zitat { margin: 0; padding: 6px 10px; border-left: 3px solid var(--akzent); white-space: pre-wrap; font-size: 0.9rem; max-height: 9em; overflow: auto; }
 
 @media (max-width: 720px) {
   .kopf-zeile { padding: 0 8px; gap: 6px; }

@@ -1,7 +1,9 @@
-// Einfügen in der Funktionsleiste (Lernkarte, Kamera, Foto): gibt es nur, solange eine Seite es anbietet (die Mitschrift).
+// Einfügen in der Funktionsleiste (Baustein, Lernkarte, Kamera, Foto): gibt es nur, solange eine Seite es anbietet (die Mitschrift).
 import { useEffect, useSyncExternalStore } from 'react'
 
 export interface PlusZiel {
+  /** markierten Text, sonst den Absatz am Cursor als Baustein merken (Lernen 1.10) */
+  baustein(): void
   lernkarte(): void
   foto(): void
   kamera(): void

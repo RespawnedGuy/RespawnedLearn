@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gliederung, kartenAus, obersteEbene, linkZiel, zeileVonAnker, type Eintrag } from '@rl/kern'
 import { Dialog, Editor, melde, neuerAnhang, ortLink, useDaten, type EditorGriff } from '@rl/oberflaeche'
 import { useHilfen } from './Bearbeiten'
-import { aendereEintrag, karteAusMitschrift } from './wissen'
+import { aendereEintrag, bausteinAusMitschrift, karteAusMitschrift } from './wissen'
+import { MitschriftBaustein } from './MitschriftBaustein'
 import { frageZurMitschrift } from './ki'
 import { hebeHervor, kartenStelle, mitschriftErweiterung, mitschriftQuellen, setzeAnker, type KartenStelle } from './mitschriftEditor'
 import { useLernzeit } from './lernzeitMessen'
@@ -38,6 +39,9 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
   const [titel, setTitel] = useState(aktuell.titel)
   const [inhalt, setInhalt] = useState(false)
   const [entwurf, setEntwurf] = useState<KartenStelle | null>(null)
+  // Markierter Text → Baustein (Lernen 1.10); `bausteinName` gilt für die Lernkarte, die aus dem Menü entsteht
+  const [bausteinStelle, setBausteinStelle] = useState<KartenStelle | null>(null)
+  const bausteinName = useRef('')
   const fotoEingabe = useRef<HTMLInputElement>(null)
   const kameraEingabe = useRef<HTMLInputElement>(null)
   const karten = kartenAus(bestand, e.id)
@@ -90,10 +94,27 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
     if (!stelle) return melde('Erst Text markieren oder den Cursor in einen Absatz setzen.')
     setEntwurf(stelle)
   }, [])
-  const aktionen = useMemo(() => [mitschriftErweiterung({ lernkarte: (s) => lernkarte(s), foto: () => fotoEingabe.current?.click() })], [lernkarte])
-  const plus = useMemo<PlusZiel>(
-    () => ({ lernkarte: () => lernkarte(), foto: () => fotoEingabe.current?.click(), kamera: () => kameraEingabe.current?.click() }),
+  const aktionen = useMemo(
+    () => [mitschriftErweiterung({ baustein: (s) => setBausteinStelle(s), lernkarte: (s) => lernkarte(s), foto: () => fotoEingabe.current?.click() })],
     [lernkarte]
+  )
+  // Baustein an der Stelle merken: Blockkennung setzen, Mitschrift sichern, Zeile in die Markierungen
+  const merke = async (stelle: KartenStelle, name: string, karte?: { id: string; titel: string }) => {
+    const v = griff.current?.view()
+    if (!v) return
+    const a = setzeAnker(v, stelle.pos)
+    await sichern()
+    await bausteinAusMitschrift(speicher, { mitschrift: ref.current, anker: a, name, karte })
+  }
+  const baustein = useCallback(() => {
+    const v = griff.current?.view()
+    const stelle = v ? kartenStelle(v.state) : null
+    if (!stelle) return melde('Erst Text markieren oder den Cursor in einen Absatz setzen.')
+    setBausteinStelle(stelle)
+  }, [])
+  const plus = useMemo<PlusZiel>(
+    () => ({ baustein, lernkarte: () => lernkarte(), foto: () => fotoEingabe.current?.click(), kamera: () => kameraEingabe.current?.click() }),
+    [baustein, lernkarte]
   )
   useMeldePlus(plus)
 
@@ -109,7 +130,10 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
     if (!v || !entwurf) return
     const a = setzeAnker(v, entwurf.pos)
     await sichern()
-    await karteAusMitschrift(speicher, { mitschrift: ref.current, anker: a, frage, antwort })
+    const karte = await karteAusMitschrift(speicher, { mitschrift: ref.current, anker: a, frage, antwort })
+    // Jede Lernkarte aus der Mitschrift ist auch ein Baustein mit Verweis darauf, wie im Skript
+    await bausteinAusMitschrift(speicher, { mitschrift: ref.current, anker: a, name: bausteinName.current, karte: { id: karte, titel: frage } })
+    bausteinName.current = ''
     setEntwurf(null)
     melde('Lernkarte angelegt')
   }
@@ -140,7 +164,7 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
       <div className="klein-leise mitschrift-unter">
         {modul ? <a className="ziel-gross" href={ortLink('sammeln', 'modul', modul.id)}>{modul.titel}</a> : 'Ohne Modul'}
         {karten.length > 0 && ` · ${karten.length} ${karten.length === 1 ? 'Lernkarte' : 'Lernkarten'}`}
-        <span className="nur-breit"> · Text markieren → „Lernkarte“, „/“ fügt ein, Esc und dann Tab verlässt den Text</span>
+        <span className="nur-breit"> · Text markieren → „Baustein“ oder „Lernkarte“, „/“ fügt ein, Esc und dann Tab verlässt den Text</span>
       </div>
       <div className="mitschrift-text karte">
         <Editor
@@ -180,7 +204,36 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
           </nav>
         </Dialog>
       )}
-      {entwurf && <KartenDialog stelle={entwurf} titel={aktuell.titel} onZu={() => setEntwurf(null)} onAnlegen={anlegen} />}
+      {bausteinStelle && (
+        <MitschriftBaustein
+          stelle={bausteinStelle}
+          onZu={() => setBausteinStelle(null)}
+          onBaustein={(name) => {
+            setBausteinStelle(null)
+            void merke(bausteinStelle, name).then(() => melde(name.trim() ? 'Baustein gemerkt' : 'Baustein gemerkt, der Name fehlt noch (Nutzen › Offen)'))
+          }}
+          onLernkarte={(name) => {
+            bausteinName.current = name
+            setBausteinStelle(null)
+            setEntwurf(bausteinStelle)
+          }}
+          onVerlinken={(name, k) => {
+            setBausteinStelle(null)
+            void merke(bausteinStelle, name, { id: k.id, titel: k.titel }).then(() => melde(`Verbunden mit „${k.titel}“`))
+          }}
+        />
+      )}
+      {entwurf && (
+        <KartenDialog
+          stelle={entwurf}
+          titel={aktuell.titel}
+          onZu={() => {
+            bausteinName.current = ''
+            setEntwurf(null)
+          }}
+          onAnlegen={anlegen}
+        />
+      )}
     </div>
   )
 }
