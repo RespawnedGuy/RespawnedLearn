@@ -217,10 +217,6 @@ function MitschriftSeite({ e, anker }: { e: Eintrag; anker?: string }) {
             setBausteinStelle(null)
             setEntwurf(bausteinStelle)
           }}
-          onVerlinken={(name, k) => {
-            setBausteinStelle(null)
-            void merke(bausteinStelle, name, { id: k.id, titel: k.titel }).then(() => melde(`Verbunden mit „${k.titel}“`))
-          }}
         />
       )}
       {entwurf && (

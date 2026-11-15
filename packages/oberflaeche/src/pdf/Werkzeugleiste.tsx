@@ -9,6 +9,14 @@ const STIFTE: { farbe: Farbe; name: string }[] = [
   { farbe: 'ergaenzung', name: 'Ergänzung' }
 ]
 
+/** Was jedes Werkzeug tut (Nils 2026-11-15); steht im Hinweis des Knopfs */
+const HINWEIS: Record<Werkzeug, string> = {
+  lesen: 'Finger scrollt, der Stift schreibt',
+  stift: 'Schreiben',
+  markieren: 'Rechteck ziehen; eine Markierung antippen zum Bearbeiten, halten und ziehen zum Verschieben',
+  radierer: 'Striche sofort; Markierungen, Randmarken und Bilder durch Halten löschen. Mit dem Stift: einfach umdrehen'
+}
+
 /** Kürzel am PC: ein Buchstabe wählt das Werkzeug, solange man nicht in ein Textfeld schreibt */
 const KUERZEL: Record<string, Werkzeug> = { l: 'lesen', s: 'stift', m: 'markieren', r: 'radierer' }
 
@@ -51,7 +59,7 @@ export function Werkzeugleiste({
     symbol: w,
     aktiv: werkzeug === w,
     tun: () => onWerkzeug(w),
-    hinweis: `${titel} (Taste ${k.toUpperCase()})${w === 'radierer' ? '. Mit dem Stift: einfach umdrehen' : ''}`
+    hinweis: `${titel} (Taste ${k.toUpperCase()}). ${HINWEIS[w]}`
   })
   const funktionen: Funktion[] = [werkzeugFn('lesen', 'Lesen', 'l'), werkzeugFn('stift', 'Stift', 's'), werkzeugFn('markieren', markierenText, 'm'), werkzeugFn('radierer', 'Radierer', 'r')]
   if (onBilder) funktionen.push({ id: 'bild', titel: 'Bild', symbol: 'foto', tun: () => bild.current?.click(), hinweis: 'Foto, Screenshot oder Bild ins Buch legen (am PC auch mit Strg+V)' })

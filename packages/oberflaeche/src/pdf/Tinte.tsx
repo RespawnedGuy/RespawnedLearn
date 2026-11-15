@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getStroke } from 'perfect-freehand'
-import { FARBEN, SEITE_BREITE, getroffen, liesTinte, tinteSvg, type Bereich, type Farbe, type Strich } from '@rl/kern'
+import { ANHEBEN_MS, FARBEN, LOESCHEN_MS, SEITE_BREITE, getroffen, haltenStand, liesTinte, starteHalten, tinteSvg, zuWeit, type Bereich, type Farbe, type Halten, type Strich } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { beachteHandballen, hatStift, istHandballen } from './handballen'
 import { abstandVon, mitteVon, scroller, zoomeUm, type Punkt } from './zoomGeste'
+import { HalteRing, type RingOrt } from '../halten'
 
 export type Werkzeug = 'stift' | 'markieren' | 'radierer' | 'lesen'
 
@@ -32,11 +33,19 @@ function fange(e: React.PointerEvent<SVGSVGElement>) {
   }
 }
 
+/** Was beim Antippen, Halten oder Löschen getroffen wurde; was es ist, weiß nur der Aufrufer */
+export type Treffer = { art: string; id: string }
+
 /**
  * Zeichenebene über einer Seite (PDF, Foto oder leeres Blatt). Stift und Maus schreiben. Der Finger scrollt, wenn das
  * Gerät einen Stift hat, sonst schreibt er auch. Zwei Finger verschieben und zoomen (onZoom).
  * Radieren mit der Stiftrückseite (Radierer-Taste) oder dem Radierer-Werkzeug. Markieren zieht ein Rechteck auf.
  * Schreibt der Stift, wird die aufliegende Hand übergangen (handballen.ts).
+ *
+ * Werkzeuge (Nils 2026-11-15): Beim Lesen scrollt der Finger und der Stylus schreibt. Beim Markieren öffnet Antippen eine
+ * vorhandene Markierung (auch mit dem Stylus), Halten 0,4 s hebt sie an (nur Finger und Maus), sofortiges Ziehen zieht
+ * ein neues Rechteck auf. Der Radierer radiert Striche sofort; Halten 1 s auf einem Treffer löscht ihn (Finger, Maus,
+ * Radiererseite des Stifts, nie die Stiftspitze).
  */
 export function TintenEbene({
   pfad,
@@ -49,7 +58,11 @@ export function TintenEbene({
   breite: strichBreite,
   onZoom,
   onStrich,
-  vorTippen
+  treffer,
+  onTippen,
+  onAnheben,
+  onLoeschen,
+  onHaltZiel
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -68,11 +81,16 @@ export function TintenEbene({
   onZoom?: (faktor: number) => void
   /** Ein Strich ist abgesetzt (nach dem Sichern der Tinte); `alle` sind alle Striche der Seite, der neue eingeschlossen */
   onStrich?: (neu: Strich, alle: Strich[]) => void
-  /**
-   * Vor jedem Finger- oder Mausdruck (nie beim Stift): Ort in Anteilen der Seite und Art des Zeigers. Gibt der Aufrufer
-   * true zurück (z. B. eine Markierung getroffen), übernimmt er den Druck und die Ebene zeichnet nichts.
-   */
-  vorTippen?: (p: { x: number; y: number }, art: string) => boolean
+  /** Was liegt beim Markieren oder Radieren an diesem Ort (Anteile der Seite)? null: nichts, die Ebene macht weiter */
+  treffer?: (p: { x: number; y: number }, werkzeug: Werkzeug) => Treffer | null
+  /** Markieren: ein Treffer wurde angetippt (`punkt` in Pixeln der Seite) */
+  onTippen?: (t: Treffer, punkt: { x: number; y: number }) => void
+  /** Markieren: ein Treffer wurde 0,4 s gehalten; der Zeiger ist noch unten und gehört ab jetzt dem Aufrufer */
+  onAnheben?: (t: Treffer, zeiger: { pointerId: number; clientX: number; clientY: number }) => void
+  /** Radierer: ein Treffer wurde 1 s gehalten */
+  onLoeschen?: (t: Treffer) => void
+  /** Radierer: dieser Treffer wird gerade gehalten (zum Hervorheben), null: nicht mehr */
+  onHaltZiel?: (t: Treffer | null) => void
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -83,7 +101,11 @@ export function TintenEbene({
   const ref = useRef<SVGSVGElement>(null)
   const start = useRef<{ x: number; y: number } | null>(null)
   const geaendert = useRef(false)
-  const modus = useRef<'zeichnen' | 'radieren' | 'rechteck' | 'scrollen' | 'geste' | 'warten' | null>(null)
+  const modus = useRef<'zeichnen' | 'radieren' | 'rechteck' | 'scrollen' | 'geste' | 'warten' | 'entscheiden' | 'halten' | null>(null)
+  /** Markieren oder Radieren auf einem Treffer: was, seit wann, wo (Bildschirmpixel) und der Anfang auf der Seite */
+  const halt = useRef<{ t: Treffer; h: Halten; uhr: ReturnType<typeof setTimeout>; anfang: [number, number, number]; art: 'entscheiden' | 'halten'; danach: 'radieren' | 'rechteck' | 'scrollen' } | null>(null)
+  const [ring, setRing] = useState<RingOrt | null>(null)
+  const [, setStiftDa] = useState(hatStift())
   const letzter = useRef({ x: 0, y: 0 })
   const beruehrt = useRef(new Map<number, Punkt>())
   const geste = useRef<{ abstand: number; mitte: Punkt; letzte: Punkt; faktor: number; ziel: HTMLElement | null } | null>(null)
@@ -91,6 +113,19 @@ export function TintenEbene({
   const zeiger = useRef<number | null>(null)
 
   useEffect(beachteHandballen, [])
+  // Beim Lesen schreibt der Stylus, sobald das Gerät einen hat; vorher bleibt die Ebene durchlässig (Text wählen)
+  useEffect(() => {
+    if (hatStift()) return
+    const sieh = (e: PointerEvent) => e.pointerType === 'pen' && setStiftDa(true)
+    addEventListener('pointerdown', sieh, true)
+    return () => removeEventListener('pointerdown', sieh, true)
+  }, [])
+  useEffect(
+    () => () => {
+      if (halt.current) clearTimeout(halt.current.uhr)
+    },
+    []
+  )
 
   // Änderungen von anderen Geräten übernehmen, solange hier nicht gerade gezeichnet wird. Kommen sie mitten im
   // Strich an, werden sie beim Absetzen nachgeholt; sonst überschriebe der neue Strich die Tinte vom Server.
@@ -124,6 +159,7 @@ export function TintenEbene({
 
   /** Zwei Finger: Was gerade entstand, verwerfen; ab jetzt verschieben und (mit onZoom) zoomen */
   const starteGeste = () => {
+    beendeHalten()
     const p = [...beruehrt.current.values()]
     setAktiv(null)
     setRechteck(null)
@@ -147,16 +183,44 @@ export function TintenEbene({
     zoomeUm(ref.current, g.faktor, g.letzte, onZoom)
   }
 
+  const beendeHalten = () => {
+    const h = halt.current
+    if (!h) return null
+    clearTimeout(h.uhr)
+    halt.current = null
+    setRing(null)
+    if (h.art === 'halten') onHaltZiel?.(null)
+    return h
+  }
+
+  /** Markieren oder Radieren beginnt auf einem Treffer: erst abwarten, ob gehalten, getippt oder gezogen wird */
+  const beginneHalten = (e: React.PointerEvent<SVGSVGElement>, t: Treffer, art: 'entscheiden' | 'halten', danach: 'radieren' | 'rechteck' | 'scrollen') => {
+    const r = ref.current!.getBoundingClientRect()
+    const dauer = art === 'halten' ? LOESCHEN_MS : ANHEBEN_MS
+    const h = starteHalten(performance.now(), e.clientX, e.clientY, dauer)
+    const pointerId = e.pointerId
+    const zeigerArt = e.pointerType
+    // Der Stylus hebt nie an: Er öffnet nur (Tippen) oder zieht ein Rechteck auf
+    const mitUhr = art === 'halten' || zeigerArt !== 'pen'
+    const uhr = setTimeout(() => {
+      const l = halt.current
+      if (!l || zeiger.current !== pointerId || haltenStand(l.h, performance.now() + 1, l.h.x, l.h.y).art !== 'fertig') return
+      const m = modus.current
+      beendeHalten()
+      modus.current = null
+      zeiger.current = null
+      if (m === 'halten') onLoeschen?.(t)
+      else onAnheben?.(t, { pointerId, clientX: l.h.x, clientY: l.h.y })
+    }, mitUhr ? dauer : 2 ** 31 - 1)
+    halt.current = { t, h, uhr, anfang: punkt(e), art, danach }
+    modus.current = art
+    if (mitUhr) setRing({ x: e.clientX - r.left, y: e.clientY - r.top, dauer, art: art === 'halten' ? 'loeschen' : 'anheben' })
+    if (art === 'halten') onHaltZiel?.(t)
+  }
+
   const runter = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (werkzeug === 'lesen') return
-    // Finger und Maus dürfen eine Markierung wählen; der Stift schreibt immer durch sie hindurch
-    if (vorTippen && e.pointerType !== 'pen' && (e.buttons & 32) === 0 && beruehrt.current.size === 0 && !modus.current && ref.current) {
-      const r = ref.current.getBoundingClientRect()
-      if (vorTippen({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }, e.pointerType)) {
-        e.preventDefault()
-        return
-      }
-    }
+    // Beim Lesen schreibt nur der Stylus; der Finger scrollt (unten), die Maus tut nichts
+    if (werkzeug === 'lesen' && (!hatStift() || e.pointerType === 'mouse')) return
     if (e.pointerType === 'touch' && istHandballen(e.pointerId)) {
       e.preventDefault()
       return
@@ -176,7 +240,16 @@ export function TintenEbene({
         return
       }
       if (beruehrt.current.size > 2) return
-      if (werkzeug !== 'markieren' && !finger && hatStift()) {
+      if (werkzeug !== 'markieren' && (werkzeug === 'lesen' || (!finger && hatStift()))) {
+        // Radierer auf einem Gerät mit Stift: Der Finger radiert keine Striche, aber Halten löscht auch mit ihm
+        const r = ref.current?.getBoundingClientRect()
+        const ziel = werkzeug === 'radierer' && treffer && r ? treffer({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }, 'radierer') : null
+        if (ziel) {
+          zeiger.current = e.pointerId
+          letzter.current = { x: e.clientX, y: e.clientY }
+          beginneHalten(e, ziel, 'halten', 'scrollen')
+          return
+        }
         // Finger scrollt. touch-action bleibt aus, sonst würde auch der Stift scrollen statt schreiben.
         modus.current = 'scrollen'
         zeiger.current = e.pointerId
@@ -184,13 +257,20 @@ export function TintenEbene({
         return
       }
     }
-    if (modus.current === 'zeichnen' || modus.current === 'radieren' || modus.current === 'rechteck') return
-    const radierer = (e.buttons & 32) !== 0 || werkzeug === 'radierer'
+    if (modus.current === 'zeichnen' || modus.current === 'radieren' || modus.current === 'rechteck' || modus.current === 'entscheiden' || modus.current === 'halten') return
+    const stiftRadierer = (e.buttons & 32) !== 0
+    const radierer = stiftRadierer || werkzeug === 'radierer'
     zeiger.current = e.pointerId
     fange(e)
     e.preventDefault()
     const p = punkt(e)
-    if (radierer) {
+    const anteil = { x: p[0] / SEITE_BREITE, y: p[1] / hoehe }
+    // Radierer: Halten löscht, was kein Strich ist; die Stiftspitze radiert nur Striche
+    const zielRadierer = radierer && treffer && (e.pointerType !== 'pen' || stiftRadierer) ? treffer(anteil, 'radierer') : null
+    const zielMarkieren = !radierer && werkzeug === 'markieren' && treffer ? treffer(anteil, 'markieren') : null
+    if (zielRadierer) beginneHalten(e, zielRadierer, 'halten', 'radieren')
+    else if (zielMarkieren) beginneHalten(e, zielMarkieren, 'entscheiden', 'rechteck')
+    else if (radierer) {
       modus.current = 'radieren'
       radiere(p[0], p[1])
     } else if (werkzeug === 'markieren') {
@@ -230,6 +310,27 @@ export function TintenEbene({
       return
     }
     const p = punkt(e)
+    if (modus.current === 'entscheiden' || modus.current === 'halten') {
+      const l = halt.current
+      if (!l || !zuWeit(l.h, e.clientX, e.clientY)) return
+      // Gezogen statt gehalten: Das Werkzeug übernimmt ab dem Anfang
+      beendeHalten()
+      const a = l.anfang
+      if (l.danach === 'scrollen') {
+        modus.current = 'scrollen'
+        return
+      }
+      if (l.danach === 'radieren') {
+        modus.current = 'radieren'
+        radiere(a[0], a[1])
+        radiere(p[0], p[1])
+      } else {
+        modus.current = 'rechteck'
+        start.current = { x: a[0], y: a[1] }
+        setRechteck({ x: Math.min(a[0], p[0]) / SEITE_BREITE, y: Math.min(a[1], p[1]) / hoehe, b: Math.abs(p[0] - a[0]) / SEITE_BREITE, h: Math.abs(p[1] - a[1]) / hoehe })
+      }
+      return
+    }
     if (modus.current === 'radieren') radiere(p[0], p[1])
     else if (modus.current === 'rechteck' && start.current) {
       const s = start.current
@@ -263,6 +364,16 @@ export function TintenEbene({
     modus.current = null
     const nachholen = verpasst.current
     verpasst.current = null
+    if (m === 'entscheiden' || m === 'halten') {
+      const l = beendeHalten()
+      if (nachholen) setStriche(nachholen)
+      // Kurz angetippt: beim Markieren öffnen; mit dem Radierer passiert nichts (gelöscht wird nur durch Halten)
+      if (m === 'entscheiden' && l) {
+        const r = ref.current!.getBoundingClientRect()
+        onTippen?.(l.t, { x: e.clientX - r.left, y: e.clientY - r.top })
+      }
+      return
+    }
     if (m === 'zeichnen' && aktiv) {
       const neu = [...(nachholen ?? striche), aktiv]
       setStriche(neu)
@@ -291,7 +402,9 @@ export function TintenEbene({
     if (m !== 'radieren') radiert.current = new Set()
   }
 
+  const stylusLiest = werkzeug === 'lesen' && hatStift()
   return (
+    <>
     <svg
       ref={ref}
       className="ebene"
@@ -301,7 +414,7 @@ export function TintenEbene({
       onPointerMove={bewegen}
       onPointerUp={hoch}
       onPointerCancel={hoch}
-      style={{ pointerEvents: werkzeug === 'lesen' ? 'none' : 'auto', touchAction: finger && werkzeug !== 'lesen' ? 'none' : undefined }}
+      style={{ pointerEvents: werkzeug === 'lesen' && !stylusLiest ? 'none' : 'auto', touchAction: (finger && werkzeug !== 'lesen') || stylusLiest ? 'none' : undefined, cursor: stylusLiest ? 'default' : undefined }}
     >
       {striche.map((s, i) => (
         <path key={i} d={s.d} fill={FARBEN[s.farbe]} />
@@ -311,5 +424,7 @@ export function TintenEbene({
         <rect x={rechteck.x * SEITE_BREITE} y={rechteck.y * hoehe} width={rechteck.b * SEITE_BREITE} height={rechteck.h * hoehe} fill="rgba(196,80,26,0.06)" stroke="currentColor" strokeDasharray="8 6" strokeWidth={2} style={{ color: 'var(--akzent)' }} />
       )}
     </svg>
+    {ring && <HalteRing {...ring} />}
+    </>
   )
 }

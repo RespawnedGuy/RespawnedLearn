@@ -1,9 +1,9 @@
-// Menü nach dem Rechteck (Vertrag Lernen 1.8/1.9, 5.4): Name mit #Schlagworten, „Baustein“, „Lernkarte“, „…“.
-// Gleich im Skript (Sammeln.tsx) und im eigenen Notizbuch (Buch.tsx); was „…“ zeigt, gibt der Ort vor.
-import { useState, type CSSProperties, type ReactNode } from 'react'
-import { liesBausteinText, type Bereich, type Eintrag, type Marke } from '@rl/kern'
-import { geheZu, mitFinger, useDaten } from '@rl/oberflaeche'
-import { WISSEN } from './wissen'
+// Menü nach dem Rechteck (Vertrag Lernen 1.8/1.9, 5.4): Name mit #Schlagworten, daneben „?“ zum Erklären, darunter alle
+// Wege als Symbole, ohne „…“ (Nils 2026-11-15: wiedererkennen geht schneller als lesen). Gleich im Skript (Sammeln.tsx),
+// im eigenen Notizbuch (Buch.tsx) und in der Mitschrift; welche Wege es gibt, gibt der Ort vor.
+import { type CSSProperties } from 'react'
+import { liesBausteinText, type Bereich, type Marke } from '@rl/kern'
+import { Symbol, geheZu, mitFinger } from '@rl/oberflaeche'
 
 /**
  * Lage des Menüs auf der Seite: unter dem Finger, wo das Rechteck losgelassen wurde; bei einer angetippten Markierung
@@ -20,100 +20,80 @@ export function karteVon(m: Marke | undefined): (() => void) | undefined {
   return ziel ? () => geheZu('nutzen', ziel) : undefined
 }
 
+function SymbolKnopf({ symbol, name, hinweis, haupt, onClick }: { symbol: string; name: string; hinweis?: string; haupt?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className={`knopf symbol-knopf${haupt ? ' haupt' : ''}`} onClick={onClick} aria-label={name} title={hinweis ?? name}>
+      <Symbol name={symbol} groesse={20} />
+    </button>
+  )
+}
+
 export function BausteinMenue({
   name,
   onName,
   onBaustein,
   onLernkarte,
   onAbbrechen,
-  mehr,
+  onErklaeren,
+  onInsBuch,
   zurKarte,
-  bausteinTitel = 'Als Baustein merken: findet sich in allen Skripten wieder'
+  bausteinTitel = 'Baustein: findet sich in allen Skripten wieder'
 }: {
   name: string
   onName: (n: string) => void
   onBaustein: () => void
   onLernkarte: () => void
   onAbbrechen: () => void
-  /** Knöpfe hinter „…“ */
-  mehr?: ReactNode
+  /** „?“ neben dem Namen: die KI erklärt die Stelle; ohne diese Angabe gibt es kein „?“ */
+  onErklaeren?: () => void
+  /** Stelle als Bild ins Notizbuch */
+  onInsBuch?: () => void
   /** angetippte Markierung mit Karte: dorthin */
   zurKarte?: () => void
   bausteinTitel?: string
 }) {
-  const [offen, setOffen] = useState(false)
   return (
     <>
-      <label className="unsichtbar" htmlFor="baustein-name">
-        Name des Bausteins
-      </label>
-      <input
-        id="baustein-name"
-        className="eingabe"
-        // am Handy nicht: die Tastatur würde die Stelle verdecken, der Name ist freiwillig
-        autoFocus={!mitFinger()}
-        enterKeyHint="done"
-        placeholder="Name, z. B. Potenzregel #integral"
-        value={name}
-        onChange={(e) => onName(e.target.value)}
-        onKeyDown={(e) => {
-          // Ohne preventDefault ginge das Enter nach dem Schließen an den Editor der Mitschrift, der die Markierung
-          // dann durch einen Zeilenumbruch ersetzt (Text weg); Escape schlösse sonst zusätzlich den Dialog doppelt
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            onBaustein()
-          }
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            onAbbrechen()
-          }
-        }}
-      />
-      <div className="reihe">
-        <button type="button" className="knopf haupt klein" onClick={onBaustein} title={bausteinTitel}>
-          Baustein
-        </button>
-        <button type="button" className="knopf klein" onClick={onLernkarte} title="Baustein mit Lernkarte: die Stelle ist die Antwort">
-          Lernkarte
-        </button>
-        {mehr && (
-          <button type="button" className="knopf klein" aria-expanded={offen} onClick={() => setOffen((m) => !m)} title="Weitere Wege">
-            …
+      <div className="menue-name">
+        <label className="unsichtbar" htmlFor="baustein-name">
+          Name des Bausteins
+        </label>
+        <input
+          id="baustein-name"
+          className="eingabe"
+          // am Handy nicht: die Tastatur würde die Stelle verdecken, der Name ist freiwillig
+          autoFocus={!mitFinger()}
+          enterKeyHint="done"
+          placeholder="Name, z. B. Potenzregel #integral"
+          value={name}
+          onChange={(e) => onName(e.target.value)}
+          onKeyDown={(e) => {
+            // Ohne preventDefault ginge das Enter nach dem Schließen an den Editor der Mitschrift, der die Markierung
+            // dann durch einen Zeilenumbruch ersetzt (Text weg); Escape schlösse sonst zusätzlich den Dialog doppelt
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onBaustein()
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              onAbbrechen()
+            }
+          }}
+        />
+        {onErklaeren && (
+          <button type="button" className="knopf symbol-knopf frage-knopf" onClick={onErklaeren} aria-label="Erklären" title="Erklären: die KI erklärt die Stelle in einfachen Worten">
+            ?
           </button>
         )}
-        <button type="button" className="knopf still klein" onClick={onAbbrechen} aria-label="Nicht markieren">
-          ×
-        </button>
       </div>
-      {offen && mehr && <div className="reihe">{mehr}</div>}
-      {zurKarte && (
-        <button type="button" className="knopf still klein" style={{ justifyContent: 'flex-start' }} onClick={zurKarte}>
-          Zur Karte →
-        </button>
-      )}
-    </>
-  )
-}
-
-/** Markierung mit einer vorhandenen Karte verbinden */
-export function Verlinken({ onWahl, onZurueck }: { onWahl: (e: Eintrag) => void; onZurueck: () => void }) {
-  const { bestand } = useDaten()
-  const [q, setQ] = useState('')
-  const treffer = bestand
-    .nachTyp(...WISSEN)
-    .filter((e) => e.typ !== 'frage' && e.titel.toLowerCase().includes(q.toLowerCase()))
-    .slice(0, 6)
-  return (
-    <>
-      <input className="eingabe" autoFocus placeholder="Mit welcher Karte verbinden?" value={q} onChange={(e) => setQ(e.target.value)} />
-      {treffer.map((e) => (
-        <button key={e.id} type="button" className="knopf klein" style={{ justifyContent: 'flex-start' }} onClick={() => onWahl(e)}>
-          {e.titel}
-        </button>
-      ))}
-      <button type="button" className="knopf still klein" onClick={onZurueck}>
-        Zurück
-      </button>
+      <div className="reihe symbol-reihe" role="group" aria-label="Was wird aus der Stelle?">
+        <SymbolKnopf symbol="baustein" name="Baustein" hinweis={bausteinTitel} haupt onClick={onBaustein} />
+        <SymbolKnopf symbol="lernkarte" name="Lernkarte" hinweis="Lernkarte: die Stelle ist die Antwort" onClick={onLernkarte} />
+        {onInsBuch && <SymbolKnopf symbol="insbuch" name="Ins Buch" hinweis="Ins Buch: die Stelle als Bild ins Notizbuch legen" onClick={onInsBuch} />}
+        {zurKarte && <SymbolKnopf symbol="zurkarte" name="Zur Karte" onClick={zurKarte} />}
+        <span style={{ flex: 1 }} />
+        <SymbolKnopf symbol="zu" name="Schließen" onClick={onAbbrechen} />
+      </div>
     </>
   )
 }

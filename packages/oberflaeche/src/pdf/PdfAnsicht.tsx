@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { pfade, sichtbareSeite, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { ladePdf, seitenFormat, zeichneSeite, zeichneText, type PdfDokument } from './pdf'
-import { TintenEbene, type Werkzeug } from './Tinte'
+import { TintenEbene, type Treffer, type Werkzeug } from './Tinte'
 import { useZweiFingerZoom } from './zoomGeste'
 
 export interface PdfAnsichtProps {
@@ -22,8 +22,13 @@ export interface PdfAnsichtProps {
   maxHoehe?: number
   onRechteck?: (seite: number, b: Bereich, punkt: { x: number; y: number }) => void
   onMarke?: (m: Marke) => void
-  /** Finger oder Maus drückt auf die Seite (nie der Stift): true = übernommen, die Tinte zeichnet nichts */
-  vorTippen?: (seite: number, p: { x: number; y: number }, art: string) => boolean
+  /**
+   * Markierungen bearbeiten und löschen über die Tinte (Lern-App, Nils 2026-11-15): Antippen, Halten und Löschen je Seite.
+   * Ist es gesetzt, sind die Markierungen selbst nie antippbar; beim Lesen wird dann nichts gewählt.
+   */
+  treffen?: SeitenTreffer
+  /** Markierung, die gerade gelöscht zu werden droht (roter Rand) */
+  haltZiel?: string | null
   onSeiten?: (n: number) => void
   /** zusätzlicher Inhalt pro Seite (z. B. Schwebe-Dialog an der Auswahl) */
   zusatz?: (seite: number) => ReactNode
@@ -39,6 +44,14 @@ export interface PdfAnsichtProps {
   ohnePdf?: string
   /** zusätzlicher Inhalt an jeder Marke (z. B. ihr Kurztext auf dem Plan) */
   markenInhalt?: (m: Marke) => ReactNode
+}
+
+export interface SeitenTreffer {
+  treffer: (seite: number, p: { x: number; y: number }, werkzeug: Werkzeug) => Treffer | null
+  onTippen: (seite: number, t: Treffer, punkt: { x: number; y: number }) => void
+  onAnheben: (seite: number, t: Treffer, zeiger: { pointerId: number; clientX: number; clientY: number }) => void
+  onLoeschen: (seite: number, t: Treffer) => void
+  onHaltZiel: (t: Treffer | null) => void
 }
 
 export function PdfAnsicht(p: PdfAnsichtProps) {
@@ -253,17 +266,21 @@ function Seite(p: PdfAnsichtProps & { doc: PdfDokument; nr: number; format: numb
         werkzeug={p.werkzeug}
         farbe={p.farbe}
         onRechteck={(b, pt) => p.onRechteck?.(p.nr, b, pt)}
-        vorTippen={p.vorTippen ? (pt, art) => p.vorTippen!(p.nr, pt, art) : undefined}
+        treffer={p.treffen ? (pt, w) => p.treffen!.treffer(p.nr, pt, w) : undefined}
+        onTippen={p.treffen ? (t, pt) => p.treffen!.onTippen(p.nr, t, pt) : undefined}
+        onAnheben={p.treffen ? (t, z) => p.treffen!.onAnheben(p.nr, t, z) : undefined}
+        onLoeschen={p.treffen ? (t) => p.treffen!.onLoeschen(p.nr, t) : undefined}
+        onHaltZiel={p.treffen?.onHaltZiel}
         onZoom={p.onZoom}
       />
       {marken.map((m) => (
         <button
           type="button"
           key={m.id}
-          className={`marke ${m.farbe ?? ''}${p.gewaehlt === m.id ? (p.vorTippen ? ' gewaehlt verschiebbar' : ' gewaehlt') : ''}`}
+          className={`marke ${m.farbe ?? ''}${p.gewaehlt === m.id ? (p.treffen ? ' gewaehlt verschiebbar' : ' gewaehlt') : ''}${p.haltZiel === m.id ? ' loescht-gleich' : ''}`}
           title={m.text}
-          // Mit `vorTippen` wählt die Tinte die Markierung (Finger, Maus); antippbar bleibt sie dann nur beim Lesen, ohne Stift
-          style={{ left: `${m.bereich.x * 100}%`, top: `${m.bereich.y * 100}%`, width: `${m.bereich.b * 100}%`, height: `${m.bereich.h * 100}%`, pointerEvents: (p.vorTippen ? p.werkzeug === 'lesen' : p.werkzeug !== 'stift') ? 'auto' : 'none' }}
+          // Mit `treffen` wählt und löscht die Tinte die Markierung; sie selbst nimmt dann keinen Druck an
+          style={{ left: `${m.bereich.x * 100}%`, top: `${m.bereich.y * 100}%`, width: `${m.bereich.b * 100}%`, height: `${m.bereich.h * 100}%`, pointerEvents: !p.treffen && p.werkzeug !== 'stift' ? 'auto' : 'none' }}
           onClick={(e) => {
             if ((e.nativeEvent as PointerEvent).pointerType === 'pen') return
             p.onMarke?.(m)

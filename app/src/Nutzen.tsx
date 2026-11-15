@@ -6,7 +6,7 @@ import { Bearbeiten } from './Bearbeiten'
 import { Eintraege, standText } from './Eintraege'
 import { TYPNAME, alleEintraege, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
 import { kartenImModul, modulVonEintrag } from './modulkarten'
-import { BausteinTreffer, OffeneBausteine, anzahlOffen, findeBausteine, useBausteine } from './Bausteine'
+import { BausteinTreffer, OffeneBausteine, WeggelegteBausteine, anzahlOffen, anzahlWeggelegt, findeBausteine, useBausteine } from './Bausteine'
 
 const FARBNAME: Record<string, string> = { wichtig: 'Wichtig', ergaenzung: 'Ergänzung' }
 
@@ -27,7 +27,10 @@ export function Nutzen({ id }: { id?: string }) {
   // Bausteine (Vertrag Lernen 1.7): offene zeigt der Knopf „Offen n“, gefundene stehen unter dem Wissen
   const bausteine = useBausteine()
   const nOffen = anzahlOffen(bausteine, bestand, aktiv)
-  const [offenZeigen, setOffenZeigen] = useState(false)
+  const nWeg = anzahlWeggelegt(bausteine, bestand, aktiv)
+  // „Offen“ oder „Weggelegt“ (Lernen 1.11: weggelegte stehen nicht mehr auf der Seite, hier holt man sie zurück)
+  const [liste, setListe] = useState<'offen' | 'weg' | null>(null)
+  const offenZeigen = liste === 'offen'
   const bausteinTreffer = q.trim() ? findeBausteine(bausteine, bestand, q, aktiv) : []
   const waehle = (m: string | null) => {
     setModul(m)
@@ -65,15 +68,20 @@ export function Nutzen({ id }: { id?: string }) {
             </select>
           )}
           {nOffen > 0 && (
-            <button type="button" className={`chip${offenZeigen ? ' aktiv' : ''}`} aria-pressed={offenZeigen} onClick={() => setOffenZeigen((o) => !o)} title="Markierungen ohne Namen: benennen oder weglegen">
+            <button type="button" className={`chip${offenZeigen ? ' aktiv' : ''}`} aria-pressed={offenZeigen} onClick={() => setListe((l) => (l === 'offen' ? null : 'offen'))} title="Markierungen ohne Namen: benennen oder weglegen">
               Offen {nOffen}
+            </button>
+          )}
+          {nWeg > 0 && (
+            <button type="button" className={`chip${liste === 'weg' ? ' aktiv' : ''}`} aria-pressed={liste === 'weg'} onClick={() => setListe((l) => (l === 'weg' ? null : 'weg'))} title="Weggelegte und gelöschte Bausteine: zurückholen">
+              Weggelegt {nWeg}
             </button>
           )}
         </div>
       </div>
-      {offenZeigen ? (
+      {liste ? (
         <div className="nutzen-alle">
-          <OffeneBausteine modul={aktiv} onZu={() => setOffenZeigen(false)} />
+          {liste === 'offen' ? <OffeneBausteine modul={aktiv} onZu={() => setListe(null)} /> : <WeggelegteBausteine modul={aktiv} onZu={() => setListe(null)} />}
         </div>
       ) : (
         <>

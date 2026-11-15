@@ -9,11 +9,13 @@ import {
   buchSeiteJson,
   buchSeitenNummern,
   linkZiel,
-  ohneMarkeImBuch,
   liesTinte,
   liesBuchSeite,
   liesMarken,
   markeAn,
+  ausSeitenbreiten,
+  bildAn,
+  sichtbareMarken,
   pfade,
   platzFuerMarkierung,
   platzImBuch,
@@ -22,6 +24,7 @@ import {
   ulid,
   verweiseBeimSchreiben,
   SEITE_BREITE,
+  LOESCHEN_MS,
   type BlattBild,
   type Bereich,
   type BuchBild,
@@ -32,10 +35,13 @@ import {
   type Strich,
   type Ziel
 } from '@rl/kern'
-import { TintenEbene, geheZu, hatStift, melde, neuerAnhang, useDaten, type Speicher, type Werkzeug } from '@rl/oberflaeche'
+import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, useHalten, type Speicher, type Treffer, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
 import { MarkeKnopf } from './MarkeKnopf'
 import { BuchMarken, type BuchAuswahl } from './BuchMarken'
+import { type Uebernahme } from './MarkeRahmen'
+import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeite } from './loeschen'
+import { useEntfLoescht } from './entf'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
@@ -249,20 +255,62 @@ function BuchBlatt({
   onGeschrieben?: (nr: number) => void
 }) {
   const { speicher, bestand } = useDaten()
+  // Bilder und Markierungen wählt man mit dem Werkzeug Markieren (Nils 2026-11-15), gleich wie im Skript
   const [gewaehlt, setGewaehlt] = useState<string | null>(null)
   // Markieren wie im Skript (Vertrag Lernen 1.9): Rechteck → Baustein
   const [auswahl, setAuswahl] = useState<BuchAuswahl | null>(null)
+  // in der Tinte 0,4 s gehalten: Rahmen oder Bild übernimmt den Zeiger; was gleich gelöscht wird
+  const [uebernahme, setUebernahme] = useState<Uebernahme | null>(null)
+  const [haltZiel, setHaltZiel] = useState<string | null>(null)
   const buch = bestand.dokumente.get(id)
   const tinte = pfade.buchTinte(id, nr)
   const format = blattFormat(speicher.text(tinte))
   const seite = liesBuchSeite(speicher.text(pfade.buchSeite(id, nr)))
-  const lesen = werkzeug === 'lesen'
+  const markieren = werkzeug === 'markieren'
+  // Bearbeiten gehört zum Werkzeug Markieren: Wer wechselt, schließt Rahmen, Menü und Bildwahl
   useEffect(() => {
-    if (!lesen) setGewaehlt(null)
-  }, [lesen])
+    if (markieren) return
+    setGewaehlt(null)
+    setAuswahl(null)
+  }, [markieren])
   const hoehe = SEITE_BREITE * format
   const aendere = (f: (b: BuchBild[]) => BuchBild[]) => void aendereSeite(speicher, id, nr, (s) => ({ ...s, bilder: f(s.bilder) }))
   const ohneBlatt = ({ blatt: _b, ...b }: BlattBild): BuchBild => b
+  const marken = () => sichtbareMarken(liesMarken(bestand.texte.get(pfade.marken('lernen', id)) ?? '')).filter((m) => m.seite === nr)
+  /** Ein Bild, das Ausschnitt einer ✦-Marke ist, geht mit seiner Marke (wie „Marke entfernen“) */
+  const bildWeg = (bildId: string): AufDerSeite => {
+    const v = seite.verweise.find((w) => w.marke !== undefined && w.bild === bildId)
+    return v ? { art: 'marke', id: v.id } : { art: 'bild', id: bildId }
+  }
+  const nimm = (was: AufDerSeite) => void nimmVonDerSeiteMitMeldung(speicher, id, nr, was)
+  useEntfLoescht(
+    auswahl?.marke
+      ? () => {
+          const m = auswahl.marke!.id
+          setAuswahl(null)
+          void loescheMarkierungMitMeldung(speicher, bestand.texte, id, m)
+        }
+      : gewaehlt
+        ? () => {
+            const b = gewaehlt
+            setGewaehlt(null)
+            nimm(bildWeg(b))
+          }
+        : null
+  )
+  const treffer = (p: { x: number; y: number }): Treffer | null => {
+    const m = buch ? markeAn(marken(), p, format) : null
+    if (m) return { art: 'marke', id: m.marke.id }
+    const b = bildAn(seite.bilder, p.x * SEITE_BREITE, p.y * hoehe)
+    if (b) return { art: 'bild', id: b.id }
+    if (auswahl?.marke) setAuswahl(null)
+    setGewaehlt(null)
+    return null
+  }
+  const markeAuswahl = (markeId: string): BuchAuswahl | null => {
+    const m = marken().find((x) => x.id === markeId)
+    return m ? { marke: m, bereich: ausSeitenbreiten(m.bereich, format) } : null
+  }
   return (
     <div className="buch-blatt" data-buchseite={nr}>
       <div className="buch-rand" aria-label={`Verweise auf Seite ${nr}`}>
@@ -273,42 +321,33 @@ function BuchBlatt({
               verweis={v}
               blinkt={hervor === v.y}
               style={{ top: `${(v.y / hoehe) * 100}%` }}
+              radierer={werkzeug === 'radierer'}
               onEntfernen={() => {
                 setGewaehlt(null)
-                // Schon weg (anderes Gerät)? Dann bleibt die Seite, wie sie ist.
-                void aendereSeite(speicher, id, nr, (s) => ohneMarkeImBuch(s, v.id) ?? s).then(() =>
-                  melde('Marke und Ausschnitt entfernt. Die Markierung im Skript bleibt.')
-                )
+                nimm({ art: 'marke', id: v.id })
               }}
             />
           ) : (
-            <button
-              key={v.id}
-              type="button"
-              className={`verweis${hervor === v.y ? ' blinkt' : ''}`}
-              style={{ top: `${(v.y / hoehe) * 100}%` }}
-              title={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`}
-              onClick={() => geheZu('sammeln', v.anhang, v.seite)}
-            >
-              S. {v.seite}
-            </button>
+            <RandMarke key={v.id} radierer={werkzeug === 'radierer'} blinkt={hervor === v.y} top={`${(v.y / hoehe) * 100}%`} titel={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`} seite={v.seite} onOeffne={() => geheZu('sammeln', v.anhang, v.seite)} onLoeschen={() => nimm({ art: 'verweis', id: v.id })} />
           )
         )}
       </div>
-      <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`} onPointerDown={() => setGewaehlt(null)}>
+      <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`}>
         <LineaturBild art={lineatur} format={format} />
         {seite.bilder.map((b) => (
           <BildAufBlatt
             key={b.id}
             bild={{ ...b, blatt: '' }}
             format={format}
-            aktiv={lesen}
+            aktiv={markieren}
             gewaehlt={gewaehlt === b.id}
+            loeschtGleich={haltZiel === b.id}
+            uebernimm={gewaehlt === b.id ? uebernahme : null}
             onWahl={() => setGewaehlt(b.id)}
             onAendern={(neu) => aendere((alle) => alle.map((x) => (x.id === neu.id ? ohneBlatt(neu) : x)))}
             onEntfernen={() => {
               setGewaehlt(null)
-              aendere((alle) => alle.filter((x) => x.id !== b.id))
+              nimm(bildWeg(b.id))
             }}
           />
         ))}
@@ -321,19 +360,64 @@ function BuchBlatt({
             markeNachStrich(speicher, id, nr, neu, alle, ziel)
             onGeschrieben?.(nr)
           }}
-          onRechteck={(bereich, punkt) => setAuswahl({ bereich, punkt })}
-          vorTippen={(p, art) => {
-            // Finger und Maus wählen eine Markierung beim Markieren; auf Geräten mit Stift wählt der Finger auch sonst,
-            // weil er dort ohnehin nicht schreibt. Der Stift kommt hier nie an (TintenEbene).
-            const darf = werkzeug === 'markieren' || (art === 'touch' && hatStift())
-            const treffer = darf && buch ? markeAn(liesMarken(bestand.texte.get(pfade.marken('lernen', id)) ?? '').filter((m) => m.seite === nr), p, format) : null
-            if (treffer) setAuswahl(treffer)
-            else if (auswahl?.marke) setAuswahl(null)
-            return !!treffer
+          onRechteck={(bereich, punkt) => {
+            setGewaehlt(null)
+            setAuswahl({ bereich, punkt })
           }}
+          treffer={treffer}
+          onTippen={(t, punkt) => {
+            setUebernahme(null)
+            if (t.art === 'bild') {
+              setAuswahl(null)
+              setGewaehlt(t.id)
+              return
+            }
+            setGewaehlt(null)
+            const a = markeAuswahl(t.id)
+            if (a) setAuswahl({ ...a, punkt })
+          }}
+          onAnheben={(t, zeiger) => {
+            if (t.art === 'bild') {
+              setAuswahl(null)
+              setGewaehlt(t.id)
+            } else {
+              setGewaehlt(null)
+              const a = markeAuswahl(t.id)
+              if (a) setAuswahl(a)
+            }
+            setUebernahme(zeiger)
+          }}
+          onLoeschen={(t) => {
+            if (t.art === 'bild') {
+              setGewaehlt(null)
+              nimm(bildWeg(t.id))
+            } else {
+              if (auswahl?.marke?.id === t.id) setAuswahl(null)
+              void loescheMarkierungMitMeldung(speicher, bestand.texte, id, t.id)
+            }
+          }}
+          onHaltZiel={(t) => setHaltZiel(t?.id ?? null)}
         />
-        {buch && <BuchMarken buch={buch} nr={nr} format={format} werkzeug={werkzeug} farbe={farbe} auswahl={auswahl} onAuswahl={setAuswahl} />}
+        {buch && <BuchMarken buch={buch} nr={nr} format={format} farbe={farbe} auswahl={auswahl} uebernimm={uebernahme} haltZiel={haltZiel} onAuswahl={setAuswahl} />}
       </div>
     </div>
+  )
+}
+
+/** Automatische Randmarke „S. n“: Antippen springt ins Skript; mit dem Radierer löscht Halten sie (Nils 2026-11-15) */
+function RandMarke({ radierer, blinkt, top, titel, seite, onOeffne, onLoeschen }: { radierer: boolean; blinkt: boolean; top: string; titel: string; seite: number; onOeffne: () => void; onLoeschen: () => void }) {
+  const halten = useHalten({ dauer: LOESCHEN_MS, art: 'loeschen', aktiv: radierer, stiftRadierer: true, onFertig: onLoeschen })
+  return (
+    <button
+      type="button"
+      className={`verweis${blinkt ? ' blinkt' : ''}${halten.laeuft ? ' loescht-gleich' : ''}`}
+      style={{ top }}
+      title={radierer ? `${titel}. Halten löscht die Randmarke` : titel}
+      onClick={() => !radierer && onOeffne()}
+      {...halten.griffe}
+    >
+      S. {seite}
+      {halten.ring}
+    </button>
   )
 }

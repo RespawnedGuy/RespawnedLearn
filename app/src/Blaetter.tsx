@@ -15,12 +15,14 @@ import {
   verschiebeAnsicht,
   zeigeBuch,
   SEITE_BREITE,
+  ANHEBEN_MS,
   type Anordnung,
   type Ansicht,
   type BlattBild,
   type Lineatur
 } from '@rl/kern'
-import { ausschnitt, bildUrl, useDaten } from '@rl/oberflaeche'
+import { ausschnitt, bildUrl, useDaten, useHalten } from '@rl/oberflaeche'
+import type { Uebernahme } from './MarkeRahmen'
 
 /** Strichstärke der Lineatur in Bildschirmpixeln, unabhängig von der Größe des Blatts */
 const STAERKE = { fein: 0.5, mittel: 0.8, kraeftig: 1.1, punkt: 2.4 } as const
@@ -64,8 +66,32 @@ export function useAnordnung(anhangId: string) {
   }
 }
 
-/** Ein Bild auf dem Blatt; mit „Lesen“ antippen, dann ziehen, an der Ecke vergrößern oder entfernen */
-export function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern, onEntfernen }: { bild: BlattBild; format: number; aktiv: boolean; gewaehlt: boolean; onWahl: () => void; onAendern: (b: BlattBild) => void; onEntfernen: () => void }) {
+/**
+ * Ein Bild auf dem Blatt. Gewählt wird es im Werkzeug Markieren (über die Tinte, Buch.tsx); gewählt verschiebt Klicken
+ * und Halten (0,4 s) mit Ziehen, die Ecke vergrößert sofort, × nimmt es vom Blatt (Nils 2026-11-15).
+ */
+export function BildAufBlatt({
+  bild,
+  format,
+  aktiv,
+  gewaehlt,
+  loeschtGleich = false,
+  uebernimm,
+  onWahl,
+  onAendern,
+  onEntfernen
+}: {
+  bild: BlattBild
+  format: number
+  aktiv: boolean
+  gewaehlt: boolean
+  loeschtGleich?: boolean
+  /** in der Tinte 0,4 s gehalten: dieser Zeiger verschiebt das Bild gleich weiter */
+  uebernimm?: Uebernahme | null
+  onWahl: () => void
+  onAendern: (b: BlattBild) => void
+  onEntfernen: () => void
+}) {
   const { speicher, bestand } = useDaten()
   const [src, setSrc] = useState<string | null>(null)
   const [lage, setLage] = useState<BlattBild | null>(null)
@@ -84,15 +110,29 @@ export function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern,
   }, [speicher, bild.anhang, datei, seite, bereich?.x, bereich?.y, bereich?.b, bereich?.h, !!quelle])
   const b = lage ?? bild
   const hoehe = SEITE_BREITE * format
+  const el = useRef<HTMLDivElement>(null)
+  const starte = (art: 'ziehen' | 'groesse', ziel: HTMLElement, pointerId: number, x: number, y: number) => {
+    const flaeche = ziel.closest('.blatt-flaeche')?.getBoundingClientRect()
+    if (!flaeche) return
+    try {
+      ziel.setPointerCapture(pointerId)
+    } catch {
+      return
+    }
+    zug.current = { art, x, y, proPx: SEITE_BREITE / flaeche.width, start: bild }
+  }
+  useEffect(() => {
+    if (uebernimm && el.current) starte('ziehen', el.current, uebernimm.pointerId, uebernimm.clientX, uebernimm.clientY)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uebernimm])
+  const halten = useHalten({ dauer: ANHEBEN_MS, art: 'anheben', aktiv: aktiv && gewaehlt, onFertig: (z) => starte('ziehen', z.el, z.pointerId, z.clientX, z.clientY) })
   const runter = (art: 'ziehen' | 'groesse') => (e: React.PointerEvent<HTMLElement>) => {
-    if (!aktiv) return
+    if (!aktiv || e.pointerType === 'pen') return
     e.stopPropagation()
     if (!gewaehlt) return onWahl()
-    const flaeche = e.currentTarget.closest('.blatt-flaeche')?.getBoundingClientRect()
-    if (!flaeche) return
+    if (art === 'ziehen') return halten.griffe.onPointerDown(e)
     e.preventDefault()
-    e.currentTarget.setPointerCapture(e.pointerId)
-    zug.current = { art, x: e.clientX, y: e.clientY, proPx: SEITE_BREITE / flaeche.width, start: bild }
+    starte(art, e.currentTarget, e.pointerId, e.clientX, e.clientY)
   }
   const bewegen = (e: React.PointerEvent) => {
     const z = zug.current
@@ -101,17 +141,22 @@ export function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern,
     const dy = (e.clientY - z.y) * z.proPx
     setLage(z.art === 'ziehen' ? rueckeBild(z.start, z.start.x + dx, z.start.y + dy, z.start.b, format) : rueckeBild(z.start, z.start.x, z.start.y, z.start.b + dx, format))
   }
-  const hoch = () => {
+  const hoch = (e: React.PointerEvent<HTMLElement>) => {
+    halten.griffe.onPointerUp(e)
     if (zug.current && lage) onAendern(lage)
     zug.current = null
     setLage(null)
   }
   return (
     <div
-      className={`blatt-bild${aktiv ? ' beweglich' : ''}${gewaehlt ? ' gewaehlt' : ''}`}
+      ref={el}
+      className={`blatt-bild${aktiv && gewaehlt ? ' beweglich' : ''}${gewaehlt ? ' gewaehlt' : ''}${loeschtGleich ? ' loescht-gleich' : ''}`}
       style={{ left: `${(b.x / SEITE_BREITE) * 100}%`, top: `${(b.y / hoehe) * 100}%`, width: `${(b.b / SEITE_BREITE) * 100}%`, height: `${(b.h / hoehe) * 100}%` }}
       onPointerDown={runter('ziehen')}
-      onPointerMove={bewegen}
+      onPointerMove={(e) => {
+        halten.griffe.onPointerMove(e)
+        bewegen(e)
+      }}
       onPointerUp={hoch}
       onPointerCancel={hoch}
     >
@@ -121,9 +166,10 @@ export function BildAufBlatt({ bild, format, aktiv, gewaehlt, onWahl, onAendern,
           <button type="button" className="blatt-bild-weg" onPointerDown={(e) => e.stopPropagation()} onClick={onEntfernen} aria-label="Bild vom Blatt nehmen" title="Vom Blatt nehmen (das Bild selbst bleibt erhalten)">
             ×
           </button>
-          <span className="blatt-bild-ecke" onPointerDown={runter('groesse')} onPointerMove={bewegen} onPointerUp={hoch} onPointerCancel={hoch} aria-hidden="true" />
+          <span className="blatt-bild-ecke" onPointerDown={runter('groesse')} aria-hidden="true" />
         </>
       )}
+      {halten.ring}
     </div>
   )
 }
