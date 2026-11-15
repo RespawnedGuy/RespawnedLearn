@@ -37,7 +37,11 @@ const pfade: Record<string, string> = {
   markieren: 'M9 11l-5 5v4h4l5-5 M14 4l6 6-7 7-6-6z',
   radierer: 'M7 21h10 M5.5 15.5l9-9a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L13 18H8z',
   runde: 'M4 12a8 8 0 1 0 2.3-5.7 M4 4v4h4',
-  karten: 'M7 7h13v13H7z M4 17V4h13'
+  karten: 'M7 7h13v13H7z M4 17V4h13',
+  // Menü nach dem Rechteck (Nils 2026-11-15: Symbole statt Wörter)
+  baustein: 'M3 13h8v7H3z M13 13h8v7h-8z M8 4h8v7H8z',
+  insbuch: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5 M12 7v6 M9 10h6',
+  zurkarte: 'M5 12h14 M13 6l6 6-6 6'
 }
 
 export function Symbol({ name, groesse = 18 }: { name: string; groesse?: number }) {

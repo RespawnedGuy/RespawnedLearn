@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { eingabeVon, liesBausteinText, liesMarken, markeAn, modulVon, pfade, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
-import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, hatStift, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
+import { eingabeVon, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
+import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle, setzeBereich } from './wissen'
 import { useLernzeit } from './lernzeitMessen'
@@ -18,8 +18,10 @@ import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
 import { hebeAn } from './anheben'
 import { RueckwegKnopf, useRueckwege } from './Rueckweg'
-import { BausteinMenue, Verlinken, karteVon, schwebeLage } from './BausteinMenue'
-import { MarkeRahmen } from './MarkeRahmen'
+import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
+import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
+import { loescheMarkierungMitMeldung } from './loeschen'
+import { useEntfLoescht } from './entf'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -91,7 +93,10 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const [seiten, setSeiten] = useState(0)
   // Gezogenes Rechteck oder angetippte Markierung (`marke`); beides öffnet dasselbe Menü wie im Notizbuch
   const [auswahl, setAuswahl] = useState<{ seite: number; bereich: Bereich; punkt?: { x: number; y: number }; marke?: Marke } | null>(null)
-  const [modus, setModus] = useState<'wahl' | 'wissen' | 'frage' | 'link' | 'erklaeren'>('wahl')
+  const [modus, setModus] = useState<'wahl' | 'frage' | 'erklaeren'>('wahl')
+  // in der Tinte 0,4 s gehalten: der Rahmen übernimmt den Zeiger; Markierung, die gleich gelöscht wird
+  const [uebernahme, setUebernahme] = useState<Uebernahme | null>(null)
+  const [haltZiel, setHaltZiel] = useState<string | null>(null)
   const [titel, setTitel] = useState('')
   // Name und Schlagworte des Bausteins (Vertrag Lernen 1.8), „…“ zeigt die übrigen Wege
   const [name, setName] = useState('')
@@ -101,7 +106,22 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   // Vorschlag der KI für die Frage einer Lernkarte (null = noch keiner, '' = keiner zu haben)
   const [vorschlag, setVorschlag] = useState<string | null>(null)
   const [vollbild, setVollbild] = useState(false)
-  const marken = liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? '')
+  // Bearbeiten gehört zum Werkzeug Markieren: Wer wechselt, schließt Rahmen und Menü (der Radierer träfe sonst den Rahmen)
+  useEffect(() => {
+    if (werkzeug !== 'markieren') setAuswahl((a) => (modus === 'erklaeren' ? a : null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [werkzeug])
+  useEntfLoescht(
+    auswahl?.marke
+      ? () => {
+          const id = auswahl.marke!.id
+          setAuswahl(null)
+          void loescheMarkierungMitMeldung(speicher, bestand.texte, quelle.id, id)
+        }
+      : null
+  )
+  // weggelegte Bausteine zeichnet die App nicht (Lernen 1.11)
+  const marken = sichtbareMarken(liesMarken(bestand.texte.get(pfade.marken('lernen', quelle.id)) ?? ''))
   const modul = modulVon(bestand, quelle.id)
 
   // Skript ausgeblendet (z. B. altes Heft für ein Buch auf Papier): dann keine Seitenzahl, dafür „Skript zeigen“
@@ -262,18 +282,17 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return () => removeEventListener('paste', einfuegen)
   })
 
-  const fertig = async (art: 'wissen' | 'frage' | 'link' | 'nur', ziel?: Eintrag) => {
+  const fertig = async (art: 'frage' | 'nur') => {
     if (!auswahl) return
     const eigen = titel.trim()
-    // Wissenskarte ohne eigenen Begriff: der Name des Bausteins
-    const text = eigen || (art === 'wissen' && liesBausteinText(name).name) || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
+    const text = eigen || (art === 'frage' ? vorschlag || 'Was steht hier?' : 'Stelle')
     const alt = auswahl.marke
     // Unverändert wieder zugemacht: nichts schreiben
     if (art === 'nur' && alt && eingabeVon(liesBausteinText(alt.text)) === name.trim()) return setAuswahl(null)
     const markeId = alt?.id ?? kurzId()
-    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, ziel, farbe: FARBE_MARKE[farbe] ?? null, markeId, name })
+    const id = await karteAusStelle(speicher, { quelle, seite: auswahl.seite, bereich: auswahl.bereich, art, titel: text, farbe: FARBE_MARKE[farbe] ?? null, markeId, name })
     if (art === 'nur') melde(name.trim() ? 'Baustein gemerkt' : 'Baustein gemerkt, der Name fehlt noch (Nutzen › Offen)')
-    if (art !== 'nur' && art !== 'link') melde('Lernkarte angelegt')
+    if (art === 'frage') melde('Lernkarte angelegt')
     if (!alt) void markierungAuchInsBuch({ seite: auswahl.seite, bereich: auswahl.bereich, marke: markeId })
     // Selbst getippte Fragen: Schreibfehler nachträglich korrigieren, die Karte ist schon da
     if (art === 'frage' && eigen && eigen !== vorschlag) void korrigiere(speicher, eigen).then((neu) => {
@@ -297,19 +316,33 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         scrollFlaeche={breit ? skriptFlaeche : null}
         onSeiten={setSeiten}
         gewaehlt={auswahl?.marke?.id ?? null}
-        onMarke={(m) => {
-          setAuswahl({ seite: m.seite, bereich: m.bereich, marke: m })
-          setModus('wahl')
-        }}
-        vorTippen={(nr, p, art) => {
-          // wie im Notizbuch (Buch.tsx): Finger und Maus wählen beim Markieren, mit Stift-Gerät der Finger auch sonst
-          const darf = werkzeug === 'markieren' || (art === 'touch' && hatStift())
-          const treffer = darf ? markeAn(marken.filter((m) => m.seite === nr), p) : null
-          if (treffer) {
-            setAuswahl({ seite: nr, bereich: treffer.bereich, marke: treffer.marke })
+        haltZiel={haltZiel}
+        treffen={{
+          // gleich wie im Notizbuch (Buch.tsx): Markieren öffnet, hält und verschiebt, der Radierer löscht durch Halten
+          treffer: (nr, p) => {
+            const t = markeAn(marken.filter((m) => m.seite === nr), p)
+            if (!t && auswahl?.marke) setAuswahl(null)
+            return t ? { art: 'marke', id: t.marke.id } : null
+          },
+          onTippen: (nr, t, punkt) => {
+            const m = marken.find((x) => x.id === t.id)
+            if (!m) return
+            setUebernahme(null)
+            setAuswahl({ seite: nr, bereich: m.bereich, marke: m, punkt })
             setModus('wahl')
-          } else if (auswahl?.marke) setAuswahl(null)
-          return !!treffer
+          },
+          onAnheben: (nr, t, zeiger) => {
+            const m = marken.find((x) => x.id === t.id)
+            if (!m) return
+            setAuswahl({ seite: nr, bereich: m.bereich, marke: m })
+            setModus('wahl')
+            setUebernahme(zeiger)
+          },
+          onLoeschen: (_nr, t) => {
+            if (auswahl?.marke?.id === t.id) setAuswahl(null)
+            void loescheMarkierungMitMeldung(speicher, bestand.texte, quelle.id, t.id)
+          },
+          onHaltZiel: (t) => setHaltZiel(t?.id ?? null)
         }}
         onRechteck={(nr, bereich, punkt) => {
           setAuswahl({ seite: nr, bereich, punkt })
@@ -324,6 +357,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 <MarkeRahmen
                   bereich={auswahl.bereich}
                   farbe={auswahl.marke.farbe}
+                  uebernimm={uebernahme}
                   onFertig={(neu) => {
                     const m = auswahl.marke!
                     setAuswahl({ ...auswahl, bereich: neu, punkt: undefined, marke: { ...m, bereich: neu } })
@@ -341,33 +375,17 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                     onLernkarte={() => setModus('frage')}
                     onAbbrechen={() => setAuswahl(null)}
                     zurKarte={karteVon(auswahl.marke)}
-                    bausteinTitel="Als Baustein merken: findet sich in allen Skripten wieder; ist ein Notizbuch aktiv, steht die Stelle auch dort"
-                    mehr={
-                      <>
-                        <button type="button" className="knopf klein" onClick={() => setModus('wissen')}>
-                          Wissenskarte
-                        </button>
-                        <button type="button" className="knopf klein" onClick={() => setModus('link')}>
-                          Verlinken
-                        </button>
-                        {!auswahl.marke && (
-                          <button type="button" className="knopf klein" onClick={() => setModus('erklaeren')} title="Die KI erklärt die Stelle in einfachen Worten">
-                            Erklären
-                          </button>
-                        )}
-                        <button type="button" className="knopf klein" onClick={() => void insBuch()} title="Die Stelle als Bild ins Notizbuch legen, um dort daran zu arbeiten">
-                          Ins Buch
-                        </button>
-                      </>
-                    }
+                    bausteinTitel="Baustein: findet sich in allen Skripten wieder; ist ein Notizbuch aktiv, steht die Stelle auch dort"
+                    onErklaeren={auswahl.marke ? undefined : () => setModus('erklaeren')}
+                    onInsBuch={() => void insBuch()}
                   />
                 )}
-                {(modus === 'wissen' || modus === 'frage') && (
+                {modus === 'frage' && (
                   <>
                     <input
                       className="eingabe"
                       autoFocus
-                      placeholder={modus === 'wissen' ? 'Begriff (z. B. Spannung)' : 'Frage (die Stelle ist die Antwort)'}
+                      placeholder="Frage (die Stelle ist die Antwort)"
                       value={titel}
                       onChange={(e) => setTitel(e.target.value)}
                       onKeyDown={(e) => {
@@ -392,7 +410,6 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                     </div>
                   </>
                 )}
-                {modus === 'link' && <Verlinken onWahl={(e) => void fertig('link', e)} onZurueck={() => setModus('wahl')} />}
               </div>
             </>
           )}

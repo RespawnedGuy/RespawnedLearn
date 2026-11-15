@@ -36,7 +36,7 @@ describe('Textstellen als Bausteine (Lernen 1.10)', () => {
   })
 
   it('die Vertragsversion 1.10 gilt als neuer als 1.9', () => {
-    expect(VERTRAG).toBe('1.10')
+    expect(vergleicheVersionen(VERTRAG, '1.10')).toBeGreaterThanOrEqual(0)
     expect(vergleicheVersionen('1.10', '1.9')).toBeGreaterThan(0)
   })
 })

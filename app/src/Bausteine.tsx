@@ -1,5 +1,6 @@
 // Bausteine in „Nutzen“ (Vertrag Lernen 1.8, 5.4): Jede Markierung ist ein Baustein. Die Suche findet sie in allen
-// Skripten; „Offen“ fragt nach denen ohne Namen: benennen oder weglegen. Gelöscht wird nichts.
+// Skripten; „Offen“ fragt nach denen ohne Namen: benennen oder weglegen. „Weggelegt“ holt zurück, was weggelegt oder
+// mit dem Radierer gelöscht wurde (Lernen 1.11). Ein benannter Baustein wird nie gelöscht.
 import { useMemo, useState } from 'react'
 import { absatzAmAnker, alleBausteine, eingabeVon, linkZiel, modulVon, offeneBausteine, sucheBausteine, type Baustein, type Bestand } from '@rl/kern'
 import { melde, ortLink, useDaten } from '@rl/oberflaeche'
@@ -43,6 +44,42 @@ export function BausteinTreffer({ treffer }: { treffer: Baustein[] }) {
   )
 }
 
+export function anzahlWeggelegt(alle: Baustein[], bestand: Bestand, modul: string | null) {
+  return alle.filter((b) => b.archiviert && bestand.dokumente.has(b.anhang) && imModul(bestand, b, modul)).length
+}
+
+/** „Weggelegt“: zurückholen, die zuletzt gesetzten zuerst */
+export function WeggelegteBausteine({ modul, onZu }: { modul: string | null; onZu: () => void }) {
+  const { bestand } = useDaten()
+  const weg = useBausteine()
+    .filter((b) => b.archiviert && bestand.dokumente.has(b.anhang) && imModul(bestand, b, modul))
+    .sort((x, y) => y.marke.datum.localeCompare(x.marke.datum))
+  return (
+    <section className="bausteine" aria-label="Weggelegte Bausteine">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h2 className="passt-titel" style={{ flex: 1 }}>
+          Weggelegt
+        </h2>
+        <button type="button" className="knopf still klein" onClick={onZu}>
+          Fertig
+        </button>
+      </div>
+      {!weg.length ? (
+        <div className="leer">Nichts weggelegt.</div>
+      ) : (
+        <>
+          <p className="klein-leise">Weggelegte Bausteine stehen nicht mehr auf der Seite und nicht in der Suche. Zurückholen bringt sie an ihre Stelle.</p>
+          <div className="baustein-liste">
+            {weg.slice(0, 60).map((b) => (
+              <BausteinKarte key={`${b.anhang}:${b.marke.id}`} b={b} weggelegt />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
 /** „Offen“: Bausteine ohne Namen, die ältesten zuerst */
 export function OffeneBausteine({ modul, onZu }: { modul: string | null; onZu: () => void }) {
   const { bestand } = useDaten()
@@ -61,7 +98,7 @@ export function OffeneBausteine({ modul, onZu }: { modul: string | null; onZu: (
         <div className="leer">Alles benannt. Neue Markierungen ohne Namen erscheinen hier.</div>
       ) : (
         <>
-          <p className="klein-leise">Gib einen Namen (Schlagworte mit #), dann findest du die Stelle in jedem Skript wieder. Was du nicht mehr brauchst, legst du weg; die Markierung bleibt.</p>
+          <p className="klein-leise">Gib einen Namen (Schlagworte mit #), dann findest du die Stelle in jedem Skript wieder. Was du nicht mehr brauchst, legst du weg; unter „Weggelegt“ holst du es zurück.</p>
           <div className="baustein-liste">
             {offen.slice(0, 30).map((b) => (
               <BausteinKarte key={`${b.anhang}:${b.marke.id}`} b={b} offen />
@@ -82,7 +119,7 @@ function seit(datum: string): string {
   return `seit ${Math.round(tage / 30)} Monaten`
 }
 
-function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
+function BausteinKarte({ b, offen = false, weggelegt = false }: { b: Baustein; offen?: boolean; weggelegt?: boolean }) {
   const { bestand, speicher } = useDaten()
   const [bearbeiten, setBearbeiten] = useState(offen)
   const [eingabe, setEingabe] = useState(() => eingabeVon(b))
@@ -105,6 +142,10 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
   const weg = () => {
     void legeBausteinWeg(speicher, b.anhang, b.marke.id, true)
     melde(`Weggelegt: ${b.titel || stelle}`, () => void legeBausteinWeg(speicher, b.anhang, b.marke.id, false))
+  }
+  const zurueckholen = () => {
+    void legeBausteinWeg(speicher, b.anhang, b.marke.id, false)
+    melde(`Zurückgeholt: ${b.titel || stelle}`, () => void legeBausteinWeg(speicher, b.anhang, b.marke.id, true))
   }
   return (
     <article className="karte baustein">
@@ -137,7 +178,7 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
               Merken
             </button>
             {offen ? (
-              <button type="button" className="knopf still klein" onClick={weg} title="Aus „Offen“ und der Suche nehmen; die Markierung bleibt">
+              <button type="button" className="knopf still klein" onClick={weg} title="Aus „Offen“, der Suche und von der Seite nehmen; zurückholen unter „Weggelegt“">
                 Weglegen
               </button>
             ) : (
@@ -166,9 +207,15 @@ function BausteinKarte({ b, offen = false }: { b: Baustein; offen?: boolean }) {
             <button type="button" className="knopf still klein" onClick={() => setBearbeiten(true)} aria-label={`${b.titel || stelle} umbenennen`}>
               Umbenennen
             </button>
-            <button type="button" className="knopf still klein" onClick={weg} title="Aus der Suche nehmen; die Markierung bleibt">
-              Weglegen
-            </button>
+            {weggelegt ? (
+              <button type="button" className="knopf haupt klein" onClick={zurueckholen} title="Wieder auf die Seite und in die Suche">
+                Zurückholen
+              </button>
+            ) : (
+              <button type="button" className="knopf still klein" onClick={weg} title="Aus der Suche und von der Seite nehmen; zurückholen unter „Weggelegt“">
+                Weglegen
+              </button>
+            )}
           </div>
         </div>
       )}

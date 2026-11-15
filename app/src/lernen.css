@@ -27,7 +27,7 @@
 .blatt-bild { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .blatt-bild img { display: block; width: 100%; height: 100%; object-fit: fill; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .blatt-bild.beweglich { pointer-events: auto; cursor: pointer; }
-.blatt-bild.gewaehlt { outline: 2px solid var(--akzent); outline-offset: 2px; cursor: move; touch-action: none; }
+.blatt-bild.gewaehlt { outline: 2px solid var(--akzent); outline-offset: 2px; cursor: move; touch-action: none; z-index: 16; }
 .blatt-bild-weg { position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--akzent); color: #fff; font-size: 1.125rem; line-height: 1; cursor: pointer; box-shadow: var(--schatten); }
 .blatt-bild-ecke { position: absolute; right: -10px; bottom: -10px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--akzent); cursor: nwse-resize; touch-action: none; }
 .blatt-menue-huelle { position: relative; }
@@ -527,3 +527,4 @@ button.name-feld:focus-visible { outline: 2px solid var(--akzent); outline-offse
 @media (hover: hover) { button.name-feld:hover { box-shadow: inset 0 -1px 0 var(--rand-stark); } }
 input.name-feld { width: min(100%, 24em); box-shadow: inset 0 -1px 0 var(--akzent); }
 @media (pointer: coarse) { .name-feld { min-height: 44px; } }
+.marke-rahmen.angehoben { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), 0 0 0 3px rgba(210, 86, 28, 0.35); }

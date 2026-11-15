@@ -437,3 +437,9 @@ button.marke { padding: 0; }
 .cm-tabelle-leiste button { font: inherit; font-size: 0.8125rem; color: var(--leise); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; min-height: 34px; cursor: pointer; }
 .cm-tabelle-leiste button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Menü nach dem Rechteck: Name mit „?“, darunter Symbole (BausteinMenue.tsx) */
+.menue-name { display: flex; gap: 6px; align-items: center; }
+.menue-name .eingabe { flex: 1; min-width: 0; }
+.symbol-reihe { align-items: center; }
+.knopf.symbol-knopf { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+.knopf.frage-knopf { font-size: 1.125rem; font-weight: 700; }

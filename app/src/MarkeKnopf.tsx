@@ -1,23 +1,28 @@
 // ✦-Marke im Notizbuch (Vertrag Lernen 1.5, 5.3): Antippen öffnet ein kleines Menü „Zum Skript“ und „Marke entfernen“.
-// Entfernen nimmt die Marke und ihren Ausschnitt von der Buchseite; die Markierung im Skript bleibt.
+// Entfernen nimmt die Marke und ihren Ausschnitt von der Buchseite; die Markierung im Skript bleibt. Mit dem Radierer
+// entfernt Halten (1 s, ablaufender Kreis) die Marke ohne Menü (Nils 2026-11-15); das Menü bleibt für die Tastatur.
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { Verweis } from "@rl/kern";
-import { geheZu, useDaten } from "@rl/oberflaeche";
+import { LOESCHEN_MS, type Verweis } from "@rl/kern";
+import { geheZu, useDaten, useHalten } from "@rl/oberflaeche";
 
 export function MarkeKnopf({
   verweis: v,
   blinkt,
   style,
+  radierer = false,
   onEntfernen,
 }: {
   verweis: Verweis;
   blinkt: boolean;
   style: CSSProperties;
+  /** Werkzeug Radierer: Halten entfernt */
+  radierer?: boolean;
   onEntfernen: () => void;
 }) {
   const { bestand } = useDaten();
   const [auf, setAuf] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const halten = useHalten({ dauer: LOESCHEN_MS, art: "loeschen", aktiv: radierer, stiftRadierer: true, onFertig: onEntfernen });
   useEffect(() => {
     if (!auf) return;
     const weg = (e: PointerEvent) =>
@@ -35,13 +40,15 @@ export function MarkeKnopf({
     <div className="marke-huelle" style={style} ref={ref}>
       <button
         type="button"
-        className={`verweis aus-markierung${blinkt ? " blinkt" : ""}`}
-        title={`Markierung aus ${skript}`}
+        className={`verweis aus-markierung${blinkt ? " blinkt" : ""}${halten.laeuft ? " loescht-gleich" : ""}`}
+        title={radierer ? `Markierung aus ${skript}. Halten entfernt Marke und Ausschnitt` : `Markierung aus ${skript}`}
         aria-haspopup="menu"
         aria-expanded={auf}
-        onClick={() => setAuf((a) => !a)}
+        onClick={() => !radierer && setAuf((a) => !a)}
+        {...halten.griffe}
       >
         ✦ S. {v.seite}
+        {halten.ring}
       </button>
       {auf && (
         <div className="schwebe marke-menue" role="menu">

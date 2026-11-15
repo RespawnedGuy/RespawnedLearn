@@ -59,3 +59,19 @@ html[data-uebergang='wechsel']::view-transition-new(root) { animation: ue-auftau
   .knopf:active:not(:disabled), .kopf-reiter-knopf:active, .kopf-zahnrad:active, .zurueck-pfeil:active:not(:disabled), .fl-farbe:active, .segmente button:active,
   .fl-fn:active > svg { transform: none; }
 }
+
+/* ---------- Halten packt an: Kreis, der sich leert (halten.tsx) ---------- */
+.halte-ring { position: absolute; z-index: 30; pointer-events: none; overflow: visible; opacity: 0; animation: halte-zeigen 1ms linear var(--ab) forwards; }
+.halte-ring-grund { fill: rgba(255, 255, 255, 0.35); stroke: rgba(0, 0, 0, 0.2); stroke-width: 7; }
+.halte-ring-zeit { fill: none; stroke-width: 7; stroke-linecap: round; stroke-dashoffset: 0; animation: halte-leeren var(--dauer) linear forwards; }
+.halte-ring.anheben .halte-ring-zeit { stroke: var(--akzent); }
+.halte-ring.loeschen .halte-ring-zeit { stroke: #d1342b; }
+@keyframes halte-zeigen { to { opacity: 1; } }
+@keyframes halte-leeren { to { stroke-dashoffset: calc(var(--umfang) * 1px); } }
+/* Das Ziel, das gleich gelöscht wird */
+.loescht-gleich { outline: 3px solid #d1342b !important; outline-offset: 2px; }
+/* Die Zeit ist eine Auskunft, keine Zierde: auch bei reduzierter Bewegung läuft sie */
+@media (prefers-reduced-motion: reduce) {
+  .halte-ring { animation-duration: 1ms !important; animation-delay: var(--ab) !important; }
+  .halte-ring .halte-ring-zeit { animation-duration: var(--dauer) !important; }
+}
