@@ -533,3 +533,10 @@ input.name-feld { width: min(100%, 24em); box-shadow: inset 0 -1px 0 var(--akzen
 .blatt-bild .blatt-bild img { max-width: none; max-height: none; }
 .buch-rahmen { position: absolute; inset: 0; border: 1px dashed var(--linie-stark); border-radius: 4px; background: rgba(127, 127, 127, 0.06); }
 .schwebe.schwebe-klein { width: auto; flex-direction: row; padding: 6px; }
+/* Seitenverweise einer Buchseite als eine Blase oben rechts (wie „✎ n“ im Skript); ✦-Marken bleiben am Rand */
+.seiten-blase { position: absolute; top: 8px; right: 8px; z-index: 6; }
+.seiten-blase > button { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--verweis-rand); background: var(--verweis-grund); color: var(--verweis-text); font: inherit; font-size: 0.75rem; cursor: pointer; opacity: 0.9; }
+.seiten-blase > button:hover { opacity: 1; border-color: var(--akzent); }
+.seiten-blase > button.blinkt { animation: verweis-blinkt 0.8s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) { .seiten-blase > button.blinkt { animation: none; outline: 2px solid var(--akzent); } }
+.seiten-blase-liste { position: absolute; top: calc(100% + 4px); right: 0; min-width: 220px; }

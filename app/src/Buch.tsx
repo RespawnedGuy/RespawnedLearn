@@ -24,7 +24,6 @@ import {
   ulid,
   verweiseBeimSchreiben,
   SEITE_BREITE,
-  LOESCHEN_MS,
   type BlattBild,
   type Bereich,
   type BuchBild,
@@ -35,9 +34,10 @@ import {
   type Strich,
   type Ziel
 } from '@rl/kern'
-import { TintenEbene, geheZu, melde, neuerAnhang, useDaten, useHalten, type Speicher, type Treffer, type Werkzeug } from '@rl/oberflaeche'
+import { TintenEbene, melde, neuerAnhang, useDaten, type Speicher, type Treffer, type Werkzeug } from '@rl/oberflaeche'
 import { BildAufBlatt, LineaturBild } from './Blaetter'
 import { MarkeKnopf } from './MarkeKnopf'
+import { SeitenBlase } from './SeitenBlase'
 import { BuchMarken, type BuchAuswahl } from './BuchMarken'
 import { type Uebernahme } from './MarkeRahmen'
 import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeite } from './loeschen'
@@ -335,11 +335,10 @@ function BuchBlatt({
                 nimm({ art: 'marke', id: v.id })
               }}
             />
-          ) : (
-            <RandMarke key={v.id} radierer={werkzeug === 'radierer'} blinkt={hervor === v.y} top={`${(v.y / hoehe) * 100}%`} titel={`${bestand.dokumente.get(v.anhang)?.titel ?? 'Skript'}, Seite ${v.seite}`} seite={v.seite} onOeffne={() => geheZu('sammeln', v.anhang, v.seite)} onLoeschen={() => nimm({ art: 'verweis', id: v.id })} />
-          )
+          ) : null
         )}
       </div>
+      <SeitenBlase verweise={seite.verweise} blinktBei={hervor} />
       <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`}>
         <LineaturBild art={lineatur} format={format} />
         {seite.bilder.map((b) => (
@@ -435,20 +434,3 @@ function BuchBlatt({
   )
 }
 
-/** Automatische Randmarke „S. n“: Antippen springt ins Skript; mit dem Radierer löscht Halten sie (Nils 2026-11-15) */
-function RandMarke({ radierer, blinkt, top, titel, seite, onOeffne, onLoeschen }: { radierer: boolean; blinkt: boolean; top: string; titel: string; seite: number; onOeffne: () => void; onLoeschen: () => void }) {
-  const halten = useHalten({ dauer: LOESCHEN_MS, art: 'loeschen', aktiv: radierer, stiftRadierer: true, onFertig: onLoeschen })
-  return (
-    <button
-      type="button"
-      className={`verweis${blinkt ? ' blinkt' : ''}${halten.laeuft ? ' loescht-gleich' : ''}`}
-      style={{ top }}
-      title={radierer ? `${titel}. Halten löscht die Randmarke` : titel}
-      onClick={() => !radierer && onOeffne()}
-      {...halten.griffe}
-    >
-      S. {seite}
-      {halten.ring}
-    </button>
-  )
-}
