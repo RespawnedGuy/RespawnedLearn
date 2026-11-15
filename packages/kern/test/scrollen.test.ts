@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { naechsteSeite, sichtbareSeite } from '../src/scrollen'
+import { ankerBei, ankerVersatz, naechsteSeite, sichtbareSeite } from '../src/scrollen'
 
 const seiten = [
   { nr: 1, oben: 0, unten: 1000 },
@@ -39,5 +39,36 @@ describe('naechsteSeite', () => {
     expect(naechsteSeite(80, 1, 80)).toBe(80)
     expect(naechsteSeite(12, 1, 80)).toBe(13)
     expect(naechsteSeite(12, 1, 0)).toBe(13)
+  })
+})
+
+describe('Anker beim Ändern der Breite', () => {
+  it('nimmt die Seite an der Oberkante samt Anteil', () => {
+    expect(ankerBei(seiten, 1516)).toEqual({ nr: 2, anteil: 0.5 })
+    expect(ankerBei(seiten, 0)).toEqual({ nr: 1, anteil: 0 })
+  })
+
+  it('im Abstand zwischen zwei Seiten gilt die untere ab ihrem Anfang', () => {
+    expect(ankerBei(seiten, 1008)).toEqual({ nr: 2, anteil: 0 })
+  })
+
+  it('ohne Seiten oder hinter der letzten gibt es keinen Anker', () => {
+    expect(ankerBei([], 0)).toBeNull()
+    expect(ankerBei(seiten, 5000)).toBeNull()
+  })
+
+  it('hält nach dem Schmalerwerden dieselbe Stelle: S. 12 wird nicht S. 19 (Fehler 2026-11-15)', () => {
+    // breit: Seiten 1000 px hoch; das Skript stand mitten in S. 12
+    const breit = Array.from({ length: 30 }, (_, i) => ({ nr: i + 1, oben: i * 1016, unten: i * 1016 + 1000 }))
+    const anker = ankerBei(breit, 11 * 1016 + 250)!
+    expect(anker).toEqual({ nr: 12, anteil: 0.25 })
+    // schmal: gleiche Scrollposition, Seiten nur noch 600 px hoch → oben stünde S. 19
+    const scroll = 11 * 1016 + 250
+    const schmal = Array.from({ length: 30 }, (_, i) => ({ nr: i + 1, oben: i * 616 - scroll, unten: i * 616 + 600 - scroll }))
+    expect(ankerBei(schmal, 0)!.nr).toBe(19)
+    const versatz = ankerVersatz(schmal[anker.nr - 1], anker, 0)
+    const danach = schmal.map((s) => ({ ...s, oben: s.oben - versatz, unten: s.unten - versatz }))
+    expect(ankerBei(danach, 0)).toEqual({ nr: 12, anteil: 0.25 })
+    expect(sichtbareSeite(danach, 0, 800)).toBe(12)
   })
 })

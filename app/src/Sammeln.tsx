@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { eingabeVon, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
+import { eingabeVon, lesestand, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle, setzeBereich } from './wissen'
 import { useLernzeit } from './lernzeitMessen'
+import { useScrollHalten } from './scrollHalten'
 import { SammelnPlan } from './SammelnPlan'
 import { frageVorschlagen, korrigiere } from './ki'
 import { Inhalt } from './Inhalt'
@@ -49,7 +50,8 @@ export function Sammeln({ ort }: { ort: string[] }) {
   const quelle = ort[1] ? bestand.dokumente.get(ort[1]) : undefined
   // Stellen-Verweise tragen nur die ID; ist sie ein Notizbuch, öffnet sich das Buch an der Seite
   if (quelle?.typ === 'notizbuch') return <BuchAlleinSeite key={quelle.id} id={quelle.id} seite={Number(ort[2]) || 0} />
-  if (quelle) return <Angehoben key={quelle.id} quelle={quelle} seite={ort[2] ? Number(ort[2]) || 1 : 1} />
+  // Ohne Seite in der Adresse dort weiter, wo zuletzt gelesen wurde (Lesestand aller Geräte), sonst Seite 1
+  if (quelle) return <Angehoben key={quelle.id} quelle={quelle} seite={(ort[2] && Number(ort[2])) || lesestand(bestand)[quelle.id]?.seite || 1} />
   return <Start />
 }
 
@@ -420,6 +422,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const alleOffen = ansichten.anordnung.ansichten.filter((v) => !v.zu)
   const handy = alleOffen.find((v) => v.id === handyWahl) ?? alleOffen[0]
   const offen = breit ? alleOffen : alleOffen.filter((v) => v === handy)
+  const halten = useScrollHalten(offen.map((v) => v.id).join(' '))
 
   return (
     <div>
@@ -475,7 +478,11 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
               />
             )}
             <section
-              ref={v.art === 'pdf' ? setSkriptFlaeche : undefined}
+              ref={(el) => {
+                halten.anmelden(v.id, el)
+                if (v.art === 'pdf') setSkriptFlaeche(el)
+              }}
+              onScroll={halten.merken(v.id)}
               className={`platz-ansicht ${v.art === 'pdf' ? 'platz-skript' : 'platz-blatt'}`}
               style={{ flexGrow: entwurf[v.id] ?? v.breite } as CSSProperties}
               aria-label={v.art === 'pdf' ? 'Skript' : (bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch')}

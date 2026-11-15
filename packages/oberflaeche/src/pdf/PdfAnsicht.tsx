@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { pfade, sichtbareSeite, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { ankerBei, ankerVersatz, pfade, sichtbareSeite, type Anker, type App, type Bereich, type Farbe, type Marke } from '@rl/kern'
 import { useDaten } from '../daten/DatenKontext'
 import { ladePdf, seitenFormat, zeichneSeite, zeichneText, type PdfDokument } from './pdf'
 import { TintenEbene, type Treffer, type Werkzeug } from './Tinte'
@@ -107,6 +107,8 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
   const melden = !!p.onSeite && !p.nurSeite
   // Erst melden, wenn der erste Sprung (z. B. zum Lesestand) erledigt ist; sonst gewinnt kurz Seite 1
   const gesprungen = useRef(false)
+  // Stelle an der Oberkante (Seite + Anteil): hält die Lesestelle, wenn das Skript schmaler oder breiter wird
+  const anker = useRef<Anker | null>(null)
   useEffect(() => {
     if (!melden || !quelle || !breite) return
     const flaeche = p.scrollFlaeche ?? null
@@ -122,6 +124,7 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
         const b = el.getBoundingClientRect()
         return { nr, oben: b.top, unten: b.bottom }
       })
+      anker.current = ankerBei(lagen, oben)
       const nr = sichtbareSeite(lagen, oben, unten)
       if (nr && nr !== zuletzt) {
         zuletzt = nr
@@ -155,11 +158,29 @@ export function PdfAnsicht(p: PdfAnsichtProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprung?.seite, sprung?.mal, formateFertig, breite > 0])
 
+  const eingepasst = p.maxHoehe && p.nurSeite ? p.maxHoehe / (formate[p.nurSeite - 1] ?? 1.414) : Infinity
+  const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
+
+  // Neue Seitenbreite (Buch daneben geöffnet, Trenner gezogen, Fenster): Pixel würden eine andere Seite zeigen
+  // (S. 12 wurde S. 19, Fehler 2026-11-15). Vor dem Zeichnen zurück an den Anker; das Scrollen meldet dann dieselbe Seite.
+  useLayoutEffect(() => {
+    const a = anker.current
+    if (!melden || !gesprungen.current || !a) return
+    const el = seitenEl.current.get(a.nr)
+    if (!el) return
+    const flaeche = p.scrollFlaeche ?? null
+    const oben = flaeche ? Math.max(0, flaeche.getBoundingClientRect().top) : 0
+    const b = el.getBoundingClientRect()
+    const d = ankerVersatz({ nr: a.nr, oben: b.top, unten: b.bottom }, a, oben)
+    if (Math.abs(d) < 1) return
+    if (flaeche) flaeche.scrollTop += d
+    else scrollBy(0, d)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seitenBreite, formate])
+
   if (quelle === undefined) return <div className="leer">PDF wird geladen …</div>
   if (quelle === null) return <div className="leer">{p.ohnePdf ?? 'Das PDF liegt (noch) nicht im Datenordner. Bringt Syncthing es gerade, erscheint es gleich.'}</div>
 
-  const eingepasst = p.maxHoehe && p.nurSeite ? p.maxHoehe / (formate[p.nurSeite - 1] ?? 1.414) : Infinity
-  const seitenBreite = Math.max(200, Math.round(Math.min(breite * (p.zoom ?? 1), eingepasst)))
   const nummern = p.nurSeite ? [p.nurSeite] : formate.map((_, i) => i + 1)
   return (
     <div ref={huelle} className={p.onZoom ? 'pdf-zoombar' : undefined} style={{ width: '100%', overflowX: (p.zoom ?? 1) > 1 ? 'auto' : undefined }}>
