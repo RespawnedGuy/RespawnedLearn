@@ -3,6 +3,7 @@
 
 mod aktualisieren;
 mod kopien;
+mod netz;
 mod ollama;
 mod ordner;
 mod ordnerbefehle;
@@ -30,6 +31,101 @@ struct Zustand {
     beobachter: Mutex<Option<notify::RecommendedWatcher>>,
     /// in den Einstellungen gewählter neuer Datenordner, bis der Nutzer entscheidet (ordnerbefehle.rs)
     vorgemerkt: Mutex<Option<PathBuf>>,
+    /// Zugang übers Netz (netz/): läuft der Server, und wenn nicht, warum
+    netz: Mutex<NetzLauf>,
+}
+
+#[derive(Default)]
+struct NetzLauf {
+    #[cfg(desktop)]
+    laufend: Option<netz::server::Laufend>,
+    fehler: Option<String>,
+}
+
+/// Was die Einstellungen über den Zugang übers Netz zeigen
+#[derive(Serialize)]
+struct NetzStand {
+    einstellung: netz::einstellung::NetzEinstellung,
+    /// nur am PC
+    moeglich: bool,
+    laeuft: bool,
+    fehler: Option<String>,
+}
+
+fn netz_datei(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_config_dir().map_err(|e| e.to_string())?.join("netz.json"))
+}
+
+/// Startet den Server neu nach der Einstellung (oder hält ihn an); merkt sich einen Fehler für die Einstellungen
+fn netz_anwenden(app: &AppHandle, z: &State<Zustand>, e: &netz::einstellung::NetzEinstellung) {
+    let mut lauf = z.netz.lock().unwrap();
+    #[cfg(desktop)]
+    {
+        lauf.laufend = None;
+        lauf.fehler = None;
+        if !e.an {
+            return;
+        }
+        let oberflaeche_app = app.clone();
+        let oberflaeche: netz::server::Oberflaeche = std::sync::Arc::new(move |p: &str| {
+            oberflaeche_app.asset_resolver().get(p.to_string()).map(|a| (a.bytes, a.mime_type))
+        });
+        let ki_ordner = match app.path().app_config_dir() {
+            Ok(d) => d.join("netz-ki"),
+            Err(f) => {
+                lauf.fehler = Some(f.to_string());
+                return;
+            }
+        };
+        let n = std::sync::Arc::new(netz::server::Netz { ordner: e.ordner(), oberflaeche, ki_ordner });
+        match netz::server::starten(n, e.port) {
+            Ok(l) => lauf.laufend = Some(l),
+            Err(f) => lauf.fehler = Some(f),
+        }
+    }
+    #[cfg(mobile)]
+    {
+        let _ = (app, e);
+        lauf.fehler = Some("Nur am PC".into());
+    }
+}
+
+fn netz_stand_von(app: &AppHandle, z: &State<Zustand>) -> Result<NetzStand, String> {
+    let einstellung = netz::einstellung::lesen(&netz_datei(app)?);
+    let lauf = z.netz.lock().unwrap();
+    #[cfg(desktop)]
+    let laeuft = lauf.laufend.is_some();
+    #[cfg(mobile)]
+    let laeuft = false;
+    Ok(NetzStand { einstellung, moeglich: cfg!(desktop), laeuft, fehler: lauf.fehler.clone() })
+}
+
+#[tauri::command]
+fn netz_stand(app: AppHandle, z: State<Zustand>) -> Result<NetzStand, String> {
+    netz_stand_von(&app, &z)
+}
+
+/// Speichert die Einstellung und wendet sie an. Jeder Ordner läuft durch dieselbe Prüfung wie die Ordnerwahl.
+#[tauri::command]
+fn netz_setzen(app: AppHandle, z: State<Zustand>, einstellung: netz::einstellung::NetzEinstellung) -> Result<NetzStand, String> {
+    if !cfg!(desktop) {
+        return Err("Der Zugang übers Netz geht nur am PC.".into());
+    }
+    let mut e = einstellung;
+    for n in e.nutzer.iter_mut() {
+        n.login = n.login.trim().to_string();
+        n.ordner = n.ordner.trim().to_string();
+    }
+    e.pruefen()?;
+    for n in &e.nutzer {
+        let p = PathBuf::from(&n.ordner);
+        ordnerbefehle::pruefe_ort(&app, &p).map_err(|f| format!("{}: {f}", n.login))?;
+        std::fs::create_dir_all(&p).map_err(|f| format!("{}: Ordner lässt sich nicht anlegen: {f}", n.login))?;
+        ordner::pruefe_schreibbar(&p).map_err(|f| format!("{}: {f}", n.login))?;
+    }
+    netz::einstellung::schreiben(&netz_datei(&app)?, &e)?;
+    netz_anwenden(&app, &z, &e);
+    netz_stand_von(&app, &z)
 }
 
 fn einstellungs_datei(app: &AppHandle) -> Result<PathBuf, String> {
@@ -52,7 +148,7 @@ fn beobachte(app: &AppHandle, z: &State<Zustand>, ordner: PathBuf) -> Result<(),
             .paths
             .iter()
             .map(|p| ordner::relativ(&wurzel, p))
-            .filter(|r| !r.is_empty() && !r.split('/').any(ordner::ist_zwischendatei) && !r.starts_with(".index/") && !r.starts_with(".st"))
+            .filter(|r| ordner::meldenswert(r))
             .collect();
         if !pfade.is_empty() {
             let _ = app2.emit("ordner-geaendert", pfade);
@@ -236,9 +332,16 @@ pub fn run() {
                     }
                 }
             }
+            // Zugang übers Netz, wenn eingeschaltet (nur am PC)
+            if let Ok(datei) = netz_datei(h) {
+                let e = netz::einstellung::lesen(&datei);
+                if e.an && cfg!(desktop) {
+                    netz_anwenden(h, &z, &e);
+                }
+            }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![ordnerbefehle::stand, ordnerbefehle::ordner_setzen, ordnerbefehle::ordner_waehlen, ordnerbefehle::ordner_standard, ordnerbefehle::ordner_vormerken, ordnerbefehle::ordner_uebernehmen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren, aktualisieren::release_seite_oeffnen])
+        .invoke_handler(tauri::generate_handler![ordnerbefehle::stand, ordnerbefehle::ordner_setzen, ordnerbefehle::ordner_waehlen, ordnerbefehle::ordner_standard, ordnerbefehle::ordner_vormerken, ordnerbefehle::ordner_uebernehmen, ollama::ollama_anfrage, dateien, datei_lesen, datei_schreiben, texte_lesen, datei_schreiben_wenn, konflikt_loeschen, ki_zugang_lesen, ki_zugang_setzen, tresor_kennung, tresor_anlegen, tresor_beitreten, tresor_oeffnen, tresor_schreiben, tresor_vergessen, aktualisieren::aktualisierung_abrufen, aktualisieren::aktualisierung_eingerichtet, aktualisieren::aktualisierung_installieren, aktualisieren::release_seite_oeffnen, netz_stand, netz_setzen])
         .run(tauri::generate_context!())
         .expect("RespawnedLearn startet nicht");
 }

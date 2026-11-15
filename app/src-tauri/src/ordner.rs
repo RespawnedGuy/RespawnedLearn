@@ -137,6 +137,12 @@ pub fn ist_fremde_verwaltung(name: &str) -> bool {
         || [".csync_journal.db", ".owncloudsync.log", ".nextcloudsync.log", ".nextcloudpermissions.log"].iter().any(|p| k.starts_with(p))
 }
 
+/// Lohnt eine Änderung an diesem Pfad eine Meldung an die Oberfläche? Nicht für Zwischendateien, eigenen Index und
+/// Syncthings Verwaltung (gilt für die App und den Zugang übers Netz)
+pub fn meldenswert(r: &str) -> bool {
+    !r.is_empty() && !r.split('/').any(ist_zwischendatei) && !r.starts_with(".index/") && !r.starts_with(".st")
+}
+
 /// Pfad relativ zum Datenordner, immer mit `/` (auch unter Windows)
 pub fn relativ(wurzel: &Path, p: &Path) -> String {
     let r = p.strip_prefix(wurzel).unwrap_or(p);

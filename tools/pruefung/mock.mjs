@@ -67,6 +67,8 @@ export function initSkript({ konflikt = true, plattform = 'windows', ordner = "'
           case 'aktualisierung_eingerichtet': return true;
           case 'aktualisierung_abrufen': return JSON.stringify({ version: '9.9.9', notes: 'Probe: neue Funktionen und Fehlerbehebungen.', pub_date: '2026-11-13T20:00:00Z', platforms: { 'windows-x86_64': { signature: '', url: 'https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_x64-setup.exe' }, 'android-aarch64': { signature: '', url: 'https://github.com/RespawnedGuy/RespawnedLearn/releases/download/v9.9.9/RespawnedLearn_9.9.9_arm64.apk' } } });
           case 'aktualisierung_installieren': return null;
+          case 'netz_stand': return { einstellung: { an: true, port: 4387, nutzer: [{ login: 'du@example.com', ordner: 'C:\\\\Users\\\\du\\\\Documents\\\\RespawnedLearn' }, { login: 'tester@example.com', ordner: 'C:\\\\Users\\\\du\\\\Documents\\\\RespawnedLearn-Tester' }] }, moeglich: ${plattform !== 'android'}, laeuft: true, fehler: null };
+          case 'netz_setzen': return { einstellung: args.einstellung, moeglich: true, laeuft: args.einstellung.an, fehler: null };
           case 'plugin:event|listen': return 1;
           case 'plugin:event|unlisten': return null;
           default: console.warn('mock: unbekannt', cmd); return null;

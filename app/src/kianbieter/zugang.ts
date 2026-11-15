@@ -3,11 +3,12 @@
 // - Auf allen Geräten (freiwillig, Vertrag Lernen 1.2, 5.8): verschlüsselt im Datenordner (teilen.ts, tresor.rs).
 //   Das Gerät hält dann im Konfigordner eine Kopie des zuletzt gelesenen Stands, damit die KI auch weiterläuft,
 //   solange nach einer Passwortänderung auf einem anderen Gerät hier noch das neue Passwort fehlt.
-// Im Browser (npm run dev) gilt der Zugang nur bis zum Neuladen, Teilen gibt es dort nicht.
+// Im Browser (npm run dev) gilt der Zugang nur bis zum Neuladen, Teilen gibt es dort nicht. Im Netz (docs/netz.md)
+// liegt er je Tailscale-Login auf dem Rechner, der freigibt.
 import { invoke } from '@tauri-apps/api/core'
 import { pfade } from '@rl/kern'
 import { useEffect, useSyncExternalStore } from 'react'
-import { inTauri } from './netz'
+import { imNetz, inTauri } from './netz'
 import { einarbeiten, dateiKennung, lies, standardTresor, verdeckt, zusammenfuehren, type Tresor } from './teilen'
 import type { AnbieterId, AnbieterZugang } from './typen'
 
@@ -62,9 +63,20 @@ export function sauber(roh: unknown): KiZugang {
 
 const leer = (z: KiZugang) => !z.anbieter && !Object.keys(z.zugaenge).length
 
-let lokalLesen: () => Promise<unknown> = () => (inTauri() ? invoke<unknown>('ki_zugang_lesen').catch(() => null) : Promise.resolve(null))
+// Im Netz (docs/netz.md) liegt der Zugang je Tailscale-Login auf dem Rechner, der freigibt, nie im Datenordner
+const netzKopf = { 'content-type': 'application/json', 'Rl-Anfrage': '1' }
+let lokalLesen: () => Promise<unknown> = () =>
+  inTauri()
+    ? invoke<unknown>('ki_zugang_lesen').catch(() => null)
+    : imNetz()
+      ? fetch('/api/ki-zugang', { headers: netzKopf, cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      : Promise.resolve(null)
 let lokalSetzen: (z: KiZugang) => Promise<void> = async (z) => {
   if (inTauri()) await invoke('ki_zugang_setzen', { wert: leer(z) ? null : z })
+  else if (imNetz()) {
+    const r = await fetch('/api/ki-zugang', { method: 'PUT', headers: netzKopf, body: JSON.stringify(leer(z) ? null : z) })
+    if (!r.ok) throw new Error(await r.text())
+  }
 }
 
 export function ladeZugang(): Promise<KiZugang> {

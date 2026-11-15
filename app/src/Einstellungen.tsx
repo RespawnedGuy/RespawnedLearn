@@ -4,6 +4,7 @@ import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
 import { EinstellungenAktualisierung } from './Aktualisierung'
+import { EinstellungenNetz } from './EinstellungenNetz'
 import { EinstellungenPomodoro } from './EinstellungenPomodoro'
 import { EinstellungenLernzeit } from './EinstellungenLernzeit'
 import { setzeStartort, useStartort } from './startort'
@@ -22,6 +23,7 @@ export function Einstellungen() {
       <EinstellungenKi />
       <EinstellungenPrompts />
       <EinstellungenAktualisierung />
+      <EinstellungenNetz />
       <section className="einstellungen-teil">
         <h2>Über die App</h2>
         <p className="klein-leise">

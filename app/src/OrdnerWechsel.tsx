@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   auswahlFehler,
   beobachteUmzug,
+  imNetz,
   inTauri,
   kannOrdnerAuswaehlen,
   merkeOrdnerVor,
@@ -98,6 +99,15 @@ export function Datenordner() {
         ab()
       }
     })
+
+  if (imNetz()) {
+    return (
+      <section className="einstellungen-teil">
+        <h2>Datenordner</h2>
+        <p className="klein-leise">Über das Netz verbunden: Deine Daten liegen auf dem Rechner, der RespawnedLearn für dich freigibt. Ohne Verbindung dorthin speichert die App nichts.</p>
+      </section>
+    )
+  }
 
   if (!inTauri()) {
     return (
