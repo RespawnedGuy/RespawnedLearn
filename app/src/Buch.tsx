@@ -42,6 +42,9 @@ import { BuchMarken, type BuchAuswahl } from './BuchMarken'
 import { type Uebernahme } from './MarkeRahmen'
 import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeite } from './loeschen'
 import { useEntfLoescht } from './entf'
+import { SymbolKnopf } from './BausteinMenue'
+import { ausAblage, letzterOrt, merkeOrt, useAblage } from './ablage'
+import { fuegeEinMitMeldung, useEinfuegeTaste, verhaeltnisVon } from './kopieren'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
@@ -82,13 +85,6 @@ export async function benenneNotizbuch(speicher: Speicher, id: string, titel: st
 const aendereSeite = (speicher: Speicher, id: string, nr: number, f: (s: BuchSeite) => BuchSeite) =>
   speicher.aendere(pfade.buchSeite(id, nr), (alt) => buchSeiteJson(f(liesBuchSeite(alt))))
 
-async function verhaeltnisVon(src: string): Promise<number> {
-  const i = new Image()
-  i.src = src
-  await i.decode().catch(() => {})
-  return i.naturalWidth ? i.naturalHeight / i.naturalWidth : 0.75
-}
-
 /**
  * Bild ins Buch: unter das unterste Bild der letzten Seite; passt es dort nicht mehr auf die Seite, auf eine neue.
  * Gespeichert wird nur der Verweis auf Foto bzw. PDF-Ausschnitt.
@@ -106,7 +102,7 @@ export async function bildInsBuch(speicher: Speicher, id: string, bild: Pick<Buc
   }
   const { format: _f, ...lage } = platz
   await aendereSeite(speicher, id, nr, (s) => ({ ...s, bilder: [...s.bilder, { id: ulid().slice(-8).toLowerCase(), ...bild, ...lage }] }))
-  melde('Bild liegt im Buch. Mit „Lesen“ verschieben, vergrößern oder entfernen.')
+  melde('Bild liegt im Buch. Mit „Markieren“ antippen, dann verschieben, vergrößern oder entfernen.')
 }
 
 /**
@@ -209,6 +205,14 @@ export function BuchAnsicht({
     // nur bei einem neuen Sprung
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sprung?.mal])
+  // Strg+V legt die eigene Kopie an die zuletzt angetippte Stelle dieses Buchs (Lernen 1.12)
+  useEinfuegeTaste(() => {
+    const k = ausAblage()
+    const o = letzterOrt()
+    if (!k || o?.buch !== id) return false
+    void fuegeEinMitMeldung(speicher, id, o.nr, k, o)
+    return true
+  })
   const buch = bestand.dokumente.get(id)
   if (!buch) return <div className="leer">Dieses Notizbuch liegt (noch) nicht im Datenordner. Bringt Syncthing es gerade, erscheint es gleich.</div>
   const lineatur = lineaturVon(buch)
@@ -262,6 +266,9 @@ function BuchBlatt({
   // in der Tinte 0,4 s gehalten: Rahmen oder Bild übernimmt den Zeiger; was gleich gelöscht wird
   const [uebernahme, setUebernahme] = useState<Uebernahme | null>(null)
   const [haltZiel, setHaltZiel] = useState<string | null>(null)
+  // auf eine leere Stelle getippt, während etwas in der Ablage liegt: dort einfügen (Lernen 1.12)
+  const kopie = useAblage()
+  const [einfuegen, setEinfuegen] = useState<{ punkt: { x: number; y: number }; x: number; y: number } | null>(null)
   const buch = bestand.dokumente.get(id)
   const tinte = pfade.buchTinte(id, nr)
   const format = blattFormat(speicher.text(tinte))
@@ -272,6 +279,7 @@ function BuchBlatt({
     if (markieren) return
     setGewaehlt(null)
     setAuswahl(null)
+    setEinfuegen(null)
   }, [markieren])
   const hoehe = SEITE_BREITE * format
   const aendere = (f: (b: BuchBild[]) => BuchBild[]) => void aendereSeite(speicher, id, nr, (s) => ({ ...s, bilder: f(s.bilder) }))
@@ -362,11 +370,19 @@ function BuchBlatt({
           }}
           onRechteck={(bereich, punkt) => {
             setGewaehlt(null)
+            setEinfuegen(null)
+            merkeOrt({ buch: id, nr, x: bereich.x * SEITE_BREITE, y: bereich.y * hoehe })
             setAuswahl({ bereich, punkt })
+          }}
+          onLeerTippen={(punkt, anteil) => {
+            const ort = { x: anteil.x * SEITE_BREITE, y: anteil.y * hoehe }
+            merkeOrt({ buch: id, nr, ...ort })
+            setEinfuegen(kopie ? { punkt, ...ort } : null)
           }}
           treffer={treffer}
           onTippen={(t, punkt) => {
             setUebernahme(null)
+            setEinfuegen(null)
             if (t.art === 'bild') {
               setAuswahl(null)
               setGewaehlt(t.id)
@@ -399,6 +415,21 @@ function BuchBlatt({
           onHaltZiel={(t) => setHaltZiel(t?.id ?? null)}
         />
         {buch && <BuchMarken buch={buch} nr={nr} format={format} farbe={farbe} auswahl={auswahl} uebernimm={uebernahme} haltZiel={haltZiel} onAuswahl={setAuswahl} />}
+        {einfuegen && kopie && (
+          <div className="schwebe schwebe-klein reihe symbol-reihe" style={{ left: `max(8px, min(${einfuegen.punkt.x - 50}px, calc(100% - 124px)))`, top: einfuegen.punkt.y + 12 }} onPointerDown={(e) => e.stopPropagation()}>
+            <SymbolKnopf
+              symbol="einfuegen"
+              name="Einfügen"
+              hinweis="Einfügen: die kopierte Stelle hierher legen (Strg+V)"
+              haupt
+              onClick={() => {
+                setEinfuegen(null)
+                void fuegeEinMitMeldung(speicher, id, nr, kopie, einfuegen)
+              }}
+            />
+            <SymbolKnopf symbol="zu" name="Schließen" onClick={() => setEinfuegen(null)} />
+          </div>
+        )}
       </div>
     </div>
   )

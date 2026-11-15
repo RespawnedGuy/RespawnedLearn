@@ -23,6 +23,7 @@ import {
 } from '@rl/kern'
 import { ausschnitt, bildUrl, useDaten, useHalten } from '@rl/oberflaeche'
 import type { Uebernahme } from './MarkeRahmen'
+import { BuchFenster } from './BuchAusschnitt'
 
 /** Strichstärke der Lineatur in Bildschirmpixeln, unabhängig von der Größe des Blatts */
 const STAERKE = { fein: 0.5, mittel: 0.8, kraeftig: 1.1, punkt: 2.4 } as const
@@ -77,11 +78,14 @@ export function BildAufBlatt({
   gewaehlt,
   loeschtGleich = false,
   uebernimm,
+  tiefe = 0,
   onWahl,
   onAendern,
   onEntfernen
 }: {
   bild: BlattBild
+  /** wie tief in einem Ausschnitt aus einem Buch (Lernen 1.12): ab 1 wird ein Ausschnitt aus einem Buch nur ein Rahmen */
+  tiefe?: number
   format: number
   aktiv: boolean
   gewaehlt: boolean
@@ -99,8 +103,10 @@ export function BildAufBlatt({
   const quelle = bestand.dokumente.get(bild.anhang)
   const datei = typeof quelle?.felder.datei === 'string' ? quelle.felder.datei : ''
   const { seite, bereich } = bild
+  const ausBuch = quelle?.typ === 'notizbuch' && seite !== undefined && bereich !== undefined
   useEffect(() => {
     let weg = false
+    if (ausBuch) return
     const p = seite && bereich ? (datei ? ausschnitt(speicher, datei, seite, bereich, 1400) : Promise.resolve(null)) : bildUrl(speicher, bestand, bild.anhang)
     void p.then((s) => !weg && setSrc(s))
     return () => {
@@ -160,7 +166,17 @@ export function BildAufBlatt({
       onPointerUp={hoch}
       onPointerCancel={hoch}
     >
-      {src ? <img src={src} alt={quelle?.titel ?? 'Bild'} draggable={false} /> : <span className="klein-leise">{quelle ? 'lädt …' : 'Bild fehlt noch'}</span>}
+      {ausBuch ? (
+        tiefe < 1 ? (
+          <BuchFenster buchId={bild.anhang} seite={seite!} bereich={bereich!} tiefe={tiefe + 1} />
+        ) : (
+          <span className="buch-rahmen" title={`Ausschnitt aus ${quelle.titel}, S. ${seite}`} />
+        )
+      ) : src ? (
+        <img src={src} alt={quelle?.titel ?? 'Bild'} draggable={false} />
+      ) : (
+        <span className="klein-leise">{quelle ? 'lädt …' : 'Bild fehlt noch'}</span>
+      )}
       {gewaehlt && aktiv && (
         <>
           <button type="button" className="blatt-bild-weg" onPointerDown={(e) => e.stopPropagation()} onClick={onEntfernen} aria-label="Bild vom Blatt nehmen" title="Vom Blatt nehmen (das Bild selbst bleibt erhalten)">

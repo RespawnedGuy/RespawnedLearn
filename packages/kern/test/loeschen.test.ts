@@ -65,7 +65,7 @@ const m = (id: string) => marken.find((x) => x.id === id)!
 
 describe('Löschen von Markierungen (Lernen 1.11)', () => {
   it('der Vertrag steht auf 1.11', () => {
-    expect(VERTRAG).toBe('1.11')
+    expect(vergleicheVersionen(VERTRAG, '1.11')).toBeGreaterThanOrEqual(0)
     expect(vergleicheVersionen('1.11', '1.10')).toBeGreaterThan(0)
   })
   it('entfernt nur eine offene Markierung ohne ✦ im Buch', () => {

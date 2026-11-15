@@ -40,7 +40,8 @@ const pfade: Record<string, string> = {
   karten: 'M7 7h13v13H7z M4 17V4h13',
   // Menü nach dem Rechteck (Nils 2026-11-15: Symbole statt Wörter)
   baustein: 'M3 13h8v7H3z M13 13h8v7h-8z M8 4h8v7H8z',
-  insbuch: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5 M12 7v6 M9 10h6',
+  kopieren: 'M9 9h11v11H9z M5 15H4V4h11v1',
+  einfuegen: 'M8 4h8v3H8z M8 5.5H5V21h14V5.5h-3 M9 13h6 M9 17h4',
   zurkarte: 'M5 12h14 M13 6l6 6-6 6'
 }
 
