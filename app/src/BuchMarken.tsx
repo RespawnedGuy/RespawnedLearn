@@ -1,11 +1,13 @@
 // Markieren im eigenen Notizbuch (Vertrag Lernen 1.9, 5.4): Das Rechteck wird ein Baustein wie im Skript. Die Zeilen
 // stehen in `lernen/markierungen/<buch-id>.md`, die Maße in Seitenbreiten, damit sie beim Wachsen der Seite stehen bleiben.
 import { useState } from 'react'
-import { ausSeitenbreiten, eingabeVon, inSeitenbreiten, kurzId, liesBausteinText, liesMarken, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
+import { SEITE_BREITE, ausSeitenbreiten, eingabeVon, inSeitenbreiten, kurzId, liesBausteinText, liesMarken, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
 import { melde, useDaten } from '@rl/oberflaeche'
 import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
 import { karteAusStelle, setzeBereich } from './wissen'
 import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
+import { useAblage } from './ablage'
+import { fuegeEinMitMeldung, kopiere, useKopierTaste } from './kopieren'
 
 /** Gezogenes Rechteck (relativ zur jetzigen Seitenhöhe) oder eine angetippte Markierung */
 export interface BuchAuswahl {
@@ -99,6 +101,25 @@ function Menue({ buch, nr, format, farbe, auswahl, onZu, speicher }: { buch: Ein
     else melde('Lernkarte angelegt')
   }
 
+  // Kopieren (Lernen 1.12): eine neue Stelle wird dabei als Baustein gemerkt, damit die ✦-Marke auf etwas zeigt
+  const kopieren = async () => {
+    onZu()
+    const bereich = alt ? alt.bereich : inSeitenbreiten(b, format)
+    const markeId = alt?.id ?? kurzId()
+    if (!alt || eingabeVon(liesBausteinText(alt.text)) !== name.trim())
+      await karteAusStelle(speicher, { quelle: buch, seite: nr, bereich, art: 'nur', titel: 'Stelle', farbe: markenFarbe(farbe), markeId, name })
+    kopiere({ anhang: buch.id, seite: nr, bereich, marke: markeId, verhaeltnis: bereich.h / bereich.b })
+  }
+  useKopierTaste(karte === null ? () => void kopieren() : null)
+  // Einfügen ins aufgezogene Rechteck: so breit wie das Rechteck
+  const kopie = useAblage()
+  const einfuegen = kopie && !alt
+    ? () => {
+        onZu()
+        void fuegeEinMitMeldung(speicher, buch.id, nr, kopie, { x: b.x * SEITE_BREITE, y: b.y * SEITE_BREITE * format, b: b.b * SEITE_BREITE })
+      }
+    : undefined
+
   return (
     <>
       {!alt && <div className="auswahl" style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.b * 100}%`, height: `${b.h * 100}%` }} />}
@@ -114,6 +135,8 @@ function Menue({ buch, nr, format, farbe, auswahl, onZu, speicher }: { buch: Ein
             onBaustein={() => void fertig('nur')}
             onLernkarte={() => setKarte('frage')}
             onAbbrechen={onZu}
+            onKopieren={() => void kopieren()}
+            onEinfuegen={einfuegen}
             zurKarte={karteVon(alt)}
             bausteinTitel="Baustein: findet sich mit den Bausteinen aus allen Skripten wieder"
           />

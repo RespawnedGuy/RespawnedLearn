@@ -62,7 +62,8 @@ export function TintenEbene({
   onTippen,
   onAnheben,
   onLoeschen,
-  onHaltZiel
+  onHaltZiel,
+  onLeerTippen
 }: {
   /** SVG-Datei dieser Seite im Datenordner */
   pfad: string
@@ -91,6 +92,8 @@ export function TintenEbene({
   onLoeschen?: (t: Treffer) => void
   /** Radierer: dieser Treffer wird gerade gehalten (zum Hervorheben), null: nicht mehr */
   onHaltZiel?: (t: Treffer | null) => void
+  /** Markieren: auf eine leere Stelle getippt (`punkt` in Pixeln der Seite, `anteil` in Anteilen), z. B. zum Einfügen */
+  onLeerTippen?: (punkt: { x: number; y: number }, anteil: { x: number; y: number }) => void
 }) {
   const { speicher, version } = useDaten()
   const hoehe = SEITE_BREITE * format
@@ -393,10 +396,9 @@ export function TintenEbene({
       if (nachholen) setStriche(nachholen)
       if (m === 'rechteck' && rechteck) {
         setRechteck(null)
-        if (rechteck.b > 0.01 && rechteck.h > 0.005) {
-          const r = ref.current!.getBoundingClientRect()
-          onRechteck?.(rechteck, { x: e.clientX - r.left, y: e.clientY - r.top })
-        }
+        const r = ref.current!.getBoundingClientRect()
+        if (rechteck.b > 0.01 && rechteck.h > 0.005) onRechteck?.(rechteck, { x: e.clientX - r.left, y: e.clientY - r.top })
+        else if (rechteck.b < 0.01 && rechteck.h < 0.01) onLeerTippen?.({ x: e.clientX - r.left, y: e.clientY - r.top }, { x: rechteck.x, y: rechteck.y })
       }
     }
     if (m !== 'radieren') radiert.current = new Set()

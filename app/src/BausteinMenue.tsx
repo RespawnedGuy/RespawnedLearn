@@ -20,7 +20,7 @@ export function karteVon(m: Marke | undefined): (() => void) | undefined {
   return ziel ? () => geheZu('nutzen', ziel) : undefined
 }
 
-function SymbolKnopf({ symbol, name, hinweis, haupt, onClick }: { symbol: string; name: string; hinweis?: string; haupt?: boolean; onClick: () => void }) {
+export function SymbolKnopf({ symbol, name, hinweis, haupt, onClick }: { symbol: string; name: string; hinweis?: string; haupt?: boolean; onClick: () => void }) {
   return (
     <button type="button" className={`knopf symbol-knopf${haupt ? ' haupt' : ''}`} onClick={onClick} aria-label={name} title={hinweis ?? name}>
       <Symbol name={symbol} groesse={20} />
@@ -35,7 +35,8 @@ export function BausteinMenue({
   onLernkarte,
   onAbbrechen,
   onErklaeren,
-  onInsBuch,
+  onKopieren,
+  onEinfuegen,
   zurKarte,
   bausteinTitel = 'Baustein: findet sich in allen Skripten wieder'
 }: {
@@ -46,8 +47,10 @@ export function BausteinMenue({
   onAbbrechen: () => void
   /** „?“ neben dem Namen: die KI erklärt die Stelle; ohne diese Angabe gibt es kein „?“ */
   onErklaeren?: () => void
-  /** Stelle als Bild ins Notizbuch */
-  onInsBuch?: () => void
+  /** Stelle in die Ablage des Geräts (Lernen 1.12) */
+  onKopieren?: () => void
+  /** nur im Buch und nur mit etwas in der Ablage: die Kopie hierher legen */
+  onEinfuegen?: () => void
   /** angetippte Markierung mit Karte: dorthin */
   zurKarte?: () => void
   bausteinTitel?: string
@@ -89,7 +92,8 @@ export function BausteinMenue({
       <div className="reihe symbol-reihe" role="group" aria-label="Was wird aus der Stelle?">
         <SymbolKnopf symbol="baustein" name="Baustein" hinweis={bausteinTitel} haupt onClick={onBaustein} />
         <SymbolKnopf symbol="lernkarte" name="Lernkarte" hinweis="Lernkarte: die Stelle ist die Antwort" onClick={onLernkarte} />
-        {onInsBuch && <SymbolKnopf symbol="insbuch" name="Ins Buch" hinweis="Ins Buch: die Stelle als Bild ins Notizbuch legen" onClick={onInsBuch} />}
+        {onKopieren && <SymbolKnopf symbol="kopieren" name="Kopieren" hinweis="Kopieren: im Notizbuch an einer Stelle einfügen (Strg+C)" onClick={onKopieren} />}
+        {onEinfuegen && <SymbolKnopf symbol="einfuegen" name="Einfügen" hinweis="Einfügen: die kopierte Stelle hierher legen (Strg+V)" onClick={onEinfuegen} />}
         {zurKarte && <SymbolKnopf symbol="zurkarte" name="Zur Karte" onClick={zurKarte} />}
         <span style={{ flex: 1 }} />
         <SymbolKnopf symbol="zu" name="Schließen" onClick={onAbbrechen} />

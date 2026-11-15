@@ -35,7 +35,10 @@ export function MarkeKnopf({
       removeEventListener("keydown", esc);
     };
   }, [auf]);
-  const skript = `${bestand.dokumente.get(v.anhang)?.titel ?? "Skript"}, Seite ${v.seite}`;
+  // aus einem Notizbuch kopiert (Lernen 1.12): die Marke führt zur Buchseite
+  const quelle = bestand.dokumente.get(v.anhang);
+  const ausBuch = quelle?.typ === "notizbuch";
+  const skript = `${quelle?.titel ?? (ausBuch ? "Notizbuch" : "Skript")}, Seite ${v.seite}`;
   return (
     <div className="marke-huelle" style={style} ref={ref}>
       <button
@@ -58,11 +61,11 @@ export function MarkeKnopf({
             className="buch-zeile"
             onClick={() => (
               setAuf(false),
-              geheZu("sammeln", v.anhang, v.seite)
+              ausBuch ? geheZu("sammeln", "buch", v.anhang, v.seite) : geheZu("sammeln", v.anhang, v.seite)
             )}
           >
             <span>
-              Zum Skript <small>{skript}</small>
+              {ausBuch ? "Zum Buch" : "Zum Skript"} <small>{skript}</small>
             </span>
           </button>
           <button

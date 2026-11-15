@@ -13,7 +13,7 @@ import { InhaltKnopf } from './Kapitel'
 import { Mitschrift } from './Mitschrift'
 import { ErklaerFenster } from './Erklaeren'
 import { AnsichtKopf, Trenner, useAnordnung } from './Blaetter'
-import { BuchAnsicht, bildInsBuch, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur, benenneNotizbuch } from './Buch'
+import { BuchAnsicht, markierungInsBuch, type BuchSprung, fotosInsBuch, lineaturVon, neuesBuch, setzeBuchLineatur, benenneNotizbuch } from './Buch'
 import { NameFeld } from './NameFeld'
 import { BuchWahl } from './BuchWahl'
 import { BuchAlleinSeite } from './BuchAllein'
@@ -23,6 +23,7 @@ import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
 import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
 import { loescheMarkierungMitMeldung } from './loeschen'
 import { useEntfLoescht } from './entf'
+import { kopiere, useKopierTaste, verhaeltnisVon } from './kopieren'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -260,16 +261,20 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
     return id
   }
 
-  // Ausschnitt der Seite als Bild ins Buch, z. B. eine Aufgabe, um sie dort zu lösen
-  const insBuch = async () => {
+  // Kopieren (Lernen 1.12): die Stelle in die Ablage, eingefügt wird im Notizbuch an der angetippten Stelle. Eine neue
+  // Stelle wird dabei als Baustein gemerkt, sonst hätte die ✦-Marke im Buch nichts, worauf sie zeigt.
+  const kopieren = async () => {
     if (!auswahl) return
-    const datei = String(quelle.felder.datei ?? '')
-    const src = await ausschnitt(speicher, datei, auswahl.seite, auswahl.bereich, 1400)
-    if (!src) return
-    await bildInsBuch(speicher, await buchFuerBild(), { anhang: quelle.id, seite: auswahl.seite, bereich: auswahl.bereich }, src)
+    const { seite: s, bereich, marke: alt } = auswahl
+    const markeId = alt?.id ?? kurzId()
+    if (!alt || eingabeVon(liesBausteinText(alt.text)) !== name.trim())
+      await karteAusStelle(speicher, { quelle, seite: s, bereich, art: 'nur', titel: 'Stelle', farbe: FARBE_MARKE[farbe] ?? null, markeId, name })
+    const src = await ausschnitt(speicher, String(quelle.felder.datei ?? ''), s, bereich, 600)
+    kopiere({ anhang: quelle.id, seite: s, bereich, marke: markeId, verhaeltnis: src ? await verhaeltnisVon(src) : bereich.h / bereich.b })
     setAuswahl(null)
     setModus('wahl')
   }
+  useKopierTaste(auswahl && modus === 'wahl' ? () => void kopieren() : null)
 
   // Bild aus der Zwischenablage (Screenshot, Strg+V) aufs erste offene Blatt
   useEffect(() => {
@@ -379,7 +384,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                     zurKarte={karteVon(auswahl.marke)}
                     bausteinTitel="Baustein: findet sich in allen Skripten wieder; ist ein Notizbuch aktiv, steht die Stelle auch dort"
                     onErklaeren={auswahl.marke ? undefined : () => setModus('erklaeren')}
-                    onInsBuch={() => void insBuch()}
+                    onKopieren={() => void kopieren()}
                   />
                 )}
                 {modus === 'frage' && (

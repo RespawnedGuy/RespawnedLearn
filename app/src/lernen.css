@@ -100,8 +100,8 @@
 .ausschnitt img { display: block; max-width: 100%; max-height: 240px; }
 .ausschnitt .platz { display: block; width: 140px; height: 70px; background: var(--mulde); }
 .buch-ausschnitt-fenster { position: relative; overflow: hidden; width: 100%; background: #fff; }
-.buch-ausschnitt .blatt-flaeche { position: relative; pointer-events: none; }
-.buch-ausschnitt .ebene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.buch-ausschnitt .blatt-flaeche, .buch-ausschnitt-fenster .blatt-flaeche { position: relative; pointer-events: none; }
+.buch-ausschnitt .ebene, .buch-ausschnitt-fenster .ebene { position: absolute; inset: 0; width: 100%; height: 100%; }
 .buch-ausschnitt .blatt-bild img { max-width: none; max-height: none; }
 .mitschrift-ausschnitt { display: block; padding: 10px 12px; white-space: pre-wrap; color: #1f2228; text-decoration: none; font-size: 0.9rem; max-height: 9.5em; overflow: hidden; }
 
@@ -528,3 +528,8 @@ button.name-feld:focus-visible { outline: 2px solid var(--akzent); outline-offse
 input.name-feld { width: min(100%, 24em); box-shadow: inset 0 -1px 0 var(--akzent); }
 @media (pointer: coarse) { .name-feld { min-height: 44px; } }
 .marke-rahmen.angehoben { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), 0 0 0 3px rgba(210, 86, 28, 0.35); }
+/* Kopieren und Einfügen (Lernen 1.12): Ausschnitt aus einem Buch auf einer Buchseite, darin nur noch als Rahmen */
+.blatt-bild > .buch-ausschnitt-fenster { height: 100%; aspect-ratio: auto !important; }
+.blatt-bild .blatt-bild img { max-width: none; max-height: none; }
+.buch-rahmen { position: absolute; inset: 0; border: 1px dashed var(--linie-stark); border-radius: 4px; background: rgba(127, 127, 127, 0.06); }
+.schwebe.schwebe-klein { width: auto; flex-direction: row; padding: 6px; }
