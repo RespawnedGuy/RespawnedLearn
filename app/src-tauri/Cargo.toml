@@ -35,9 +35,18 @@ tauri-plugin-updater = "=2.14.1"
 # prüfen den eingebauten öffentlichen Schlüssel vorab (dieselben Crates und Versionen, die der Updater ohnehin nutzt)
 minisign-verify = "=0.3.0"
 base64 = "=0.23.1"
+# Zugang übers Netz (netz/server.rs, docs/netz.md): kleiner Webserver nur auf 127.0.0.1, davor `tailscale serve`.
+# axum ist die dünne Schicht über hyper, tokio und tower, die Tauri ohnehin mitbringt; tokio und futures-util in
+# genau den Versionen, die schon im Lockfile stehen (net/time für den Server, sync für die Ereignisse).
+axum = { version = "=0.8.9", default-features = false, features = ["tokio", "http1", "json", "query"] }
+tokio = { version = "=1.54.1", features = ["net", "sync", "time"] }
+futures-util = { version = "=0.3.34", default-features = false }
 
 [dev-dependencies]
 tempfile = "=3.27.0"
+# Tests des Servers ohne Netz (netz/server_tests.rs)
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "time"] }
+tower = { version = "=0.5.3", features = ["util"] }
 
 # Argon2id rechnet im Debug-Bau sonst zehnmal langsamer (cargo test, tauri dev)
 [profile.dev.package.argon2]

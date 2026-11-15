@@ -6,6 +6,7 @@
 import { automatisch, inAppOrdner, istText, loeschbareKopie, syncKopien, unlesbar, type SyncKopie } from '@rl/kern'
 import { ablageImSpeicher } from './ablageImSpeicher'
 import { inTauri, tauriAblage, type Ablage, type OrdnerEintrag, type TextDatei } from './ordner'
+import { imNetz, netzAblage } from './netz'
 
 interface TextEintrag {
   text: string
@@ -112,7 +113,7 @@ export class Speicher {
 
   async oeffne(): Promise<void> {
     const a = this.o.ablage
-    this.ablage = typeof a === 'function' ? await a() : a ?? (inTauri() ? await tauriAblage() : ablageImSpeicher(undefined, { dauerhaft: false }))
+    this.ablage = typeof a === 'function' ? await a() : a ?? (inTauri() ? await tauriAblage() : imNetz() ? netzAblage() : ablageImSpeicher(undefined, { dauerhaft: false }))
     this.dauerhaft = this.ablage.dauerhaft
     const liste = await this.ablage.dateien()
     if (!liste.length && this.dauerhaft && gemerkteZahl() >= VIELE) {

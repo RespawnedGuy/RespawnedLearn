@@ -50,4 +50,51 @@ export const ollamaAbruf: Abruf = (url, init) => {
   ])
 }
 
-export const kiAbruf: Abruf = (url, init) => (inTauri() ? (istOllama(url) ? ollamaAbruf(url, init) : tauriFetch(url, init)) : fetch(url, init))
+/** wie imNetz() aus @rl/oberflaeche: Die Seite kommt vom Server einer Desktop-App (Zugang übers Netz, docs/netz.md) */
+export const imNetz = () => typeof document !== 'undefined' && !!document.querySelector('meta[name="rl-netz"]')
+
+/** Wartet auf die Antwort, bricht aber das Warten ab, wenn das Signal kommt (die Anfrage selbst läuft weiter) */
+function mitAbbruch<T>(anfrage: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) return anfrage
+  return Promise.race([
+    anfrage,
+    new Promise<never>((_, nein) => {
+      const ab = () => nein(new DOMException('abgebrochen', 'AbortError'))
+      if (signal.aborted) ab()
+      else signal.addEventListener('abort', ab, { once: true })
+    })
+  ])
+}
+
+/** Im Netz fragt der Server die KI (Safari darf Perplexity und Ollama wegen CORS nicht direkt). Er leitet nur an die
+ * bekannten Anbieter und Ollama im eigenen Netz weiter (app/src-tauri/src/netz/ki.rs). */
+export const serverAbruf: Abruf = (url, init) => {
+  const kopf: Record<string, string> = {}
+  new Headers(init?.headers).forEach((wert, name) => (kopf[name] = wert))
+  const rumpf = typeof init?.body === 'string' ? init.body : null
+  const anfrage = fetch('/api/ki', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'Rl-Anfrage': '1' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ url: String(url), methode: init?.method ?? 'GET', kopf, rumpf })
+  }).then(
+    async (r) => {
+      if (r.status === 403) throw new KiFehler('anfrage', 'Diese Adresse erreicht der Server nicht. Erlaubt sind die bekannten Anbieter und Ollama im eigenen Netz.')
+      if (!r.ok) {
+        const t = await r.text().catch(() => '')
+        if (t === 'ollama-nicht-privat') throw new KiFehler('anfrage', 'Ollama ist nur im eigenen Netz erlaubt, zum Beispiel http://192.168.1.20:11434 oder localhost.')
+        throw new KiFehler('netz', t || `Server antwortet mit ${r.status}`)
+      }
+      const a = (await r.json()) as { status: number; text: string }
+      return new Response(a.text, { status: a.status, headers: { 'content-type': 'application/json' } })
+    },
+    (e: unknown) => {
+      if (e instanceof KiFehler) throw e
+      throw new KiFehler('netz', String(e))
+    }
+  )
+  return mitAbbruch(anfrage, init?.signal)
+}
+
+export const kiAbruf: Abruf = (url, init) =>
+  inTauri() ? (istOllama(url) ? ollamaAbruf(url, init) : tauriFetch(url, init)) : imNetz() ? serverAbruf(url, init) : fetch(url, init)

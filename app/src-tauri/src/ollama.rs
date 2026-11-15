@@ -9,7 +9,7 @@ use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 
 pub const PORT: u16 = 11434;
 /// Antworten von Ollama sind JSON; mehr wird nicht gelesen
-const HOECHSTENS: usize = 16 * 1024 * 1024;
+pub const HOECHSTENS: usize = 16 * 1024 * 1024;
 
 /// Liegt die Adresse im eigenen Netz?
 pub fn ist_privat(ip: IpAddr) -> bool {
@@ -77,13 +77,18 @@ pub fn aufloesen(host: &str, port: u16) -> Result<SocketAddr, String> {
 
 #[derive(Serialize)]
 pub struct Antwort {
-    status: u16,
-    text: String,
+    pub status: u16,
+    pub text: String,
 }
 
 /// Eine Anfrage an Ollama; `rumpf` = JSON-Text (POST) oder nichts (GET)
 #[tauri::command]
 pub async fn ollama_anfrage(url: String, rumpf: Option<String>) -> Result<Antwort, String> {
+    anfrage(url, rumpf).await
+}
+
+/// Dieselbe Anfrage für den Zugang übers Netz (netz/ki.rs)
+pub async fn anfrage(url: String, rumpf: Option<String>) -> Result<Antwort, String> {
     use tauri_plugin_http::reqwest;
     let (host, port) = ziel(&url)?;
     let h = host.clone();
