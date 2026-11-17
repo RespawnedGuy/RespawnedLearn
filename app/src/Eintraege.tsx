@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { kurzDatum, notizOhneZiel, tag, type Eintrag } from '@rl/kern'
 import { ortLink, useDaten } from '@rl/oberflaeche'
+import { Formeltext } from './Inhalt'
 import { TYPNAME, WISSEN, alleEintraege, lernstaende, type Lernstand } from './wissen'
 
 const OHNE = 'ohne-thema'
@@ -49,7 +50,7 @@ export function Eintraege({ nurLernkarten = false, eintraege }: { nurLernkarten?
           const geaendert = String(e.felder.geaendert ?? e.felder.erstellt ?? '').slice(0, 10)
           return (
             <a key={e.id} className="eintrag-zeile" href={ortLink('nutzen', e.id)}>
-              <span className="eintrag-titel">{e.titel || 'Ohne Titel'}</span>
+              <span className="eintrag-titel">{e.titel ? <Formeltext text={e.titel} /> : 'Ohne Titel'}</span>
               {!nurLernkarten && <span className="chip">{TYPNAME[e.typ] ?? e.typ}</span>}
               {s && <span className={`chip${s.art ? ` ${s.art}` : ''}`}>{s.text}</span>}
               {geaendert && <span className="klein-leise eintrag-datum">{kurzDatum(geaendert)}</span>}

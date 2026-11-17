@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { abschnittAn, kurzDatum, linkZiel, notizZiele, stelleVon, zeileVonAnker, type Bestand, type Eintrag } from '@rl/kern'
 import { geheZu, ortLink, useDaten } from '@rl/oberflaeche'
-import { Ausschnitt, Inhalt } from './Inhalt'
+import { Ausschnitt, Formeltext, Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
 import { Eintraege, standText } from './Eintraege'
 import { TYPNAME, alleEintraege, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
@@ -143,7 +143,7 @@ function ModulWissen({ modulId }: { modulId: string }) {
               const s = standText(st.get(k.e.id))
               return (
                 <a key={k.e.id} className="eintrag-zeile" href={ortLink('nutzen', k.e.id)}>
-                  <span className="eintrag-titel">{k.e.titel || k.frage}</span>
+                  <span className="eintrag-titel"><Formeltext text={k.e.titel || k.frage} /></span>
                   {k.ort.abschnitt.length > 1 && <span className="klein-leise">{k.ort.abschnitt.slice(1).join(' › ')}</span>}
                   <span className={`chip${s.art ? ` ${s.art}` : ''}`}>{s.text}</span>
                 </a>
@@ -158,7 +158,7 @@ function ModulWissen({ modulId }: { modulId: string }) {
           <div className="eintraege-liste karte">
             {sonst.map((e) => (
               <a key={e.id} className="eintrag-zeile" href={e.typ === 'notiz' && linkZiel(e.felder.thema) === modulId ? ortLink('sammeln', 'mitschrift', e.id) : ortLink('nutzen', e.id)}>
-                <span className="eintrag-titel">{e.titel || 'Ohne Titel'}</span>
+                <span className="eintrag-titel">{e.titel ? <Formeltext text={e.titel} /> : 'Ohne Titel'}</span>
                 <span className="chip">{e.typ === 'notiz' && linkZiel(e.felder.thema) === modulId ? 'Mitschrift' : (TYPNAME[e.typ] ?? e.typ)}</span>
               </a>
             ))}
@@ -243,7 +243,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
             </button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <h1>{e.titel}</h1>
+            <h1><Formeltext text={e.titel} /></h1>
             {stand?.zuletzt && (
               <span className="klein-leise" style={{ color: sitzt ? 'var(--gut)' : 'var(--rot-text)', fontWeight: 600 }}>
                 {sitzt ? 'sitzt' : 'wieder fällig'} · zuletzt {vorTagen(stand.zuletzt)} geübt
@@ -282,7 +282,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
           {!vk.length && <span className="klein-leise">Noch keine Verknüpfungen.</span>}
           {vk.map((v) => (
             <div key={v.e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <a href={v.e.typ === 'modul' ? ortLink('sammeln', 'modul', v.e.id) : ortLink('nutzen', v.e.id)}>{v.e.titel}</a>
+              <a href={v.e.typ === 'modul' ? ortLink('sammeln', 'modul', v.e.id) : ortLink('nutzen', v.e.id)}><Formeltext text={v.e.titel} /></a>
               <span className="klein-leise">{v.wie}</span>
             </div>
           ))}
@@ -296,7 +296,7 @@ function Karte({ e, weitere }: { e: Eintrag; weitere: Eintrag[] }) {
             {weitere.map((w) => (
               <a key={w.id} href={ortLink('nutzen', w.id)} style={{ fontSize: '0.875rem' }}>
                 {w.typ === 'frage' ? 'Lernkarte: ' : ''}
-                {w.titel}
+                <Formeltext text={w.titel} />
               </a>
             ))}
           </div>

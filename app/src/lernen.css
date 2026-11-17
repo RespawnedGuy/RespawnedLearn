@@ -229,6 +229,8 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .eintrag-zeile + .eintrag-zeile { border-top: 1px solid var(--linie); }
 .eintrag-zeile:hover { background: var(--akzent-weich); color: inherit; }
 .eintrag-titel { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Titel mit Formel umbrechen statt kürzen: „…“ schneidet KaTeX unsauber (Hochzahlen sind relativ positioniert und bleiben stehen) */
+.eintrag-titel:has(.katex) { white-space: normal; overflow-wrap: anywhere; }
 .eintrag-datum { white-space: nowrap; }
 @media (max-width: 600px) {
   .eintrag-datum { display: none; }

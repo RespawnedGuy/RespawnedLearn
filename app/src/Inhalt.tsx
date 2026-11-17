@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import katex from 'katex'
-import { ankerParameter, calloutName, findeLinks, liesMarken, pfade, stellenAnzeige, type Bestand } from '@rl/kern'
+import { ankerParameter, calloutName, findeLinks, formelTeile, liesMarken, pfade, stellenAnzeige, type Bestand } from '@rl/kern'
 import { ausschnitt, ortLink, useDaten } from '@rl/oberflaeche'
 import { BuchAusschnitt } from './BuchAusschnitt'
 
@@ -33,16 +33,19 @@ function SkriptAusschnitt({ anhangId, seite, markeId, breite = 520, titel }: { a
   )
 }
 
+/** Formel im Satz über KaTeX (ohne trust: keine Links, kein HTML aus der Formel; MathML für Vorleseprogramme kommt mit) */
+function Formel({ tex }: { tex: string }) {
+  return <span dangerouslySetInnerHTML={{ __html: katex.renderToString(tex, { throwOnError: false }) }} />
+}
+
 /** Text mit Formeln im Satz ($…$, zum Beispiel aus den KI-Fragen) */
 function mitFormeln(text: string, schluessel: number): ReactNode[] {
-  const teile = text.split(/\$([^$\n]+)\$/)
-  return teile.map((t, i) =>
-    i % 2 ? (
-      <span key={`${schluessel}-${i}`} dangerouslySetInnerHTML={{ __html: katex.renderToString(t, { throwOnError: false }) }} />
-    ) : (
-      t
-    )
-  )
+  return formelTeile(text).map((t, i) => (t.art === 'formel' ? <Formel key={`${schluessel}-${i}`} tex={t.text} /> : t.text))
+}
+
+/** Einzeiliger Text mit Formeln, ohne Links und Absätze: für Fragen, Kartentitel und Listen (auch innerhalb eines Links) */
+export function Formeltext({ text }: { text: string }) {
+  return <>{mitFormeln(text, 0)}</>
 }
 
 function zeileInline(text: string, bestand: Bestand): ReactNode[] {

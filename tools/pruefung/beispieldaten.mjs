@@ -277,6 +277,7 @@ await karte('01JBEISPIEL0000KARTEELADNG', { typ: 'erklaerung', titel: 'Elementar
 await karte('01JBEISPIEL0000KARTESPANNG', { typ: 'erklaerung', titel: 'Spannung', quelle: '[[01JBEISPIEL0000000SKRIPET1]]', aliase: ['Spannungsteiler'] }, 'Arbeit pro Ladung beim Verschieben zwischen zwei Punkten. Wie ein Höhenunterschied beim Wasser.\n\n$$U = \\frac{W}{Q}$$\n')
 await karte('01JBEISPIEL0000KARTEFRAGE1', { typ: 'frage', titel: 'Wie groß ist die Elementarladung?', thema: '[[01JBEISPIEL0000KARTEELADNG]]' }, '?? Wie groß ist die Elementarladung?\n:: e ≈ 1,602 · 10⁻¹⁹ C\n')
 await karte('01JBEISPIEL0000KARTEFRAGE2', { typ: 'frage', titel: 'Was ist Spannung?', thema: '[[01JBEISPIEL0000KARTESPANNG]]' }, '?? Was ist elektrische Spannung?\n:: Die Arbeit je Ladung beim Verschieben zwischen zwei Punkten, U = W / Q.\n')
+await karte('01JBEISPIEL0000KARTEFRAGE3', { typ: 'frage', titel: 'Wie lauten die Lösungen von $x^2 + px + q = 0$?', thema: '[[01JBEISPIEL0000KARTESPANNG]]' }, '?? Wie lauten die Lösungen der quadratischen Gleichung $x^2 + px + q = 0$ nach der p-q-Formel?\n:: $x_{1,2} = -\\frac{p}{2} \\pm \\sqrt{\\left(\\frac{p}{2}\\right)^2 - q}$\n')
 
 // Lehrgang ohne Skript: Modul mit Mitschrift, Lernkarten zeigen auf Stellen darin (Vertrag 5.3, Mitschrift)
 await schreibe('lernen/module/01JBEISPIEL0000MODULRUF01.md', kopf({ id: '01JBEISPIEL0000MODULRUF01', typ: 'modul', erstellt: zeit(vor(12)), geaendert: zeit(vor(12)), titel: 'Fachkraft für Rufanlagen', ziel: 'Lehrgang Rufanlagen nach DIN VDE 0834', favorit: true, quellen: [], termin: vor(-21) }))
