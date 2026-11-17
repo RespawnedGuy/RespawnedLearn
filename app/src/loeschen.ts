@@ -1,6 +1,6 @@
 // Löschen in Skript und Notizbuch (Vertrag Lernen 1.11, 5.4): Radierer halten, danach Rückgängig. Die Regeln stehen rein
 // in `kern/loeschen.ts`; hier wird geschrieben (immer über `speicher.aendere`: bekannter Stand, sonst Konfliktkopie).
-import { buchSeiteJson, legeZurueck, liesBuchSeite, liesMarken, loescheMarke, loeschwirkung, markeImBuch, ohneBild, ohneMarke, ohneVerweis, pfade, stelleMarkeWieder, type BuchSeite, type Loeschwirkung, type VonDerSeite } from '@rl/kern'
+import { buchSeiteJson, legeZurueck, liesBuchSeite, liesMarken, loescheMarke, loeschwirkung, markeImBuch, ohneBild, ohneMarke, ohneSeitenverweise, ohneVerweis, pfade, stelleMarkeWieder, type BuchSeite, type Loeschwirkung, type VonDerSeite } from '@rl/kern'
 import { melde, type Speicher } from '@rl/oberflaeche'
 
 /**
@@ -32,11 +32,15 @@ const NEHMEN: Record<AufDerSeite['art'], (s: BuchSeite, id: string) => { seite: 
 }
 
 /** ✦-Marke samt Ausschnitt, automatische Randmarke oder Bild von einer Buchseite nehmen; liefert das Rückgängig */
-export async function nimmVonDerSeite(speicher: Speicher, buchId: string, nr: number, was: AufDerSeite): Promise<(() => Promise<void>) | null> {
+export function nimmVonDerSeite(speicher: Speicher, buchId: string, nr: number, was: AufDerSeite): Promise<(() => Promise<void>) | null> {
+  return nimm(speicher, buchId, nr, (s) => NEHMEN[was.art](s, was.id))
+}
+
+async function nimm(speicher: Speicher, buchId: string, nr: number, nehmen: (s: BuchSeite) => { seite: BuchSeite; weg: VonDerSeite } | null): Promise<(() => Promise<void>) | null> {
   const pfad = pfade.buchSeite(buchId, nr)
   let weg: VonDerSeite | null = null
   await speicher.aendere(pfad, (t) => {
-    const r = NEHMEN[was.art](liesBuchSeite(t), was.id)
+    const r = nehmen(liesBuchSeite(t))
     if (!r) return t
     weg = r.weg
     return buchSeiteJson(r.seite)
@@ -55,4 +59,14 @@ const MELDUNG: Record<AufDerSeite['art'], string> = {
 export async function nimmVonDerSeiteMitMeldung(speicher: Speicher, buchId: string, nr: number, was: AufDerSeite) {
   const zurueck = await nimmVonDerSeite(speicher, buchId, nr, was)
   if (zurueck) melde(MELDUNG[was.art], () => void zurueck())
+}
+
+/**
+ * Seitenverweise lösen (Nils 2026-11-17): eine Skriptseite (✕ in der Blase oder im „✎ n“) oder mit `ziel` null alle
+ * (Radierer + Halten auf der Blase). ✦-Marken bleiben. Schreibt man später mit derselben Skriptseite weiter, entsteht
+ * der Verweis neu.
+ */
+export async function loeseSeitenverweise(speicher: Speicher, buchId: string, nr: number, ziel: { anhang: string; seite: number } | null) {
+  const zurueck = await nimm(speicher, buchId, nr, (s) => ohneSeitenverweise(s, ziel))
+  if (zurueck) melde(ziel ? `Verweis auf Seite ${ziel.seite} gelöst` : 'Seitenverweise gelöst', () => void zurueck())
 }

@@ -21,7 +21,7 @@ import { hebeAn } from './anheben'
 import { RueckwegKnopf, useRueckwege } from './Rueckweg'
 import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
 import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
-import { loescheMarkierungMitMeldung } from './loeschen'
+import { loescheMarkierungMitMeldung, loeseSeitenverweise } from './loeschen'
 import { useEntfLoescht } from './entf'
 import { kopiere, useKopierTaste, verhaeltnisVon } from './kopieren'
 
@@ -357,7 +357,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
         }}
         zusatz={(nr) => (
           <>
-          {wege.get(nr) && <RueckwegKnopf wege={wege.get(nr)!} onOeffne={oeffneStelle} />}
+          {wege.get(nr) && <RueckwegKnopf wege={wege.get(nr)!} onOeffne={oeffneStelle} onLoesen={(w) => void loeseSeitenverweise(speicher, w.buch, w.nr, { anhang: quelle.id, seite: nr })} />}
           {auswahl?.seite === nr && (
             <>
               {auswahl.marke && (

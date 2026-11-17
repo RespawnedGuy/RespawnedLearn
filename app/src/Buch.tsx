@@ -40,7 +40,7 @@ import { MarkeKnopf } from './MarkeKnopf'
 import { SeitenBlase } from './SeitenBlase'
 import { BuchMarken, type BuchAuswahl } from './BuchMarken'
 import { type Uebernahme } from './MarkeRahmen'
-import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeite } from './loeschen'
+import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeite, loeseSeitenverweise } from './loeschen'
 import { useEntfLoescht } from './entf'
 import { SymbolKnopf } from './BausteinMenue'
 import { ausAblage, letzterOrt, merkeOrt, useAblage } from './ablage'
@@ -338,7 +338,7 @@ function BuchBlatt({
           ) : null
         )}
       </div>
-      <SeitenBlase verweise={seite.verweise} blinktBei={hervor} />
+      <SeitenBlase verweise={seite.verweise} blinktBei={hervor} radierer={werkzeug === 'radierer'} onLoesen={(z) => void loeseSeitenverweise(speicher, id, nr, z && { anhang: z.anhang, seite: z.seite })} />
       <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`}>
         <LineaturBild art={lineatur} format={format} />
         {seite.bilder.map((b) => (
