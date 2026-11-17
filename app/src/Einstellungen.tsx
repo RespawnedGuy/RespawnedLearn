@@ -3,6 +3,7 @@ import { Datenordner } from './OrdnerWechsel'
 import { EinstellungenKi } from './EinstellungenKi'
 import { EinstellungenPrompts } from './EinstellungenPrompts'
 import { setzeSchreibhand, useSchreibhand } from './schreibhand'
+import { LEISTEN_LAGEN, setzeLeistenLage, useLeistenLage } from './leistenLage'
 import { EinstellungenAktualisierung } from './Aktualisierung'
 import { EinstellungenNetz } from './EinstellungenNetz'
 import { EinstellungenPomodoro } from './EinstellungenPomodoro'
@@ -67,9 +68,11 @@ function Start() {
   )
 }
 
-/** Geräte-Einstellung: mit welcher Hand geschrieben wird; die Randmarken im Notizbuch stehen gegenüber */
+/** Geräte-Einstellungen: mit welcher Hand geschrieben wird (die Randmarken im Notizbuch stehen gegenüber) und
+    wo die Werkzeugleiste am PC und Tablet steht */
 function Schreiben() {
   const hand = useSchreibhand()
+  const lage = useLeistenLage()
   return (
     <section className="einstellungen-teil">
       <h2>Schreiben</h2>
@@ -81,6 +84,15 @@ function Schreiben() {
         ))}
       </div>
       <p className="klein-leise">Die Verweise aufs Skript stehen im Notizbuch auf der anderen Seite, damit die Hand sie beim Schreiben nicht verdeckt. Gilt nur für dieses Gerät.</p>
+      <h3 id="leiste-lage">Werkzeugleiste</h3>
+      <div className="segmente klein" role="radiogroup" aria-labelledby="leiste-lage">
+        {LEISTEN_LAGEN.map((l) => (
+          <button key={l} type="button" role="radio" aria-checked={lage === l} className={lage === l ? 'aktiv' : ''} onClick={() => setzeLeistenLage(l)}>
+            {l === 'oben' ? 'Oben' : l === 'links' ? 'Links' : 'Rechts'}
+          </button>
+        ))}
+      </div>
+      <p className="klein-leise">Oben steht sie zwischen Inhaltsverzeichnis und Seitenzahl, im Vollbild oben in der Mitte. Links oder rechts rückt der Inhalt so weit ein, dass nichts darunter liegt. Am Handy bleibt sie unten. Gilt nur für dieses Gerät.</p>
     </section>
   )
 }

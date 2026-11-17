@@ -10,9 +10,11 @@ import '@rl/oberflaeche/src/bewegung.css'
 import { App } from './App'
 import { OrdnerWahl } from './OrdnerWahl'
 import { wendeSchreibhandAn } from './schreibhand'
+import { wendeLeistenLageAn } from './leistenLage'
 
 wendeSchreibhandAn()
-// Stift am PC und Tablet: Werkzeugspalte durchlässig, solange er schreibt
+wendeLeistenLageAn()
+// Stift am PC und Tablet: Werkzeugleiste am Rand durchlässig, solange er schreibt
 beobachteStift()
 
 createRoot(document.getElementById('root')!).render(

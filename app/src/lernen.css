@@ -7,6 +7,14 @@
 .projekt-karte .titel { font-size: 1.0625rem; font-weight: 700; }
 .passt-titel { font-size: 0.8125rem; font-weight: 700; color: var(--leise); }
 .plan-leiste { display: flex; gap: 8px; align-items: center; padding: 12px 24px; flex-wrap: wrap; }
+.plan-luecke { flex: 1; }
+/* Werkzeugleiste am PC (Nils 2026-11-17): oben wächst sie aus der Linie unter dieser Zeile; links oder rechts
+   rückt der Inhalt um ihre Breite ein, damit keine Seite darunter liegt */
+@media (min-width: 721px) {
+  :root[data-leiste='oben'] .plan-leiste:has(.werkzeuge) { position: relative; border-bottom: 1px solid var(--fl-linie); }
+  :root[data-leiste='links'] #inhalt:has(.funktionsleiste.werkzeuge) { padding-left: 44px; }
+  :root[data-leiste='rechts'] #inhalt:has(.funktionsleiste.werkzeuge) { padding-right: 44px; }
+}
 .knopf.aus { pointer-events: none; opacity: 0.4; }
 .unsichtbar { position: absolute; left: -9999px; }
 
@@ -172,7 +180,10 @@
 .uebung-hinweis { display: inline-flex; gap: 2px; align-items: center; }
 
 /* Vollbild im Übungsplatz: Kopf und Leiste weg, Seite und Blatt passen ganz auf den Schirm */
-body.vollbild-an .kopf, body.vollbild-an .plan-leiste, body.vollbild-an .daumenleiste { display: none; }
+body.vollbild-an .kopf, body.vollbild-an .daumenleiste { display: none; }
+/* Im Vollbild bleibt von der Zeile über dem Skript nur die Werkzeugleiste; glas.css stellt sie fest an den Rand */
+body.vollbild-an .plan-leiste { padding: 0; border: none; }
+body.vollbild-an .plan-leiste > :not(.funktionsleiste) { display: none; }
 body.vollbild-an { padding-bottom: 0; }
 body.vollbild-an .uebungsplatz { padding-top: 60px; }
 body.vollbild-an .platz-skript .pdf-seiten { padding: 0; }
@@ -332,6 +343,7 @@ body.vollbild-an .ansicht-kopf { width: 100%; }
 .einstellungen-teil h2 { margin: 12px 0 0; font-size: 1.125rem; }
 .einstellungen-teil .version { font-size: inherit; color: inherit; }
 .einstellungen-teil p { margin: 0; }
+.einstellungen-teil h3 { margin: 6px 0 0; font-size: 0.9375rem; }
 .ordner-pfad { font-family: ui-monospace, monospace; font-size: 0.875rem; overflow-wrap: anywhere; }
 .ordner-karte { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: 16px; margin-top: 4px; }
 .ordner-karte p { margin: 0; line-height: 1.45; }

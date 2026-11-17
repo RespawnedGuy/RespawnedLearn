@@ -21,8 +21,9 @@ const HINWEIS: Record<Werkzeug, string> = {
 const KUERZEL: Record<string, Werkzeug> = { l: 'lesen', s: 'stift', m: 'markieren', r: 'radierer' }
 
 /**
- * Werkzeuge für Skript und Buch, in der Funktionsleiste „Linie“: am Handy unten, am PC als Spalte gegenüber der
- * Schreibhand. Bei Stift und Markieren stehen die Farben darüber. Die Farben haben Namen, damit sie überall
+ * Werkzeuge für Skript und Buch, in der Funktionsleiste „Linie“: am Handy unten, am PC als Glaspille oben,
+ * links oder rechts (Einstellung je Gerät, `data-leiste`). Steht im Fluss der Kopfzeile über dem Skript
+ * (`plan-leiste`), damit sie dort zwischen Inhaltsverzeichnis und Seitenzahl sitzt. Bei Stift und Markieren stehen die Farben darüber. Die Farben haben Namen, damit sie überall
  * dasselbe bedeuten. „Bild“ legt Fotos oder Bilder ins Buch (am Handy bietet die Auswahl auch die Kamera an).
  */
 export function Werkzeugleiste({
@@ -89,7 +90,7 @@ export function Werkzeugleiste({
 
   return (
     <>
-      <Funktionsleiste name="Werkzeuge" funktionen={funktionen} oben={farben} spalte />
+      <Funktionsleiste name="Werkzeuge" funktionen={funktionen} oben={farben} werkzeuge />
       {onBilder && (
         <input
           ref={bild}

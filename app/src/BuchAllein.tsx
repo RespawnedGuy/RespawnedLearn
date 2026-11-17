@@ -31,6 +31,9 @@ export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: 
             {bestand.dokumente.get(modul)!.titel}
           </a>
         )}
+        <span className="plan-luecke" />
+        <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} onBilder={(d) => void fotosInsBuch(speicher, id, d)} />
+        <span className="plan-luecke" />
       </div>
       <div className="buch-allein">
         <AnsichtKopf
@@ -45,7 +48,6 @@ export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: 
         />
         <BuchAnsicht id={id} werkzeug={werkzeug} farbe={farbe} sprung={sprung} />
       </div>
-      <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} onBilder={(d) => void fotosInsBuch(speicher, id, d)} />
     </div>
   )
 }

@@ -124,26 +124,98 @@
   .fl-oben { padding: 6px 8px; border-bottom: 1px solid var(--glas-haar); }
 }
 
-/* PC: nur die Werkzeuge, als Spalte am Rand gegenüber der Schreibhand; beim Schreiben durchlässig (stiftRuhe.ts) */
+/* PC und Tablet: nur die Werkzeuge, als schmale Glaspille, die aus einem Rand wächst (Nils 2026-11-17, Vorbild:
+   Glaspille, aktives Werkzeug dunkel mit Namen, farbiger Schimmer am Rand). Wo sie steht, sagt data-leiste am
+   Dokument (app/src/leistenLage.ts): oben in der Zeile über dem Skript zwischen Inhaltsverzeichnis und Seitenzahl,
+   im Vollbild oben mittig am Bildschirmrand, links oder rechts am Bildschirmrand (der Inhalt rückt dann ein, lernen.css).
+   Die Kehlen führen den Rand geschwungen an den Rand: ein Viertelkreis, außen gefüllt, mit der Haarlinie auf dem Bogen.
+   Glas und Kehlen sind Geschwister (Funktionsleiste.tsx), weil Unschärfe nur bis zum nächsten Vorfahren mit
+   Unschärfe, opacity oder Übergangsnamen sieht; die Leiste selbst trägt darum weder Glas noch Übergangsnamen. */
+.fl-glas, .fl-kehle { display: none; }
+:root { --fl-linie: rgba(31, 34, 39, 0.14); --fl-aktiv: #1f2227; --fl-aktiv-schrift: #ffffff; --fl-kehle: 16px; }
+@media (prefers-color-scheme: dark) {
+  :root { --fl-linie: rgba(255, 255, 255, 0.14); --fl-aktiv: #f3f1ee; --fl-aktiv-schrift: #1f2227; }
+}
 @media (min-width: 721px) {
-  .funktionsleiste.spalte {
-    display: flex; flex-direction: column; gap: 4px; position: fixed; top: 50%; transform: translateY(-50%); width: 76px; padding: 6px 4px;
-    border: 1px solid var(--glas-rand); border-radius: 18px; box-shadow: var(--glas-licht), 0 0 0 0.5px var(--glas-haar), var(--glas-schatten);
-    left: calc(12px + env(safe-area-inset-left, 0px));
-    transition: opacity 180ms ease;
+  .funktionsleiste.werkzeuge {
+    --fl-grund: var(--glas-flaeche);
+    display: flex; align-items: center; gap: 2px; flex: none; position: relative; height: 44px; padding: 0 4px;
+    background: none; -webkit-backdrop-filter: none; backdrop-filter: none; transition: opacity 180ms ease;
   }
-  :root[data-schreibhand='links'] .funktionsleiste.spalte { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); }
-  .spalte .fl-zeile { flex-direction: column; gap: 2px; }
-  .spalte .fl-fn { height: 56px; flex: none; }
-  .spalte .fl-fn.aktiv::before { top: 22%; bottom: 22%; left: -4px; width: 3px; border-radius: 0 3px 3px 0; }
-  :root[data-schreibhand='links'] .spalte .fl-fn.aktiv::before { left: auto; right: -4px; border-radius: 3px 0 0 3px; }
-  .spalte .fl-oben { order: 2; border-top: 1px solid var(--glas-haar); padding-top: 4px; }
-  .spalte .fl-farben { flex-direction: column; gap: 2px; }
-  .spalte .fl-farbe { flex-direction: column; gap: 3px; padding: 6px 2px; border-radius: 12px; font-size: 0.6875rem; }
-  /* Ruhend durchsichtig ohne Unschärfe, damit Markierungen und Schrift unter der Spalte sichtbar bleiben (Nils 14.11.);
-     unter Zeiger oder Tastaturfokus wieder volles Glas. Antippen mit Finger oder Stift wirkt sofort, wie bisher. */
-  .funktionsleiste.spalte:not(:hover):not(:focus-within) { opacity: 0.55; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  :root[data-stift='schreibt'] .funktionsleiste.spalte { opacity: 0.12; pointer-events: none; }
+  .werkzeuge .fl-glas {
+    display: block; position: absolute; inset: 0; z-index: -1; border: 1px solid var(--fl-linie); border-radius: 22px;
+    background: var(--fl-grund); -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter); box-shadow: var(--glas-licht);
+  }
+  .werkzeuge .fl-kehle {
+    display: block; position: absolute; z-index: -1; width: var(--fl-kehle); height: var(--fl-kehle); pointer-events: none;
+    --k: calc(var(--fl-kehle) - 1px);
+    background: radial-gradient(circle at var(--mitte), transparent var(--k), var(--fl-linie) calc(var(--k) + 0.5px), var(--fl-linie) var(--fl-kehle), var(--fl-grund) calc(var(--fl-kehle) + 0.5px));
+    -webkit-mask: radial-gradient(circle at var(--mitte), transparent var(--k), #000 calc(var(--k) + 0.5px));
+    mask: radial-gradient(circle at var(--mitte), transparent var(--k), #000 calc(var(--k) + 0.5px));
+    -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter);
+  }
+  .werkzeuge .fl-zeile { display: flex; align-items: center; gap: 2px; }
+  .werkzeuge .fl-fn {
+    flex: none; flex-direction: row; gap: 7px; height: 36px; min-width: 40px; padding: 0 9px; border-radius: 18px;
+    font-size: 0.8125rem; font-weight: 700;
+  }
+  .werkzeuge .fl-fn:hover { background: var(--glas-marke); }
+  .werkzeuge .fl-text { display: none; }
+  .werkzeuge .fl-fn.aktiv { background: var(--fl-aktiv); color: var(--fl-aktiv-schrift); padding: 0 14px 0 11px; font-weight: 700; }
+  .werkzeuge .fl-fn.aktiv .fl-text { display: inline; }
+  /* Schimmer: Ring im Verlauf von Orange zu Hell um das aktive Werkzeug */
+  .werkzeuge .fl-fn.aktiv::before {
+    inset: -2px; padding: 2px; border-radius: 20px; opacity: 0.9;
+    background: conic-gradient(from 200deg, #c4501a, #f2955f, #ffd2a8, #c4501a 55%, #e8703a, #c4501a);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  }
+  /* Farben als Punkte hinter einem feinen Trenner; der Name bleibt für Hinweis und Vorlesen */
+  .werkzeuge .fl-oben { order: 2; display: flex; align-items: center; padding: 0; border: none; }
+  .werkzeuge .fl-oben::before { content: ''; width: 1px; height: 22px; margin: 0 4px; background: var(--fl-linie); }
+  .werkzeuge .fl-farben { gap: 0; }
+  .werkzeuge .fl-farbe { width: 30px; min-height: 36px; padding: 0; justify-content: center; border-radius: 18px; }
+  .werkzeuge .fl-farbe:hover { background: var(--glas-marke); }
+  .werkzeuge .fl-farbe.aktiv { background: transparent; }
+  .werkzeuge .fl-farbe-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* Oben: wächst aus der Linie unter der Kopfzeile über dem Skript (plan-leiste, lernen.css), deckend wie der Grund */
+  :root[data-leiste='oben'] body:not(.vollbild-an) .funktionsleiste.werkzeuge { --fl-grund: var(--grund); align-self: flex-end; margin-bottom: -13px; }
+  :root[data-leiste='oben'] body:not(.vollbild-an) .werkzeuge .fl-glas { border-bottom: none; border-radius: 22px 22px 0 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-leiste='oben'] body:not(.vollbild-an) .werkzeuge .fl-kehle { bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-leiste='oben'] body:not(.vollbild-an) .werkzeuge .fl-kehle.eins { left: calc(-1 * var(--fl-kehle)); --mitte: 0 0; }
+  :root[data-leiste='oben'] body:not(.vollbild-an) .werkzeuge .fl-kehle.zwei { right: calc(-1 * var(--fl-kehle)); --mitte: 100% 0; }
+
+  /* Vollbild: hängt oben mittig vom Bildschirmrand (bei Lage oben) */
+  :root[data-leiste='oben'] body.vollbild-an .funktionsleiste.werkzeuge { position: fixed; z-index: 46; top: 0; left: 50%; transform: translateX(-50%); }
+  :root[data-leiste='oben'] body.vollbild-an .werkzeuge .fl-glas { border-top: none; border-radius: 0 0 22px 22px; }
+  :root[data-leiste='oben'] body.vollbild-an .werkzeuge .fl-kehle { top: 0; }
+  :root[data-leiste='oben'] body.vollbild-an .werkzeuge .fl-kehle.eins { left: calc(-1 * var(--fl-kehle)); --mitte: 0 100%; }
+  :root[data-leiste='oben'] body.vollbild-an .werkzeuge .fl-kehle.zwei { right: calc(-1 * var(--fl-kehle)); --mitte: 100% 100%; }
+
+  /* Links oder rechts: senkrecht am Bildschirmrand, mittig; nur Symbole, auch beim aktiven Werkzeug */
+  :root[data-leiste='links'] .funktionsleiste.werkzeuge, :root[data-leiste='rechts'] .funktionsleiste.werkzeuge {
+    position: fixed; z-index: 46; top: 50%; transform: translateY(-50%); flex-direction: column; width: 44px; height: auto; padding: 4px 0;
+  }
+  :root[data-leiste='links'] .funktionsleiste.werkzeuge { left: env(safe-area-inset-left, 0px); }
+  :root[data-leiste='rechts'] .funktionsleiste.werkzeuge { right: env(safe-area-inset-right, 0px); }
+  :root[data-leiste='links'] .werkzeuge .fl-glas { border-left: none; border-radius: 0 22px 22px 0; }
+  :root[data-leiste='rechts'] .werkzeuge .fl-glas { border-right: none; border-radius: 22px 0 0 22px; }
+  :root:not([data-leiste='oben']) .werkzeuge .fl-zeile, :root:not([data-leiste='oben']) .werkzeuge .fl-oben, :root:not([data-leiste='oben']) .werkzeuge .fl-farben { flex-direction: column; }
+  :root:not([data-leiste='oben']) .werkzeuge .fl-oben::before { width: 22px; height: 1px; margin: 4px 0; }
+  :root:not([data-leiste='oben']) .werkzeuge .fl-fn.aktiv { width: 36px; min-width: 36px; padding: 0; }
+  :root:not([data-leiste='oben']) .werkzeuge .fl-fn.aktiv .fl-text { display: none; }
+  :root:not([data-leiste='oben']) .werkzeuge .fl-farbe { min-height: 30px; }
+  :root[data-leiste='links'] .werkzeuge .fl-kehle { left: 0; }
+  :root[data-leiste='rechts'] .werkzeuge .fl-kehle { right: 0; }
+  :root[data-leiste='links'] .werkzeuge .fl-kehle.eins { top: calc(-1 * var(--fl-kehle)); --mitte: 100% 0; }
+  :root[data-leiste='links'] .werkzeuge .fl-kehle.zwei { bottom: calc(-1 * var(--fl-kehle)); --mitte: 100% 100%; }
+  :root[data-leiste='rechts'] .werkzeuge .fl-kehle.eins { top: calc(-1 * var(--fl-kehle)); --mitte: 0 0; }
+  :root[data-leiste='rechts'] .werkzeuge .fl-kehle.zwei { bottom: calc(-1 * var(--fl-kehle)); --mitte: 0 100%; }
+
+  /* Beim Schreiben mit dem Stift durchlässig, wo sie über dem Inhalt schwebt (stiftRuhe.ts); oben in der Zeile liegt nichts darunter */
+  :root[data-stift='schreibt']:not([data-leiste='oben']) .funktionsleiste.werkzeuge,
+  :root[data-stift='schreibt'] body.vollbild-an .funktionsleiste.werkzeuge { opacity: 0.12; pointer-events: none; }
 }
 
 /* ---------- Ohne Glas: keine Unschärfe, Transparenz reduziert, mehr Kontrast ---------- */
@@ -152,13 +224,15 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --glas-flaeche: var(--flaeche); --glas-filter: none; }
-  :root:not([data-stift='schreibt']) .funktionsleiste.spalte { opacity: 1; }
 }
 @media (prefers-contrast: more) {
-  :root { --glas-flaeche: var(--flaeche); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); }
-  :root:not([data-stift='schreibt']) .funktionsleiste.spalte { opacity: 1; }
+  :root { --glas-flaeche: var(--flaeche); --glas-filter: none; --glas-rand: var(--rand-stark); --auf-glas-leise: var(--tinte); --fl-linie: var(--rand-stark); }
 }
 @media (forced-colors: active) {
   .funktionsleiste, .kopf { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; }
   .fl-fn.aktiv::before, .kopf-strich { background: Highlight; }
+  .funktionsleiste.werkzeuge { border: none; background: none; }
+  .werkzeuge .fl-glas { background: Canvas; border: 1px solid CanvasText; }
+  .werkzeuge .fl-kehle { display: none; }
+  .werkzeuge .fl-fn.aktiv { background: Highlight; color: HighlightText; }
 }

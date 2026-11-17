@@ -10,6 +10,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { initSkript } from './mock.mjs'
 import { glasKontrast } from './glaskontrast.mjs'
+import { LAGEN, leisteVerdeckt } from './leiste.mjs'
 
 const require = createRequire(import.meta.url)
 function ladePlaywright() {
@@ -107,6 +108,29 @@ if (!nur || nur.includes('lernen')) {
   console.log('reduziert: Glas deckend', deckend, '· Linie ohne Bewegung', ruhig, JSON.stringify(st))
   await page.screenshot({ path: path.join(AUS, 'lernen-handy-reduziert.png') })
   await ctx.close()
+}
+// Werkzeugleiste am PC in jeder Lage und im Vollbild: verdeckt sie Skript oder Buch? (leiste.mjs)
+if (!nur || nur.includes('uebungsplatz')) {
+  for (const breite of [1366, 1024]) {
+    for (const lage of LAGEN) {
+      const ctx = await browser.newContext({ viewport: { width: breite, height: 900 }, deviceScaleFactor: 1, locale: 'de-DE' })
+      await ctx.addInitScript(initSkript())
+      await ctx.addInitScript((l) => localStorage.setItem('rl-werkzeugleiste', l), lage)
+      const page = await ctx.newPage()
+      await page.goto(URL + ANSICHTEN.uebungsplatz)
+      await page.waitForTimeout(2500)
+      const normal = await page.evaluate(leisteVerdeckt)
+      await page.getByRole('button', { name: /Vollbild/ }).click()
+      await page.waitForTimeout(600)
+      const voll = await page.evaluate(leisteVerdeckt)
+      const schlecht = normal.fehlt || normal.flaeche > 0 || voll.fehlt || voll.flaeche > 0 || !normal.seiten
+      if (schlecht) fehler++
+      ergebnis[`leiste|${lage}|${breite}`] = { normal, voll }
+      console.log(`leiste ${lage} ${breite}px: verdeckt ${normal.flaeche} px², im Vollbild ${voll.flaeche} px²`, schlecht ? 'FEHLER' : '')
+      if (breite === 1366) await page.screenshot({ path: path.join(AUS, `leiste-${lage}-voll.png`) })
+      await ctx.close()
+    }
+  }
 }
 writeFileSync(path.join(AUS, 'ergebnis.json'), JSON.stringify(ergebnis, null, 1))
 await browser.close()

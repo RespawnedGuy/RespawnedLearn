@@ -1,7 +1,8 @@
 // Kontrast auf Glas messen (glas.css): axe misst gegen den Hintergrund, den es sieht, Glas ist aber durchsichtig.
 // Hier wird jede Schrift auf Kopf und Funktionsleiste gegen den ungünstigsten Grund gerechnet:
 // Glasfarbe über reinem Schwarz und über reinem Weiß (die Unschärfe mittelt den Inhalt, schlimmer wird es nicht).
-// Liegt zwischen Schrift und Glas eine deckende Fläche (Chip, aktiver Knopf), zählt die.
+// Liegt zwischen Schrift und Glas eine deckende Fläche (Chip, aktiver Knopf), zählt die. Trägt die Leiste ihr Glas als
+// eigene Ebene (`.fl-glas`), zählt diese Ebene als Glas.
 // Aufruf in der Seite: page.evaluate(glasKontrast) → [{ ort, text, schwarz, weiss }]
 
 export function glasKontrast() {
@@ -34,7 +35,14 @@ export function glasKontrast() {
       for (let e = el; e; e = e.parentElement) {
         const f = farbe(getComputedStyle(e).backgroundColor)
         if (f && f[3] > 0) schichten.push(f)
-        if (e === wurzel || (f && f[3] >= 1)) break
+        if (f && f[3] >= 1) break
+        if (e === wurzel) {
+          // Werkzeugleiste am PC: Das Glas liegt als eigene Ebene unter den Knöpfen (Funktionsleiste.tsx, fl-glas)
+          const glas = wurzel.querySelector(':scope > .fl-glas')
+          const g = glas && glas.getClientRects().length ? farbe(getComputedStyle(glas).backgroundColor) : null
+          if (g && g[3] > 0) schichten.push(g)
+          break
+        }
       }
       const grund = (basis) => schichten.reduceRight((u, o) => ueber(o, u), basis)
       const text = farbe(getComputedStyle(el).color)

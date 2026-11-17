@@ -436,7 +436,17 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           <NameFeld name={quelle.titel} art="Skript" leerErlaubt onName={(n) => void benenneSkript(speicher, bestand, quelle.id, n)} />
         </h1>
         <InhaltKnopf quelle={quelle} seite={seite} />
-        <span style={{ flex: 1 }} />
+        {/* Werkzeugleiste in der Zeile (Nils 2026-11-17): oben zwischen Inhaltsverzeichnis und Seitenzahl; links,
+            rechts, im Vollbild und am Handy stellt glas.css sie fest an den Rand */}
+        <span className="plan-luecke" />
+        <Werkzeugleiste
+          werkzeug={werkzeug}
+          farbe={farbe}
+          onWerkzeug={setWerkzeug}
+          onFarbe={setFarbe}
+          onBilder={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))}
+        />
+        <span className="plan-luecke" />
         {skriptZu ? (
           <button type="button" className="knopf klein" onClick={() => ansichten.oeffne('pdf')}>
             Skript zeigen
@@ -546,13 +556,6 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           }}
         />
       )}
-      <Werkzeugleiste
-        werkzeug={werkzeug}
-        farbe={farbe}
-        onWerkzeug={setWerkzeug}
-        onFarbe={setFarbe}
-        onBilder={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))}
-      />
     </div>
   )
 }
