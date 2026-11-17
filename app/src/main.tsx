@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { DatenAnbieter, Fehlergrenze, beobachteStift } from '@rl/oberflaeche'
+import { DatenAnbieter, Fehlergrenze, beobachteStift, beobachteTastatur } from '@rl/oberflaeche'
 import '@rl/oberflaeche/src/stil.css'
 import 'katex/dist/katex.min.css'
 import './lernen.css'
@@ -16,6 +16,8 @@ wendeSchreibhandAn()
 wendeLeistenLageAn()
 // Stift am PC und Tablet: Werkzeugleiste am Rand durchlässig, solange er schreibt
 beobachteStift()
+// Bildschirmtastatur: --tastatur und --sichtbar für alles, was unten fest sitzt, nicht nur im Editor
+beobachteTastatur()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

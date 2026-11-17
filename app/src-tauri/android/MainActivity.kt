@@ -27,6 +27,10 @@ import android.provider.DocumentsContract
 import android.service.notification.Condition
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import android.view.View
+import android.view.WindowManager
 import androidx.annotation.RequiresApi
 import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONObject
@@ -129,6 +133,19 @@ class StilleEnde : BroadcastReceiver() {
   }
 }
 
+/**
+ * Gibt dem Inhalt unten genau so viel Abstand, wie die Tastatur hoch ist, und nur solange sie offen ist. Damit schrumpft
+ * die WebView wie früher bei adjustResize: Der sichtbare Bereich der Seite wird kleiner, und die Oberfläche kann das
+ * Eingabefeld darüber halten (oberflaeche/src/tastatur.ts). Systemleisten bleiben Sache der Seite (Edge-to-Edge).
+ */
+internal fun platzFuerTastatur(inhalt: View) {
+  ViewCompat.setOnApplyWindowInsetsListener(inhalt) { v, einsaetze ->
+    val tastatur = einsaetze.getInsets(WindowInsetsCompat.Type.ime()).bottom
+    if (v.paddingBottom != tastatur) v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, tastatur)
+    einsaetze
+  }
+}
+
 class MainActivity : TauriActivity() {
   private var webAnsicht: WebView? = null
 
@@ -151,6 +168,10 @@ class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    // Bei Edge-to-Edge verkleinert Android das Fenster für die Bildschirmtastatur nicht mehr selbst (adjustResize wirkt
+    // nur noch über die Einsätze). Ohne das läge die Tastatur über der WebView, und die merkte nichts davon.
+    window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+    platzFuerTastatur(findViewById(android.R.id.content))
   }
 
   override fun onWebViewCreate(webView: WebView) {
