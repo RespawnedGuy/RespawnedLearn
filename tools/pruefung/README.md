@@ -16,7 +16,9 @@ node tools/pruefung/ansehen.mjs                        # alle Ansichten, oder z.
   Konsolenfehler und Antworten ≥ 400, Kontrast auf Glas). Dazu `lernen-handy-reduziert.png` mit „Bewegung reduzieren“
   und „Transparenz reduzieren“ (über CDP). Exit-Code 1 bei Konsolenfehlern, Schrift auf Glas unter 4,5:1
   (`glaskontrast.mjs`: Glas über Schwarz und Weiß gerechnet, weil axe durchsichtige Flächen nicht kennt) oder wenn
-  das Glas mit reduzierter Transparenz nicht deckend wird.
+  das Glas mit reduzierter Transparenz nicht deckend wird, außerdem wenn die Werkzeugleiste am PC in einer Lage
+  (oben, links, rechts, je mit Vollbild, bei 1366 und 1024 px) Skript oder Buch verdeckt (`leiste.mjs`, Bilder
+  `leiste-<lage>-voll.png`).
 - Umgebung: `DATEN`, `AUS`, `URL`, `PLAYWRIGHT` (Pfad zum Paket, falls nicht auflösbar), `AXE` (Pfad zu
   `axe.min.js`; ohne die Datei läuft keine WCAG-Prüfung, axe-core ist bewusst keine Abhängigkeit).
 - Fallen: `npm run dev -- --port …` reicht die Schalter nicht an Vite weiter (leere Seite, 404 auf `/`), darum
