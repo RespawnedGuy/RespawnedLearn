@@ -45,10 +45,22 @@ export function ohneVerwaiste(verweise: Verweis[], striche: StrichLage[]): Verwe
   })
 }
 
+const gleicheSeite = (a: { anhang: string; seite: number }, b: { anhang: string; seite: number }) => a.anhang === b.anhang && a.seite === b.seite
+
 /**
- * Regel beim Absetzen eines Strichs: Zeigt die nächste Marke oberhalb des Strichanfangs auf dieselbe Skriptseite,
- * bleibt alles, wie es ist. Sonst entsteht eine Marke auf Höhe des Strichanfangs; liegt dort schon eine (unter einer
- * Zeile Abstand), rückt die neue nach unten. Ohne Ziel (kein Skript offen) entsteht keine Marke.
+ * Höchstens eine automatische Marke je Skriptseite auf einer Buchseite (Nils 2026-11-15): Von doppelten bleibt die
+ * oberste. Marken aus Markierungen bleiben alle.
+ */
+export function ohneDoppelte(verweise: Verweis[]): Verweis[] {
+  const sortiert = [...verweise].sort((a, b) => a.y - b.y)
+  return sortiert.filter((v, i) => !automatisch(v) || !sortiert.slice(0, i).some((w) => automatisch(w) && gleicheSeite(v, w)))
+}
+
+/**
+ * Regel beim Absetzen eines Strichs: Hat die Buchseite schon eine automatische Marke für die offene Skriptseite,
+ * bleibt alles, wie es ist (eine je Skriptseite, egal wo darauf geschrieben wird). Sonst entsteht eine Marke auf Höhe
+ * des Strichanfangs; liegt dort schon eine (unter einer Zeile Abstand), rückt die neue nach unten. Ohne Ziel (kein
+ * Skript offen) entsteht keine Marke. Doppelte und verwaiste automatische Marken fallen dabei weg.
  *
  * @param striche alle Striche der Buchseite, der neue eingeschlossen
  * @param anfang Höhe, an der der neue Strich begann
@@ -61,15 +73,41 @@ export function verweiseBeimSchreiben(
   ziel: Ziel | null,
   neu: { id: string; am: string }
 ): Verweis[] | null {
-  const bleiben = ohneVerwaiste(verweise, striche)
+  const bleiben = ohneVerwaiste(ohneDoppelte(verweise), striche)
   const geaendert = bleiben.length !== verweise.length
   if (!ziel) return geaendert ? bleiben : null
-  // Eine Marke, die beim letzten Mal nach unten gerückt ist, gilt für dieselbe Zeile noch als „oberhalb“
-  const oberhalb = bleiben.filter((v) => v.y <= anfang + ZEILE).at(-1)
-  if (oberhalb && oberhalb.anhang === ziel.anhang && oberhalb.seite === ziel.seite) return geaendert ? bleiben : null
+  if (bleiben.some((v) => automatisch(v) && gleicheSeite(v, ziel))) return geaendert ? bleiben : null
   let y = Math.max(0, anfang)
   for (const v of bleiben) if (Math.abs(v.y - y) < ZEILE) y = v.y + ZEILE
   return [...bleiben, { id: neu.id, y, anhang: ziel.anhang, seite: ziel.seite, am: neu.am }].sort((a, b) => a.y - b.y)
+}
+
+/** Eine Skriptseite in der Blase oben auf der Buchseite, mit der obersten Stelle, die auf sie zeigt */
+export interface BlasenSeite {
+  anhang: string
+  seite: number
+  y: number
+}
+
+/** Die Skriptseiten, auf die eine Buchseite beim Schreiben zeigt: je Seite einmal, ohne ✦-Marken, nach Skript und Seite */
+export function seitenDerBuchseite(verweise: Verweis[]): BlasenSeite[] {
+  return ohneDoppelte(verweise)
+    .filter(automatisch)
+    .map(({ anhang, seite, y }) => ({ anhang, seite, y }))
+    .sort((a, b) => a.anhang.localeCompare(b.anhang) || a.seite - b.seite)
+}
+
+/** Aufschrift der Blase: „S. 28“, „S. 27–29“, „S. 3, 40“, sonst „n Seiten“ */
+export function seitenBlase(seiten: BlasenSeite[]): string {
+  if (!seiten.length) return ''
+  const n = seiten.length
+  if (new Set(seiten.map((s) => s.anhang)).size > 1) return `${n} Seiten`
+  const erste = seiten[0].seite
+  const letzte = seiten[n - 1].seite
+  if (n === 1) return `S. ${erste}`
+  if (letzte - erste === n - 1) return `S. ${erste}–${letzte}`
+  if (n === 2) return `S. ${erste}, ${letzte}`
+  return `${n} Seiten`
 }
 
 /** Eine Stelle im Buch, die auf eine Skriptseite zeigt */
@@ -94,7 +132,8 @@ export function rueckwege(dateien: Iterable<string>, text: (pfad: string) => str
     if (!m) continue
     const t = text(p)
     if (!t || !t.includes(suche)) continue
-    for (const v of liesBuchSeite(t).verweise) {
+    // doppelte automatische Marken (bis v0.30.0) zählen je Buchseite einmal
+    for (const v of ohneDoppelte(liesBuchSeite(t).verweise)) {
       if (v.anhang !== anhang) continue
       const liste = out.get(v.seite) ?? []
       liste.push({ buch: m[1], nr: Number(m[2]), y: v.y, marke: !!v.marke })
