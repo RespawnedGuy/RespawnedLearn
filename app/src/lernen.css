@@ -554,3 +554,10 @@ input.name-feld { width: min(100%, 24em); box-shadow: inset 0 -1px 0 var(--akzen
 .seiten-blase > button.blinkt { animation: verweis-blinkt 0.8s ease-in-out 3; }
 @media (prefers-reduced-motion: reduce) { .seiten-blase > button.blinkt { animation: none; outline: 2px solid var(--akzent); } }
 .seiten-blase-liste { position: absolute; top: calc(100% + 4px); right: 0; min-width: 220px; }
+/* Seitenverweise lösen (Nils 2026-11-17): ✕ neben jeder Zeile der Blase und des „✎ n“ */
+.seiten-blase-zeile { display: flex; align-items: center; gap: 2px; }
+.seiten-blase-zeile > .buch-zeile { flex: 1; min-width: 0; }
+.seiten-blase-weg { flex: none; min-width: 36px; min-height: 36px; border: none; border-radius: 8px; background: transparent; color: var(--leise); font: inherit; cursor: pointer; }
+.seiten-blase-weg:hover, .seiten-blase-weg:focus-visible { background: var(--mulde-hell); color: var(--rot-text); }
+@media (pointer: coarse) { .seiten-blase-weg { min-width: 44px; min-height: 44px; } }
+.seiten-blase > button { position: relative; }

@@ -52,6 +52,19 @@ export function stelleMarkeWieder(text: string, alt: Marke): string {
 export interface VonDerSeite {
   verweis?: Verweis
   bild?: { bild: BuchBild; stelle: number }
+  /** mehrere automatische Verweise (Seitenverweise lösen), je mit ihrem Platz in der Liste */
+  verweise?: { verweis: Verweis; stelle: number }[]
+}
+
+/**
+ * Seitenverweise lösen (Nils 2026-11-17): automatische Verweise (ohne `marke`) einer Skriptseite von der Buchseite
+ * nehmen, mit `ziel` null alle. ✦-Verweise bleiben immer. null, wenn es nichts zu lösen gibt.
+ */
+export function ohneSeitenverweise(s: BuchSeite, ziel: { anhang: string; seite: number } | null): { seite: BuchSeite; weg: VonDerSeite } | null {
+  const trifft = (v: Verweis) => v.marke === undefined && (!ziel || (v.anhang === ziel.anhang && v.seite === ziel.seite))
+  const weg = s.verweise.flatMap((verweis, stelle) => (trifft(verweis) ? [{ verweis, stelle }] : []))
+  if (!weg.length) return null
+  return { seite: { ...s, verweise: s.verweise.filter((v) => !trifft(v)) }, weg: { verweise: weg } }
 }
 
 /** Randmarke ohne Markierung (automatisch beim Schreiben) von der Seite nehmen; null, wenn es sie nicht gibt */
@@ -84,7 +97,12 @@ export function ohneMarke(s: BuchSeite, verweisId: string): { seite: BuchSeite; 
 
 /** Rückgängig auf der Buchseite: was noch fehlt, kommt an seinen alten Platz zurück */
 export function legeZurueck(s: BuchSeite, weg: VonDerSeite): BuchSeite {
-  const verweise = weg.verweis && !s.verweise.some((w) => w.id === weg.verweis!.id) ? [...s.verweise, weg.verweis] : s.verweise
+  let verweise = weg.verweis && !s.verweise.some((w) => w.id === weg.verweis!.id) ? [...s.verweise, weg.verweis] : s.verweise
+  for (const { verweis, stelle } of weg.verweise ?? []) {
+    if (verweise.some((w) => w.id === verweis.id)) continue
+    verweise = [...verweise]
+    verweise.splice(Math.min(stelle, verweise.length), 0, verweis)
+  }
   let bilder = s.bilder
   if (weg.bild && !bilder.some((b) => b.id === weg.bild!.bild.id)) {
     bilder = [...bilder]

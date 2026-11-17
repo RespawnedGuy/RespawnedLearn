@@ -15,6 +15,7 @@ import {
   markeImBuch,
   ohneBild,
   ohneMarke,
+  ohneSeitenverweise,
   ohneVerweis,
   sichtbareMarken,
   starteHalten,
@@ -145,6 +146,34 @@ describe('Löschen auf der Buchseite (Rückgängig genau)', () => {
   it('Rückgängig legt nichts doppelt hin, wenn es schon wieder da ist', () => {
     const r = ohneBild(seite, 'b1')!
     expect(legeZurueck(seite, r.weg).bilder).toHaveLength(3)
+  })
+  // Seitenverweise lösen (Nils 2026-11-17): ✕ in der Blase oder im „✎ n“, Radierer + Halten auf der Blase
+  const mehr = liesBuchSeite(
+    buchSeiteJson({
+      bilder: [],
+      verweise: [
+        { id: 'a', y: 50, anhang: A, seite: 27 },
+        { id: 'b', y: 100, anhang: A, seite: 28 },
+        { id: 'm', y: 150, anhang: A, seite: 28, marke: 'k1' },
+        { id: 'c', y: 200, anhang: A, seite: 28 },
+        { id: 'd', y: 250, anhang: 'G', seite: 28 }
+      ],
+      rest: {}
+    })
+  )
+  const mehrJson = buchSeiteJson(mehr)
+  it('eine Skriptseite lösen: alle automatischen Verweise darauf gehen, ✦ und andere Seiten bleiben', () => {
+    const r = ohneSeitenverweise(mehr, { anhang: A, seite: 28 })!
+    expect(r.seite.verweise.map((v) => v.id)).toEqual(['a', 'm', 'd'])
+    expect(buchSeiteJson(legeZurueck(r.seite, r.weg))).toBe(mehrJson)
+  })
+  it('alle lösen (Radierer auf der Blase): nur ✦ bleibt, Rückgängig legt alles zurück', () => {
+    const r = ohneSeitenverweise(mehr, null)!
+    expect(r.seite.verweise.map((v) => v.id)).toEqual(['m'])
+    expect(buchSeiteJson(legeZurueck(r.seite, r.weg))).toBe(mehrJson)
+  })
+  it('nichts zu lösen: null', () => {
+    expect(ohneSeitenverweise(mehr, { anhang: A, seite: 3 })).toBeNull()
   })
   it('gibt es das Ziel nicht, kommt null', () => {
     expect(ohneVerweis(seite, 'x')).toBeNull()
