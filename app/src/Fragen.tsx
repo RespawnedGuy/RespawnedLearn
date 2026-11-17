@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fragenStand, hilfeStufen, kapitelOhneFragen, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rl/kern'
+import { fragenStand, hilfeStufen, kapitelOhneFragen, kuerzeOhneFormelbruch, lesestand, loesungsweg, merkeFrage, neuesDokument, offeneFragen, pfade, ulid, zeitstempel, type OffeneFrage, type Wert } from '@rl/kern'
 import { geraet, ortLink, useDaten, type Speicher } from '@rl/oberflaeche'
 import { Abrufflaeche, KiRueckmeldung, useAbruf } from './Abruf'
 import { Inhalt } from './Inhalt'
@@ -69,7 +69,7 @@ function merke(speicher: Speicher, q: OffeneFrage, wie: 'erledigt' | 'karte', ka
 async function alsKarte(speicher: Speicher, q: OffeneFrage, buch: string): Promise<string> {
   const id = ulid()
   const jetzt = zeitstempel()
-  const titel = q.frage.length > 90 ? `${q.frage.slice(0, 89).trimEnd()}…` : q.frage
+  const titel = kuerzeOhneFormelbruch(q.frage.replace(/\n/g, ' '), 90)
   const kopf: [string, Wert][] = [
     ['id', id],
     ['typ', 'frage'],

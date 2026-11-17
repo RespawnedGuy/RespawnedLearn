@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Eintrag, Note } from '@rl/kern'
 import { ortLink, useDaten } from '@rl/oberflaeche'
 import { Abrufflaeche, KiRueckmeldung, useAbruf, type Abruf } from './Abruf'
-import { Inhalt } from './Inhalt'
+import { Formeltext, Inhalt } from './Inhalt'
 import { Bearbeiten } from './Bearbeiten'
 import { Eintraege } from './Eintraege'
 import { FragenHinweis, KapitelFragen } from './Fragen'
@@ -122,7 +122,7 @@ export function Lernen({ ort }: { ort: string[] }) {
           </span>
         </div>
         {woText && !bearbeiten && <div className="klein-leise lern-wo">{woText}</div>}
-        {bearbeiten && neu ? <Bearbeiten e={neu} onFertig={() => setBearbeiten(false)} /> : <div className="frage" role="heading" aria-level={2}>{frage}</div>}
+        {bearbeiten && neu ? <Bearbeiten e={neu} onFertig={() => setBearbeiten(false)} /> : <div className="frage" role="heading" aria-level={2}><Formeltext text={frage} /></div>}
         {!offen && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className="klein-leise">Wie sicher bist du vorher?</span>
