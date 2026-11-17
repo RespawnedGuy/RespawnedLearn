@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { eingabeVon, lesestand, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
-import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
+import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, haltSichtbar, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle, setzeBereich } from './wissen'
 import { useLernzeit } from './lernzeitMessen'
@@ -373,7 +373,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 />
               )}
               {!auswahl.marke && <div className="auswahl" style={{ left: `${auswahl.bereich.x * 100}%`, top: `${auswahl.bereich.y * 100}%`, width: `${auswahl.bereich.b * 100}%`, height: `${auswahl.bereich.h * 100}%` }} />}
-              <div className="schwebe" style={schwebeLage(auswahl.bereich, auswahl.punkt)}>
+              <div className="schwebe" style={schwebeLage(auswahl.bereich, auswahl.punkt)} ref={haltSichtbar}>
                 {modus === 'wahl' && (
                   <BausteinMenue
                     name={name}
@@ -390,7 +390,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 {modus === 'frage' && (
                   <>
                     <input
-                      className="eingabe"
+                      className="eingabe frage-eingabe"
                       autoFocus
                       placeholder="Frage (die Stelle ist die Antwort)"
                       value={titel}

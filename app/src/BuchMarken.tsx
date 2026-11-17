@@ -2,7 +2,7 @@
 // stehen in `lernen/markierungen/<buch-id>.md`, die Maße in Seitenbreiten, damit sie beim Wachsen der Seite stehen bleiben.
 import { useState } from 'react'
 import { SEITE_BREITE, ausSeitenbreiten, eingabeVon, inSeitenbreiten, kurzId, liesBausteinText, liesMarken, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
-import { melde, useDaten } from '@rl/oberflaeche'
+import { haltSichtbar, melde, useDaten } from '@rl/oberflaeche'
 import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
 import { karteAusStelle, setzeBereich } from './wissen'
 import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
@@ -126,6 +126,7 @@ function Menue({ buch, nr, format, farbe, auswahl, onZu, speicher }: { buch: Ein
       <div
         className="schwebe"
         style={schwebeLage(b, auswahl.punkt)}
+        ref={haltSichtbar}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {karte === null ? (
@@ -143,7 +144,7 @@ function Menue({ buch, nr, format, farbe, auswahl, onZu, speicher }: { buch: Ein
         ) : (
           <>
             <input
-              className="eingabe"
+              className="eingabe frage-eingabe"
               autoFocus
               aria-label="Frage"
               placeholder="Frage (die Stelle ist die Antwort)"
