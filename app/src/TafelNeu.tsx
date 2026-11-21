@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { bausteinSchluessel, tabVorschlag, type Baustein } from '@rl/kern'
 import { useDaten } from '@rl/oberflaeche'
 import { Ausschnitt } from './Inhalt'
-import { insTafelwerk, nichtInsTafelwerk, useTafelwerk } from './tafelwerk'
+import { insTafelwerk, nichtInsTafelwerk, useTafelwerk } from './tafelwerkDaten'
 
 /** So viele Karten auf einmal; der Rest kommt nach, wenn diese entschieden sind */
 const AUF_EINMAL = 12

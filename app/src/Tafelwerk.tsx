@@ -9,7 +9,7 @@ import { NameFeld } from './NameFeld'
 import { useBausteine } from './Bausteine'
 import { useAblage } from './ablage'
 import { fuegeEinPerKnopf } from './kopieren'
-import { legeTabWeg, neuerTab, useTafelwerk, weggelegteTabs } from './tafelwerk'
+import { legeTabWeg, neuerTab, useTafelwerk, weggelegteTabs } from './tafelwerkDaten'
 import { TafelNeu } from './TafelNeu'
 
 const TAB_SCHLUESSEL = 'rl-tafelwerk-tab'

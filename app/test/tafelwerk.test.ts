@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Bestand, alleBausteine, buchDokument, imTafelwerk, liesBuchSeite, liesNein, markenZeile, neuFuerTafelwerk, pfade, tafeln, type Kopie } from '@rl/kern'
 import { Speicher } from '../../packages/oberflaeche/src/daten/speicher'
 import { Platte, ablageImSpeicher } from '../../packages/oberflaeche/src/daten/ablageImSpeicher'
-import { insTafelwerk, legeTabWeg, neuerTab, nichtInsTafelwerk } from '../src/tafelwerk'
+import { insTafelwerk, legeTabWeg, neuerTab, nichtInsTafelwerk } from '../src/tafelwerkDaten'
 import { fuegeAnsEnde, fuegeEinPerKnopf } from '../src/kopieren'
 import { merkeOrt } from '../src/ablage'
 
