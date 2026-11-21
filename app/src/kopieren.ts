@@ -2,9 +2,9 @@
 // Geräts, Einfügen legt ihren Ausschnitt mit ✦-Marke an die angetippte Stelle einer Buchseite. Geschrieben wird über
 // `speicher.aendere` (bekannter Stand, sonst Konfliktkopie), Rückgängig nimmt Marke und Ausschnitt wieder weg.
 import { useEffect, useRef } from 'react'
-import { blattFormat, buchSeiteJson, kurzId, legeEin, liesBuchSeite, pfade, type Kopie } from '@rl/kern'
+import { blattFormat, buchSeiteJson, buchSeitenNummern, kurzId, legeEin, liesBuchSeite, liesTinte, ortAmEnde, pfade, strichLage, type Kopie } from '@rl/kern'
 import { melde, type Speicher } from '@rl/oberflaeche'
-import { legeInAblage } from './ablage'
+import { legeInAblage, letzterOrt } from './ablage'
 import { nimmVonDerSeite } from './loeschen'
 
 /** Höhe durch Breite eines Bildes (Ausschnitt aus dem Skript) */
@@ -38,6 +38,37 @@ export async function fuegeEin(speicher: Speicher, buchId: string, nr: number, k
 
 export async function fuegeEinMitMeldung(speicher: Speicher, buchId: string, nr: number, k: Kopie, ort: { x: number; y: number; b?: number }) {
   const zurueck = await fuegeEin(speicher, buchId, nr, k, ort)
+  melde('Eingefügt', () => void zurueck())
+}
+
+/**
+ * Kopie ans Ende eines Buchs: unter das Unterste der letzten Seite, passt sie dort nicht mehr, oben auf die nächste.
+ * Liefert Seite und Rückgängig.
+ */
+export async function fuegeAnsEnde(speicher: Speicher, buchId: string, k: Kopie): Promise<{ nr: number; zurueck: () => Promise<void> }> {
+  const da = buchSeitenNummern(speicher.pfade(), buchId)
+  let nr = da[da.length - 1] ?? 1
+  const lage = (n: number) => {
+    const tinte = speicher.text(pfade.buchTinte(buchId, n)) ?? ''
+    return ortAmEnde(liesBuchSeite(speicher.text(pfade.buchSeite(buchId, n))).bilder, liesTinte(tinte).map(strichLage), k, blattFormat(tinte))
+  }
+  let ort: { x: number; y: number; b?: number } | null = lage(nr)
+  if (!ort) {
+    nr += 1
+    ort = lage(nr) ?? { x: 0, y: 0 }
+  }
+  return { nr, zurueck: await fuegeEin(speicher, buchId, nr, k, ort) }
+}
+
+/**
+ * Knopf „Einfügen“ der Werkzeugleiste: an die zuletzt angetippte Stelle, wenn sie in einem der `buecher` liegt, sonst
+ * ans Ende des ersten. Nichts in der Ablage oder kein Buch: nichts.
+ */
+export async function fuegeEinPerKnopf(speicher: Speicher, buecher: string[], k: Kopie | null) {
+  if (!k || !buecher.length) return
+  const o = letzterOrt()
+  if (o && buecher.includes(o.buch)) return fuegeEinMitMeldung(speicher, o.buch, o.nr, k, o)
+  const { zurueck } = await fuegeAnsEnde(speicher, buecher[0], k)
   melde('Eingefügt', () => void zurueck())
 }
 

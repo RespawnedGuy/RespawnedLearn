@@ -12,6 +12,7 @@ import {
   rueckeBild,
   schliesseAnsicht,
   setzeBreiten,
+  tauscheBuch,
   verschiebeAnsicht,
   zeigeBuch,
   SEITE_BREITE,
@@ -21,7 +22,7 @@ import {
   type BlattBild,
   type Lineatur
 } from '@rl/kern'
-import { ausschnitt, bildUrl, useDaten, useHalten } from '@rl/oberflaeche'
+import { Symbol, ausschnitt, bildUrl, useDaten, useHalten } from '@rl/oberflaeche'
 import type { Uebernahme } from './MarkeRahmen'
 import { BuchFenster } from './BuchAusschnitt'
 
@@ -56,11 +57,16 @@ export function useAnordnung(anhangId: string) {
     breiten: (b: Record<string, number>) => sichere(setzeBreiten(anordnung, b)),
     schliesse: (id: string) => sichere(schliesseAnsicht(anordnung, id, true)),
     oeffne: (id: string) => sichere(oeffneAnsicht(anordnung, id)),
-    /** Ziel für ein Bild: das erste offene Notizbuch, sonst ein ausgeblendetes wieder zeigen; null = keins da */
-    zielBuch: (): string | null => {
-      const offen = anordnung.ansichten.find((v) => v.art === 'buch' && !v.zu)
+    /** im selben Platz ein anderes Buch zeigen (Tabs des Tafelwerks) */
+    tausche: (alt: string, neu: string) => sichere(tauscheBuch(anordnung, alt, neu)),
+    /**
+     * Ziel für ein Bild: das erste offene Notizbuch, sonst ein ausgeblendetes wieder zeigen; null = keins da.
+     * `ausser` nimmt Bücher aus, die nie von selbst etwas bekommen (Tabs des Tafelwerks).
+     */
+    zielBuch: (ausser: (id: string) => boolean = () => false): string | null => {
+      const offen = anordnung.ansichten.find((v) => v.art === 'buch' && !v.zu && !ausser(v.id))
       if (offen) return offen.id
-      const zu = anordnung.ansichten.find((v) => v.art === 'buch')
+      const zu = anordnung.ansichten.find((v) => v.art === 'buch' && !ausser(v.id))
       if (zu) sichere(oeffneAnsicht(anordnung, zu.id))
       return zu?.id ?? null
     }
@@ -81,7 +87,8 @@ export function BildAufBlatt({
   tiefe = 0,
   onWahl,
   onAendern,
-  onEntfernen
+  onEntfernen,
+  onKopieren
 }: {
   bild: BlattBild
   /** wie tief in einem Ausschnitt aus einem Buch (Lernen 1.12): ab 1 wird ein Ausschnitt aus einem Buch nur ein Rahmen */
@@ -95,6 +102,8 @@ export function BildAufBlatt({
   onWahl: () => void
   onAendern: (b: BlattBild) => void
   onEntfernen: () => void
+  /** nur bei einem Ausschnitt mit ✦-Marke: die Kopie zeigt aufs Original (Lernen 1.13) */
+  onKopieren?: () => void
 }) {
   const { speicher, bestand } = useDaten()
   const [src, setSrc] = useState<string | null>(null)
@@ -182,6 +191,11 @@ export function BildAufBlatt({
           <button type="button" className="blatt-bild-weg" onPointerDown={(e) => e.stopPropagation()} onClick={onEntfernen} aria-label="Bild vom Blatt nehmen" title="Vom Blatt nehmen (das Bild selbst bleibt erhalten)">
             ×
           </button>
+          {onKopieren && (
+            <button type="button" className="blatt-bild-kopie" onPointerDown={(e) => e.stopPropagation()} onClick={onKopieren} aria-label="Ausschnitt kopieren" title="Kopieren: die Kopie führt zum Original (im Notizbuch einfügen)">
+              <Symbol name="kopieren" groesse={16} />
+            </button>
+          )}
           <span className="blatt-bild-ecke" onPointerDown={runter('groesse')} aria-hidden="true" />
         </>
       )}

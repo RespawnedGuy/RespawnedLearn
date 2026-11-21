@@ -56,7 +56,9 @@ export const pfade = {
   lernzeit: (monat: string, geraet: string) => `lernen/zeit/${monat}.${geraet}.jsonl`,
   /** Stunden je ECTS, nur wenn vom Standard abweichend (Vertrag Lernen 1.7) */
   lernzeitEinstellung: () => 'lernen/einstellungen/lernzeit.json',
-  reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`
+  reviews: (monat: string, geraet: string) => `reviews/${monat}.${geraet}.jsonl`,
+  /** Bausteine, die ein Gerät nicht im Tafelwerk haben will, nur anhängen (Vertrag Lernen 1.13) */
+  tafelNein: (geraet: string) => `lernen/tafelwerk/nein.${geraet}.jsonl`
 }
 
 /** Sicherer Dateiname: keine Pfadteile, keine Steuerzeichen */

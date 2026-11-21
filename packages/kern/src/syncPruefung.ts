@@ -69,7 +69,7 @@ function protokollZusammen(a: string, b: string): string | null {
 /**
  * Lässt sich der Konflikt ohne Menschen lösen, ohne dass Inhalt verloren geht? null = nein, die Konfliktansicht zeigt ihn.
  * Regeln: gleicher Inhalt; eine Seite leer; eine Seite halb übertragen (unlesbar und Anfang der anderen);
- * Protokolle `reviews/*.jsonl` und Lernzeit `lernen/zeit/*.jsonl` (Lernen 1.7) werden zeilenweise vereinigt; bei der Vertragsmarke gilt die höhere Version (Lernen 1.6).
+ * Protokolle `reviews/*.jsonl` und Lernzeit `lernen/zeit/*.jsonl` (Lernen 1.7) und Tafelwerk-Antworten `lernen/tafelwerk/*.jsonl` (Lernen 1.13) werden zeilenweise vereinigt; bei der Vertragsmarke gilt die höhere Version (Lernen 1.6).
  */
 export function automatisch(pfad: string, original: string | undefined, kopie: string): Automatik | null {
   if (original === undefined) return null
@@ -86,7 +86,7 @@ export function automatisch(pfad: string, original: string | undefined, kopie: s
   const uk = unlesbar(pfad, kopie)
   if (uk && !uo && o.startsWith(k)) return { art: 'weg' }
   if (uo && !uk && k.startsWith(o)) return { art: 'uebernehmen' }
-  if (/^(reviews|lernen\/zeit)\/[^/]+\.jsonl$/.test(pfad) && !uo && !uk) {
+  if (/^(reviews|lernen\/zeit|lernen\/tafelwerk)\/[^/]+\.jsonl$/.test(pfad) && !uo && !uk) {
     const text = protokollZusammen(original, kopie)
     if (text !== null) return eben(text) === o ? { art: 'weg' } : { art: 'zusammen', text }
   }

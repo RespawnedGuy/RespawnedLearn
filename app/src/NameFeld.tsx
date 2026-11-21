@@ -2,7 +2,7 @@
 // Gleich bedient für Skript und Buch (Nils' Grundsatz), wie der Name eines Moduls oder einer Mitschrift.
 import { useState } from 'react'
 
-export function NameFeld({ name, art, onName, leerErlaubt = false }: { name: string; art: 'Skript' | 'Notizbuch'; onName: (neu: string) => void; leerErlaubt?: boolean }) {
+export function NameFeld({ name, art, onName, leerErlaubt = false }: { name: string; art: 'Skript' | 'Notizbuch' | 'Tab'; onName: (neu: string) => void; leerErlaubt?: boolean }) {
   const [bearbeiten, setBearbeiten] = useState(false)
   if (!bearbeiten)
     return (
@@ -15,7 +15,7 @@ export function NameFeld({ name, art, onName, leerErlaubt = false }: { name: str
       className="name-feld eingabe"
       autoFocus
       defaultValue={name}
-      aria-label={`Name des ${art === 'Skript' ? 'Skripts' : 'Notizbuchs'}`}
+      aria-label={`Name des ${art === 'Skript' ? 'Skripts' : art === 'Tab' ? 'Tabs' : 'Notizbuchs'}`}
       placeholder={leerErlaubt ? 'leer = Dateiname' : undefined}
       onFocus={(e) => e.currentTarget.select()}
       onBlur={(e) => {

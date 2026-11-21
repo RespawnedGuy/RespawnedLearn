@@ -37,6 +37,7 @@ const ANSICHTEN = {
   uebungsplatz: '#/sammeln/01JBEISPIEL0000000SKRIPET1/1',
   lernen: '#/lernen',
   nutzen: '#/nutzen',
+  tafelwerk: '#/nutzen/tafelwerk/01JBEXSPE0000TAFE000000001',
   einstellungen: '#/einstellungen',
   konflikte: '#/konflikte'
 }

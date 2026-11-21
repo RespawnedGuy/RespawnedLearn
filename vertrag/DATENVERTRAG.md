@@ -1,7 +1,7 @@
 # DATENVERTRAG – RespawnedLearn
 
 Verbindliche Referenz für alles, was den Datenordner von RespawnedLearn liest oder schreibt.
-Vertragsversion: **Lernen 1.12 (2026-11-15)**. Änderungen nur über eine neue Version mit Eintrag in `aenderungen.md`.
+Vertragsversion: **Lernen 1.13 (2026-11-21)**. Änderungen nur über eine neue Version mit Eintrag in `aenderungen.md`.
 
 Entstanden aus dem Datenvertrag 0.46 von RespawnedNotes VX (Lernteile). Die Dateiformate sind dieselben, Daten aus VX
 lassen sich unverändert übernehmen. Die Abschnittsnummern bleiben gleich, damit Verweise im Code („Vertrag 5.3“) stimmen;
