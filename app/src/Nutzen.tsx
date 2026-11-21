@@ -6,6 +6,7 @@ import { Bearbeiten } from './Bearbeiten'
 import { Eintraege, standText } from './Eintraege'
 import { TYPNAME, alleEintraege, lernstaende, setzeThema, spuren, suche, verknuepft } from './wissen'
 import { kartenImModul, modulVonEintrag } from './modulkarten'
+import { NutzenWahl } from './Tafelwerk'
 import { BausteinTreffer, OffeneBausteine, WeggelegteBausteine, anzahlOffen, anzahlWeggelegt, findeBausteine, useBausteine } from './Bausteine'
 
 const FARBNAME: Record<string, string> = { wichtig: 'Wichtig', ergaenzung: 'Ergänzung' }
@@ -40,6 +41,7 @@ export function Nutzen({ id }: { id?: string }) {
   return (
     <div className="nutzen-seite">
       <h1 className="nur-vorleser">Nutzen</h1>
+      <NutzenWahl aktiv="suchen" />
       <div className="nutzen-suche">
         <label htmlFor="suche" className="unsichtbar">
           In deinem Wissen suchen

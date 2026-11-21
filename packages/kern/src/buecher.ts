@@ -125,7 +125,7 @@ export function buchSeitenNummern(alle: Iterable<string>, id: string): number[] 
 }
 
 /** Steckbrief eines neuen Notizbuchs */
-export function buchDokument(b: { id: string; titel: string; lineatur: Lineatur; modul?: string | null; erstellt: string; geaendert?: string }): string {
+export function buchDokument(b: { id: string; titel: string; lineatur: Lineatur; modul?: string | null; art?: 'tafelwerk'; erstellt: string; geaendert?: string }): string {
   return neuesDokument([
     ['id', b.id],
     ['typ', 'notizbuch'],
@@ -133,6 +133,7 @@ export function buchDokument(b: { id: string; titel: string; lineatur: Lineatur;
     ['geaendert', b.geaendert ?? b.erstellt],
     ['titel', b.titel],
     ['lineatur', b.lineatur],
+    ...(b.art ? ([['art', b.art]] as [string, string][]) : []),
     ...(b.modul ? ([['modul', `[[${b.modul}]]`]] as [string, string][]) : [])
   ])
 }

@@ -123,6 +123,16 @@ export function zeigeBuch(a: Anordnung, id: string): Anordnung {
   return { ...a, schema: 2, ansichten: [...a.ansichten, { art: 'buch', id, breite }] }
 }
 
+/**
+ * Im selben Platz ein anderes Buch zeigen (Tabs des Tafelwerks, Lernen 1.13): Breite und Stelle bleiben. Steht das neue
+ * schon da, verschwindet das alte und das neue wird gezeigt.
+ */
+export function tauscheBuch(a: Anordnung, alt: string, neu: string): Anordnung {
+  if (alt === neu || !a.ansichten.some((v) => v.id === alt)) return a
+  if (a.ansichten.some((v) => v.id === neu)) return oeffneAnsicht({ ...a, ansichten: a.ansichten.filter((v) => v.id !== alt) }, neu)
+  return ersetze(a, alt, (v) => ({ ...v, id: neu }))
+}
+
 /** Mit der benachbarten offenen Ansicht tauschen (-1 = nach vorn/links, 1 = nach hinten/rechts) */
 export function verschiebeAnsicht(a: Anordnung, id: string, richtung: -1 | 1): Anordnung {
   const offen = a.ansichten.map((v, i) => ({ v, i })).filter((x) => !x.v.zu)

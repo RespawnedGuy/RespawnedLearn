@@ -330,4 +330,22 @@ await schreibe(
   [3, 2, 1].map((n) => JSON.stringify({ ziel: '01JBEISPIEL0000MODULET1001', art: 'sammeln', am: `${vor(n)}T08:00:00.000Z`, bis: `${vor(n)}T09:15:00.000Z`, quelle: '01JBEISPIEL0000000SKRIPET1', seiten: [1, 1] })).join('\n') + '\n'
 )
 
+// Bausteine im Skript und ein Tafelwerk mit zwei Tabs, einer mit einem eingefügten Ausschnitt (Vertrag Lernen 1.13)
+await schreibe(
+  'lernen/markierungen/01JBEISPIEL0000000SKRIPET1.md',
+  kopf({ anhang: '[[01JBEISPIEL0000000SKRIPET1]]' }) +
+    `- S. 1 · Spannung U = W / Q #spannung %%rn 0.100 0.200 0.800 0.120 ${vor(3)}%% ^tw0001\n` +
+    `- S. 2 · Elementarladung #konstanten %%rn 0.100 0.300 0.800 0.100 ${vor(1)}%% ^tw0002\n` +
+    `- S. 1 · Einheit Volt #einheiten %%rn 0.100 0.500 0.700 0.100 ${vor(0)}%% ^tw0003\n`
+)
+await schreibe('lernen/buecher/01JBEXSPE0000TAFE000000001.md', kopf({ id: '01JBEXSPE0000TAFE000000001', typ: 'notizbuch', erstellt: zeit(vor(5)), geaendert: zeit(vor(1)), titel: 'Elektrotechnik', lineatur: 'leer', art: 'tafelwerk' }))
+await schreibe('lernen/buecher/01JBEXSPE0000TAFE000000002.md', kopf({ id: '01JBEXSPE0000TAFE000000002', typ: 'notizbuch', erstellt: zeit(vor(4)), geaendert: zeit(vor(4)), titel: 'Konstanten', lineatur: 'leer', art: 'tafelwerk' }))
+await schreibe(
+  'lernen/buecher/01JBEXSPE0000TAFE000000001/S001.json',
+  JSON.stringify({
+    bilder: [{ id: 'twbild01', anhang: '01JBEISPIEL0000000SKRIPET1', seite: 1, bereich: { x: 0.1, y: 0.2, b: 0.8, h: 0.12 }, x: 60, y: 60, b: 800, h: 170 }],
+    verweise: [{ id: 'twverw01', y: 60, anhang: '01JBEISPIEL0000000SKRIPET1', seite: 1, marke: 'tw0001', bild: 'twbild01', am: `${vor(1)}T10:00:00.000Z` }]
+  }) + '\n'
+)
+
 console.log(`Beispieldaten in ${ziel}`)
