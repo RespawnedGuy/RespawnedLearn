@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   VERTRAG,
+  vergleicheVersionen,
   alleBausteine,
   automatisch,
   buchDokument,
@@ -17,6 +18,7 @@ import {
   neuFuerTafelwerk,
   ortAmEnde,
   pfade,
+  sucheImTafelwerk,
   tabVorschlag,
   tafeln,
   tauscheBuch,
@@ -36,8 +38,8 @@ const doc = (id: string, felder: Record<string, string>, titel = id) => ({ id, t
 const KOPIE: Kopie = { anhang: SKRIPT, seite: 12, bereich: { x: 0.1, y: 0.2, b: 0.5, h: 0.1 }, marke: 'a7k2c9', verhaeltnis: 0.3 }
 
 describe('Tabs des Tafelwerks', () => {
-  it('der Vertrag steht auf 1.13', () => {
-    expect(VERTRAG).toBe('1.13')
+  it('der Vertrag steht mindestens auf 1.13', () => {
+    expect(vergleicheVersionen(VERTRAG, '1.13')).toBeGreaterThanOrEqual(0)
   })
 
   it('ein Tab ist ein Notizbuch mit art: tafelwerk; ohne das Feld ein gewöhnliches Buch', () => {
@@ -166,5 +168,56 @@ describe('Kopieren und Einfügen im Tafelwerk', () => {
     expect(o!.y).toBeGreaterThan(500)
     expect(o!.b).toBe(500)
     expect(ortAmEnde([{ y: 1300, h: 100 }], [], KOPIE, Math.SQRT2)).toBeNull()
+  })
+})
+
+describe('Suche im Tafelwerk (Lernen 1.14)', () => {
+  const marken = (anhang: string, zeilen: string[]) => [`lernen/markierungen/${anhang}.md`, `---\nanhang: "[[${anhang}]]"\n---\n${zeilen.join('\n')}\n`] as [string, string]
+  const seite = (verweise: { y: number; marke: string; anhang?: string }[], texte: { id: string; y: number; text: string }[] = []) =>
+    JSON.stringify({ bilder: [], verweise: verweise.map((v, i) => ({ id: `v${i}`, y: v.y, anhang: v.anhang ?? SKRIPT, seite: 12, marke: v.marke })), texte: texte.map((t) => ({ ...t, x: 80, b: 600 })) })
+  const texte = new Map<string, string>([
+    marken(SKRIPT, [zeile(12, 'Magnetischer Fluss #elektrotechnik', 'flu001'), zeile(13, 'Ohmsches Gesetz #grundlagen', 'ohm001'), zeile(14, 'Spule', 'spu001')]),
+    marken(TAB2, [zeile(1, 'Lenzsche Regel', 'len001')]),
+    [pfade.buchSeite(TAB1, 1), seite([{ y: 100, marke: 'flu001' }, { y: 500, marke: 'ohm001' }], [{ id: 't1', y: 300, text: 'Merke: $\\Phi = B \\cdot A$ gilt für homogene Felder' }])],
+    [pfade.buchSeite(TAB2, 2), seite([{ y: 40, marke: 'ohm001' }], [{ id: 't2', y: 900, text: 'Größen über Ströme' }])],
+    // gewöhnliches Buch: wird nicht durchsucht
+    [pfade.buchSeite(BUCH, 1), seite([{ y: 10, marke: 'spu001' }], [{ id: 't3', y: 10, text: 'Fluss im Buch' }])]
+  ])
+  const tabs = [
+    { id: TAB1, titel: 'Elektrotechnik' },
+    { id: TAB2, titel: 'Grundlagen' }
+  ]
+  const bausteine = alleBausteine(texte)
+  const titel = (a: string) => (a === SKRIPT ? 'ET 2 Skript' : '')
+  const suche = (q: string) => sucheImTafelwerk(texte, tabs, bausteine, q, titel)
+
+  it('findet Bausteine über Name und Schlagwort und nennt Tab, Seite und Höhe', () => {
+    expect(suche('fluss').map((t) => [t.art, t.tab, t.nr, t.y, t.titel])).toEqual([['baustein', TAB1, 1, 100, 'Magnetischer Fluss']])
+    expect(suche('#grundlagen').map((t) => [t.tab, t.nr, t.y])).toEqual([
+      [TAB1, 1, 500],
+      [TAB2, 2, 40]
+    ])
+  })
+
+  it('ohne Rücksicht auf Groß/klein und Umlaute; jedes Wort muss passen', () => {
+    expect(suche('GROSSEN').map((t) => [t.art, t.tab])).toEqual([['text', TAB2]])
+    expect(suche('größen ströme').map((t) => [t.art, t.tab, t.y])).toEqual([['text', TAB2, 900]])
+    expect(suche('strome').map((t) => t.art)).toEqual(['text'])
+    expect(suche('fluss spule')).toEqual([])
+  })
+
+  it('Formelnamen in Textfeldern: „phi“ findet $\\Phi$', () => {
+    expect(suche('phi').map((t) => [t.art, t.tab, t.y])).toEqual([['text', TAB1, 300]])
+    expect(suche('homogen').map((t) => t.titel)).toEqual(['Merke: $\\Phi = B \\cdot A$ gilt für homogene Felder'])
+  })
+
+  it('eigene Markierungen in einem Tab zählen, Bücher außerhalb nicht', () => {
+    expect(suche('lenzsche').map((t) => [t.art, t.tab, t.nr, Math.round(t.y)])).toEqual([['markierung', TAB2, 1, 200]])
+    expect(suche('spule')).toEqual([])
+  })
+
+  it('der Titel der Quelle findet mit, aber schwächer als der Name', () => {
+    expect(suche('skript').length).toBe(3)
+    expect(suche('')).toEqual([])
   })
 })

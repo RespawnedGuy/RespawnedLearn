@@ -22,6 +22,27 @@ describe('Notizbuch-Seiten (Vertrag Lernen 1.3)', () => {
     expect(liesBuchSeite('{kaputt')).toEqual({ bilder: [], verweise: [], rest: {} })
   })
 
+  it('Textfelder (Lernen 1.14): rund lesen und schreiben, leere und kaputte fallen weg', () => {
+    const roh = { bilder: [], verweise: [], texte: [{ id: 't1', x: 80, y: 640, b: 600, text: 'Gilt nur für $I$ = konstant', am: '2026-11-22' }, { id: 'leer', x: 0, y: 0, b: 300, text: '  ' }, { id: 'kaputt', x: 'a' }] }
+    const s = liesBuchSeite(JSON.stringify(roh))
+    expect(s.texte).toEqual([{ id: 't1', x: 80, y: 640, b: 600, text: 'Gilt nur für $I$ = konstant', am: '2026-11-22' }])
+    expect(liesBuchSeite(buchSeiteJson(s))).toEqual(s)
+    // ohne Textfelder schreibt die App kein Feld `texte`
+    expect(buchSeiteJson({ ...s, texte: [] })).not.toContain('texte')
+  })
+
+  it('eine Seite ohne Textfelder bleibt beim Lesen und Schreiben byte-gleich', () => {
+    const alt = buchSeiteJson(liesBuchSeite(JSON.stringify({ bilder: [{ id: 'b1', anhang: 'F', x: 1, y: 2, b: 3, h: 4 }], verweise: [{ id: 'v1', y: 96, anhang: A, seite: 12 }] })))
+    expect(buchSeiteJson(liesBuchSeite(alt))).toBe(alt)
+    expect(liesBuchSeite(alt).texte).toBeUndefined()
+  })
+
+  it('ein unlesbares Feld texte bleibt unverändert erhalten', () => {
+    const s = liesBuchSeite(JSON.stringify({ bilder: [], verweise: [], texte: 'von einer neueren App' }))
+    expect(s.texte).toBeUndefined()
+    expect(JSON.parse(buchSeiteJson(s)).texte).toBe('von einer neueren App')
+  })
+
   it('Seitennummern aus den Dateinamen', () => {
     const id = '01JNB8000000000000000B0001'
     expect(buchSeitenNummern([pfade.buchTinte(id, 2), pfade.buchSeite(id, 2), pfade.buchSeite(id, 1), pfade.buchTinte('ANDERES', 3), pfade.buch(id)], id)).toEqual([1, 2])
