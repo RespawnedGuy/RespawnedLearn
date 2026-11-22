@@ -37,9 +37,22 @@ export interface Verweis {
   am?: string
 }
 
+/** Textfeld auf einer Buchseite (ab Lernen 1.14): Lage und Breite in Seitenkoordinaten, Höhe ergibt sich aus dem Text */
+export interface BuchText {
+  id: string
+  x: number
+  y: number
+  b: number
+  /** Markdown mit Formeln, nie leer */
+  text: string
+  am?: string
+}
+
 export interface BuchSeite {
   bilder: BuchBild[]
   verweise: Verweis[]
+  /** Textfelder (ab Lernen 1.14); fehlt, wenn die Seite keine hat */
+  texte?: BuchText[]
   /** unbekannte Felder bleiben erhalten (Grundlagen 1.3) */
   rest: Record<string, unknown>
 }
@@ -54,7 +67,7 @@ export function liesBuchSeite(text: string | null | undefined): BuchSeite {
   } catch {
     /* kaputt: leer lesen, die Datei selbst bleibt */
   }
-  const { bilder, verweise, ...rest } = roh
+  const { bilder, verweise, texte, ...rest } = roh
   const out: BuchSeite = { bilder: [], verweise: [], rest }
   if (Array.isArray(bilder)) for (const b of bilder) {
     const bild = bildAus(b)
@@ -68,8 +81,21 @@ export function liesBuchSeite(text: string | null | undefined): BuchSeite {
     if (typeof v.am === 'string') w.am = v.am
     out.verweise.push(w)
   }
+  const gelesen: BuchText[] = []
+  if (Array.isArray(texte)) for (const t of texte) {
+    if (!t || typeof t.id !== 'string' || typeof t.text !== 'string' || !t.text.trim() || !zahl(t.x) || !zahl(t.y) || !zahl(t.b)) continue
+    const x: BuchText = { id: t.id, x: t.x, y: Math.max(0, t.y), b: Math.max(TEXT_MIN_BREITE, t.b), text: t.text }
+    if (typeof t.am === 'string') x.am = t.am
+    gelesen.push(x)
+  }
+  if (gelesen.length) out.texte = gelesen
+  // Steht `texte` in der Datei, aber nichts Lesbares darin, bleibt es unverändert erhalten
+  else if (texte !== undefined) out.rest = { ...rest, texte }
   return out
 }
+
+/** Schmalstes Textfeld (Seitenkoordinaten) */
+export const TEXT_MIN_BREITE = 120
 
 export function buchSeiteJson(s: BuchSeite): string {
   const r = (n: number) => Math.round(n * 10) / 10
@@ -78,7 +104,8 @@ export function buchSeiteJson(s: BuchSeite): string {
     JSON.stringify({
       ...s.rest,
       bilder: s.bilder.map((b) => ({ ...b, x: r(b.x), y: r(b.y), b: r(b.b), h: r(b.h), ...(b.bereich ? { bereich: { x: k(b.bereich.x), y: k(b.bereich.y), b: k(b.bereich.b), h: k(b.bereich.h) } } : {}) })),
-      verweise: [...s.verweise].sort((a, b) => a.y - b.y).map((v) => ({ ...v, y: r(v.y) }))
+      verweise: [...s.verweise].sort((a, b) => a.y - b.y).map((v) => ({ ...v, y: r(v.y) })),
+      ...(s.texte?.length ? { texte: s.texte.map((t) => ({ ...t, x: r(t.x), y: r(t.y), b: r(t.b) })) } : {})
     }) + '\n'
   )
 }

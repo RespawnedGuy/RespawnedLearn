@@ -344,7 +344,9 @@ await schreibe(
   'lernen/buecher/01JBEXSPE0000TAFE000000001/S001.json',
   JSON.stringify({
     bilder: [{ id: 'twbild01', anhang: '01JBEISPIEL0000000SKRIPET1', seite: 1, bereich: { x: 0.1, y: 0.2, b: 0.8, h: 0.12 }, x: 60, y: 60, b: 800, h: 170 }],
-    verweise: [{ id: 'twverw01', y: 60, anhang: '01JBEISPIEL0000000SKRIPET1', seite: 1, marke: 'tw0001', bild: 'twbild01', am: `${vor(1)}T10:00:00.000Z` }]
+    verweise: [{ id: 'twverw01', y: 60, anhang: '01JBEISPIEL0000000SKRIPET1', seite: 1, marke: 'tw0001', bild: 'twbild01', am: `${vor(1)}T10:00:00.000Z` }],
+    // Textfeld (Lernen 1.14): Kommentar mit Formel
+    texte: [{ id: 'twtext01', x: 60, y: 260, b: 640, text: 'Gilt nur für homogene Felder: $\\Phi = B \\cdot A$', am: `${vor(1)}T10:05:00.000Z` }]
   }) + '\n'
 )
 

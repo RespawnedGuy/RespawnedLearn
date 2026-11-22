@@ -42,7 +42,10 @@ const pfade: Record<string, string> = {
   baustein: 'M3 13h8v7H3z M13 13h8v7h-8z M8 4h8v7H8z',
   kopieren: 'M9 9h11v11H9z M5 15H4V4h11v1',
   einfuegen: 'M8 4h8v3H8z M8 5.5H5V21h14V5.5h-3 M9 13h6 M9 17h4',
-  zurkarte: 'M5 12h14 M13 6l6 6-6 6'
+  zurkarte: 'M5 12h14 M13 6l6 6-6 6',
+  // Buchseite (Lernen 1.14): Textfeld anlegen, Platz einfügen
+  text: 'M5 5h14 M12 5v14 M9 19h6',
+  platz: 'M3 6h18 M3 18h18 M12 9v6 M9.5 12.5L12 15l2.5-2.5'
 }
 
 export function Symbol({ name, groesse = 18 }: { name: string; groesse?: number }) {

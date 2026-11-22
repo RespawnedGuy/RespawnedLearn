@@ -1,8 +1,9 @@
-// Ausschnitt einer markierten Stelle im eigenen Notizbuch (Vertrag Lernen 1.9, 5.4): Tinte und Bilder der Buchseite,
+// Ausschnitt einer markierten Stelle im eigenen Notizbuch (Vertrag Lernen 1.9, 5.4): Tinte, Bilder und Textfelder der Buchseite,
 // beschnitten auf den Bereich. Gezeichnet wird live aus den Dateien, ein Bild entsteht nicht.
 import { blattFormat, liesBuchSeite, liesMarken, liesTinte, pfade, FARBEN, SEITE_BREITE, type Bereich } from '@rl/kern'
 import { ortLink, useDaten } from '@rl/oberflaeche'
 import { BildAufBlatt } from './Blaetter'
+import { TextFest } from './BuchText'
 
 const nichts = () => {}
 
@@ -35,7 +36,7 @@ export function BuchFenster({ buchId, seite, bereich, tiefe }: { buchId: string;
   const tinte = speicher.text(pfade.buchTinte(buchId, seite)) ?? ''
   const format = blattFormat(tinte)
   const striche = liesTinte(tinte)
-  const bilder = liesBuchSeite(speicher.text(pfade.buchSeite(buchId, seite))).bilder
+  const { bilder, texte = [] } = liesBuchSeite(speicher.text(pfade.buchSeite(buchId, seite)))
   const { x, y, b, h } = bereich
   return (
     <div className="buch-ausschnitt-fenster" style={{ aspectRatio: `${b} / ${h}` }}>
@@ -48,6 +49,9 @@ export function BuchFenster({ buchId, seite, bereich, tiefe }: { buchId: string;
             <path key={i} d={s.d} fill={FARBEN[s.farbe]} />
           ))}
         </svg>
+        {texte.map((t) => (
+          <TextFest key={t.id} text={t} hoehe={SEITE_BREITE * format} />
+        ))}
       </div>
     </div>
   )

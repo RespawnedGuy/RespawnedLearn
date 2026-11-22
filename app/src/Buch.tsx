@@ -30,6 +30,7 @@ import {
   type Bereich,
   type BuchBild,
   type BuchSeite,
+  type BuchText,
   type Eintrag,
   type Farbe,
   type Lineatur,
@@ -47,6 +48,8 @@ import { useEntfLoescht } from './entf'
 import { SymbolKnopf } from './BausteinMenue'
 import { ausAblage, letzterOrt, merkeOrt, useAblage } from './ablage'
 import { fuegeEinMitMeldung, kopiere, useEinfuegeTaste, useKopierTaste, verhaeltnisVon } from './kopieren'
+import { TextAufBlatt, neuesTextfeld, nimmTextMitMeldung, setzeText, textAn } from './BuchText'
+import { PlatzZiehen, fuegePlatzEinMitMeldung } from './BuchPlatz'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
@@ -270,7 +273,15 @@ function BuchBlatt({
   const [haltZiel, setHaltZiel] = useState<string | null>(null)
   // auf eine leere Stelle getippt, während etwas in der Ablage liegt: dort einfügen (Lernen 1.12)
   const kopie = useAblage()
+  // auf eine leere Stelle getippt (Markieren): kleines Menü mit Einfügen, Textfeld, Platz (Lernen 1.12, 1.14)
   const [einfuegen, setEinfuegen] = useState<{ punkt: { x: number; y: number }; x: number; y: number } | null>(null)
+  // Textfelder (Lernen 1.14): gewählt, in Bearbeitung, gerade angelegt; gemessene Höhen für Treffer
+  const [textWahl, setTextWahl] = useState<string | null>(null)
+  const [bearbeite, setBearbeite] = useState<string | null>(null)
+  const [neuerText, setNeuerText] = useState<BuchText | null>(null)
+  const textHoehen = useRef(new Map<string, number>())
+  // Platz einfügen: ab welcher Höhe gezogen wird
+  const [platzAb, setPlatzAb] = useState<number | null>(null)
   const buch = bestand.dokumente.get(id)
   const tinte = pfade.buchTinte(id, nr)
   const format = blattFormat(speicher.text(tinte))
@@ -282,6 +293,8 @@ function BuchBlatt({
     setGewaehlt(null)
     setAuswahl(null)
     setEinfuegen(null)
+    setTextWahl(null)
+    setPlatzAb(null)
   }, [markieren])
   const hoehe = SEITE_BREITE * format
   const aendere = (f: (b: BuchBild[]) => BuchBild[]) => void aendereSeite(speicher, id, nr, (s) => ({ ...s, bilder: f(s.bilder) }))
@@ -312,15 +325,24 @@ function BuchBlatt({
             setGewaehlt(null)
             nimm(bildWeg(b))
           }
-        : null
+        : textWahl && !bearbeite
+          ? () => {
+              const t = textWahl
+              setTextWahl(null)
+              void nimmTextMitMeldung(speicher, id, nr, t)
+            }
+          : null
   )
   const treffer = (p: { x: number; y: number }): Treffer | null => {
     const m = buch ? markeAn(marken(), p, format) : null
     if (m) return { art: 'marke', id: m.marke.id }
+    const t = textAn(seite.texte ?? [], p.x * SEITE_BREITE, p.y * hoehe, (tid) => textHoehen.current.get(tid) ?? 40)
+    if (t) return { art: 'text', id: t.id }
     const b = bildAn(seite.bilder, p.x * SEITE_BREITE, p.y * hoehe)
     if (b) return { art: 'bild', id: b.id }
     if (auswahl?.marke) setAuswahl(null)
     setGewaehlt(null)
+    setTextWahl(null)
     return null
   }
   const markeAuswahl = (markeId: string): BuchAuswahl | null => {
@@ -349,6 +371,7 @@ function BuchBlatt({
       <SeitenBlase verweise={seite.verweise} blinktBei={hervor} radierer={werkzeug === 'radierer'} onLoesen={(z) => void loeseSeitenverweise(speicher, id, nr, z && { anhang: z.anhang, seite: z.seite })} />
       <div className="blatt-flaeche pdf-seite zeichnen" style={{ aspectRatio: `1 / ${format}` }} role="group" aria-label={`Buchseite ${nr}`}>
         <LineaturBild art={lineatur} format={format} />
+        {hervor !== null && <div className="buch-aufleuchten" style={{ top: `${(hervor / hoehe) * 100}%` }} aria-hidden="true" />}
         {seite.bilder.map((b) => (
           <BildAufBlatt
             key={b.id}
@@ -365,6 +388,36 @@ function BuchBlatt({
               nimm(bildWeg(b.id))
             }}
             onKopieren={kopierbar(b.id)}
+          />
+        ))}
+        {[...(seite.texte ?? []), ...(neuerText ? [neuerText] : [])].map((t) => (
+          <TextAufBlatt
+            key={t.id}
+            text={t}
+            hoehe={hoehe}
+            aktiv={markieren}
+            gewaehlt={textWahl === t.id}
+            bearbeiten={bearbeite === t.id || neuerText?.id === t.id}
+            uebernimm={textWahl === t.id ? uebernahme : null}
+            onWahl={() => setTextWahl(t.id)}
+            onBearbeiten={() => setBearbeite(t.id)}
+            onFertig={(text) => {
+              if (neuerText?.id === t.id) {
+                setNeuerText(null)
+                if (text.trim()) void setzeText(speicher, id, nr, { ...t, text })
+                return
+              }
+              setBearbeite(null)
+              if (text === t.text) return
+              if (!text.trim()) void nimmTextMitMeldung(speicher, id, nr, t.id)
+              else void setzeText(speicher, id, nr, { ...t, text })
+            }}
+            onAendern={(neu) => void setzeText(speicher, id, nr, neu)}
+            onEntfernen={() => {
+              setTextWahl(null)
+              void nimmTextMitMeldung(speicher, id, nr, t.id)
+            }}
+            onHoehe={(h) => textHoehen.current.set(t.id, h)}
           />
         ))}
         <TintenEbene
@@ -385,12 +438,21 @@ function BuchBlatt({
           onLeerTippen={(punkt, anteil) => {
             const ort = { x: anteil.x * SEITE_BREITE, y: anteil.y * hoehe }
             merkeOrt({ buch: id, nr, ...ort })
-            setEinfuegen(kopie ? { punkt, ...ort } : null)
+            // war gerade etwas gewählt, hebt das Tippen nur die Wahl auf
+            const warGewaehlt = !!(gewaehlt || auswahl || textWahl || einfuegen)
+            setEinfuegen(warGewaehlt ? null : { punkt, ...ort })
           }}
           treffer={treffer}
           onTippen={(t, punkt) => {
             setUebernahme(null)
             setEinfuegen(null)
+            if (t.art === 'text') {
+              setAuswahl(null)
+              setGewaehlt(null)
+              setTextWahl(t.id)
+              return
+            }
+            setTextWahl(null)
             if (t.art === 'bild') {
               setAuswahl(null)
               setGewaehlt(t.id)
@@ -401,7 +463,11 @@ function BuchBlatt({
             if (a) setAuswahl({ ...a, punkt })
           }}
           onAnheben={(t, zeiger) => {
-            if (t.art === 'bild') {
+            if (t.art === 'text') {
+              setAuswahl(null)
+              setGewaehlt(null)
+              setTextWahl(t.id)
+            } else if (t.art === 'bild') {
               setAuswahl(null)
               setGewaehlt(t.id)
             } else {
@@ -412,7 +478,10 @@ function BuchBlatt({
             setUebernahme(zeiger)
           }}
           onLoeschen={(t) => {
-            if (t.art === 'bild') {
+            if (t.art === 'text') {
+              setTextWahl(null)
+              void nimmTextMitMeldung(speicher, id, nr, t.id)
+            } else if (t.art === 'bild') {
               setGewaehlt(null)
               nimm(bildWeg(t.id))
             } else {
@@ -423,20 +492,51 @@ function BuchBlatt({
           onHaltZiel={(t) => setHaltZiel(t?.id ?? null)}
         />
         {buch && <BuchMarken buch={buch} nr={nr} format={format} farbe={farbe} auswahl={auswahl} uebernimm={uebernahme} haltZiel={haltZiel} onAuswahl={setAuswahl} />}
-        {einfuegen && kopie && (
-          <div className="schwebe schwebe-klein reihe symbol-reihe" style={{ left: `max(8px, min(${einfuegen.punkt.x - 50}px, calc(100% - 124px)))`, top: einfuegen.punkt.y + 12 }} onPointerDown={(e) => e.stopPropagation()}>
+        {einfuegen && (
+          <div className="schwebe schwebe-klein reihe symbol-reihe" style={{ left: `max(8px, min(${einfuegen.punkt.x - 50}px, calc(100% - ${kopie ? 220 : 172}px)))`, top: einfuegen.punkt.y + 12 }} onPointerDown={(e) => e.stopPropagation()}>
+            {kopie && (
+              <SymbolKnopf
+                symbol="einfuegen"
+                name="Einfügen"
+                hinweis="Einfügen: die kopierte Stelle hierher legen (Strg+V)"
+                haupt
+                onClick={() => {
+                  setEinfuegen(null)
+                  void fuegeEinMitMeldung(speicher, id, nr, kopie, einfuegen)
+                }}
+              />
+            )}
             <SymbolKnopf
-              symbol="einfuegen"
-              name="Einfügen"
-              hinweis="Einfügen: die kopierte Stelle hierher legen (Strg+V)"
-              haupt
+              symbol="text"
+              name="Textfeld"
+              hinweis="Textfeld hierher: tippen statt schreiben, Formeln mit $…$"
               onClick={() => {
                 setEinfuegen(null)
-                void fuegeEinMitMeldung(speicher, id, nr, kopie, einfuegen)
+                setNeuerText(neuesTextfeld(einfuegen.x, einfuegen.y))
+              }}
+            />
+            <SymbolKnopf
+              symbol="platz"
+              name="Platz einfügen"
+              hinweis="Platz einfügen: von hier nach unten ziehen, alles darunter rückt mit"
+              onClick={() => {
+                setEinfuegen(null)
+                setPlatzAb(einfuegen.y)
               }}
             />
             <SymbolKnopf symbol="zu" name="Schließen" onClick={() => setEinfuegen(null)} />
           </div>
+        )}
+        {platzAb !== null && (
+          <PlatzZiehen
+            ab={platzAb}
+            hoehe={hoehe}
+            onAbbruch={() => setPlatzAb(null)}
+            onFertig={(um) => {
+              setPlatzAb(null)
+              void fuegePlatzEinMitMeldung(speicher, id, nr, platzAb, um)
+            }}
+          />
         )}
       </div>
     </div>

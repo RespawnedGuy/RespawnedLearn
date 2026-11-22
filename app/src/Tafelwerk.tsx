@@ -1,16 +1,18 @@
 // Tafelwerk in „Nutzen“ (Vertrag Lernen 1.13): oben die Tabs, darunter die Seiten des gewählten Tabs, beschrieben und
 // bedient wie jedes Notizbuch. „Neu n“ bietet jeden benannten Baustein einmal an; „Weggelegt n“ holt Tabs zurück.
+// Die Suche (Lernen 1.14) springt in den Tab an die Stelle.
 import { useState } from 'react'
 import { neuFuerTafelwerk, type Farbe } from '@rl/kern'
 import { Werkzeugleiste, geheZu, melde, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { AnsichtKopf } from './Blaetter'
-import { BuchAnsicht, benenneNotizbuch, lineaturVon, setzeBuchLineatur } from './Buch'
+import { BuchAnsicht, benenneNotizbuch, lineaturVon, setzeBuchLineatur, type BuchSprung } from './Buch'
 import { NameFeld } from './NameFeld'
 import { useBausteine } from './Bausteine'
 import { useAblage } from './ablage'
 import { fuegeEinPerKnopf } from './kopieren'
 import { legeTabWeg, neuerTab, useTafelwerk, weggelegteTabs } from './tafelwerkDaten'
 import { TafelNeu } from './TafelNeu'
+import { TafelSuche } from './TafelSuche'
 
 const TAB_SCHLUESSEL = 'rl-tafelwerk-tab'
 const liesTab = () => {
@@ -55,6 +57,8 @@ export function Tafelwerk({ tab }: { tab?: string }) {
   const [werkzeug, setWerkzeug] = useState<Werkzeug>('lesen')
   const [farbe, setFarbe] = useState<Farbe>('alltag')
   const kopie = useAblage()
+  // Sprung aus der Suche: Tab, Seite, Höhe (die Stelle leuchtet kurz auf)
+  const [sprung, setSprung] = useState<(BuchSprung & { tab: string }) | null>(null)
   const gemerkt = liesTab()
   const aktiv = tw.tabs.find((t) => t.id === tab) ?? tw.tabs.find((t) => t.id === gemerkt) ?? tw.tabs[0]
   if (aktiv && aktiv.id !== gemerkt) merkeTab(aktiv.id)
@@ -136,6 +140,15 @@ export function Tafelwerk({ tab }: { tab?: string }) {
           </button>
         )}
       </div>
+      {!liste && tw.tabs.length > 0 && (
+        <TafelSuche
+          tabs={tw.tabs}
+          onSprung={(t) => {
+            setSprung({ tab: t.tab, nr: t.nr, y: t.y, mal: Date.now() })
+            if (t.tab !== aktiv?.id) geheZu('nutzen', 'tafelwerk', t.tab)
+          }}
+        />
+      )}
       {liste === 'neu' ? (
         <TafelNeu neu={neu} onZu={() => setListe(null)} />
       ) : liste === 'weg' ? (
@@ -179,7 +192,7 @@ export function Tafelwerk({ tab }: { tab?: string }) {
             onVerschiebe={() => {}}
             onSchliesse={() => {}}
           />
-          <BuchAnsicht key={aktiv.id} id={aktiv.id} werkzeug={werkzeug} farbe={farbe} />
+          <BuchAnsicht key={aktiv.id} id={aktiv.id} werkzeug={werkzeug} farbe={farbe} sprung={sprung?.tab === aktiv.id ? sprung : null} />
           <div className="reihe tafel-fuss">
             <button type="button" className="knopf still klein" onClick={() => weglegen(aktiv.id, aktiv.titel)} title="Tab aus der Liste nehmen; unter „Weggelegt“ holst du ihn zurück">
               Tab weglegen

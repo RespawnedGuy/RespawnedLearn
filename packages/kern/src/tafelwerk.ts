@@ -107,3 +107,92 @@ export function tabVorschlag(b: Pick<Baustein, 'anhang' | 'name' | 'schlagworte'
     .sort((x, y) => y.w - x.w || x.i - y.i)
     .map((x) => x.t.id)
 }
+
+// ── Suche im Tafelwerk (Lernen 1.14) ────────────────────────────────────────────────────────────────────────────
+
+export interface TafelTreffer {
+  tab: string
+  /** Buchseite im Tab */
+  nr: number
+  /** Höhe auf der Buchseite (Seitenkoordinaten) */
+  y: number
+  art: 'baustein' | 'markierung' | 'text'
+  /** was die Trefferliste zeigt */
+  titel: string
+  /** Quelle (Skript, Buch), bei Textfeldern leer */
+  quelle: string
+}
+
+/** Für die Suche: klein, ohne Umlautzeichen, Formelzeichen als Lücken („\Phi_0“ findet man mit „phi“) */
+const suchText = (s: string) => ` ${normalisiere(s).replace(/[\\$^_{}#*`>[\]()|=+\-/]/g, ' ').replace(/\s+/g, ' ')} `
+
+/** Wie gut passt ein Wort? Ganzes Wort vor Wortanfang vor irgendwo */
+function passtWort(text: string, wort: string): number {
+  if (text.includes(` ${wort} `)) return 3
+  if (text.includes(` ${wort}`)) return 2
+  return text.includes(wort) ? 1 : 0
+}
+
+/**
+ * Sucht in allen Tabs: Bausteine mit ✦ (Name, Schlagworte, Titel der Quelle), eigene Markierungen im Tab und
+ * Textfelder. Jedes Wort der Anfrage muss vorkommen. Treffer im Namen zählen mehr als in der Quelle; bei Gleichstand
+ * in der Reihenfolge der Tabs, Seiten und Höhen. `quelle` liefert den Titel eines Skripts oder Buchs.
+ */
+export function sucheImTafelwerk(
+  texte: ReadonlyMap<string, string>,
+  tabs: { id: string; titel: string }[],
+  bausteine: Baustein[],
+  anfrage: string,
+  quelle: (anhang: string) => string = () => ''
+): TafelTreffer[] {
+  const worte = suchText(anfrage).split(' ').filter(Boolean)
+  if (!worte.length) return []
+  const reihe = new Map(tabs.map((t, i) => [t.id, i]))
+  const nachSchluessel = new Map(bausteine.map((b) => [bausteinSchluessel(b.anhang, b.marke.id), b]))
+  const gefunden: (TafelTreffer & { wert: number })[] = []
+  /** Felder mit Gewicht; liefert den Wert oder 0, wenn ein Wort fehlt */
+  const bewerte = (felder: [string, number][]) => {
+    let summe = 0
+    for (const w of worte) {
+      let best = 0
+      for (const [text, gewicht] of felder) best = Math.max(best, passtWort(text, w) * gewicht)
+      if (!best) return 0
+      summe += best
+    }
+    return summe
+  }
+  const bausteinFelder = (b: Baustein): [string, number][] => [
+    [suchText(b.titel), 3],
+    [suchText(b.schlagworte.join(' ')), 3],
+    [suchText(b.verweise.map((v) => v.titel).join(' ')), 1],
+    [suchText(quelle(b.anhang)), 0.5]
+  ]
+  for (const [pfad, text] of texte) {
+    const m = /^lernen\/buecher\/([^/]+)\/S(\d{3,})\.json$/.exec(pfad)
+    if (!m || !reihe.has(m[1])) continue
+    const tab = m[1]
+    const nr = Number(m[2])
+    const s = liesBuchSeite(text)
+    for (const v of s.verweise) {
+      if (v.marke === undefined) continue
+      const b = nachSchluessel.get(bausteinSchluessel(v.anhang, v.marke))
+      if (!b || b.archiviert) continue
+      const wert = bewerte(bausteinFelder(b))
+      if (wert) gefunden.push({ tab, nr, y: v.y, art: 'baustein', titel: b.titel || 'Baustein', quelle: quelle(b.anhang), wert })
+    }
+    for (const t of s.texte ?? []) {
+      const wert = bewerte([[suchText(t.text), 2]])
+      const erste = t.text.trim().split('\n')[0].trim()
+      if (wert) gefunden.push({ tab, nr, y: t.y, art: 'text', titel: erste.length > 80 ? `${erste.slice(0, 79)}…` : erste, quelle: '', wert })
+    }
+  }
+  // eigene Markierungen in einem Tab (Maße in Seitenbreiten, 5.4)
+  for (const b of bausteine) {
+    if (!reihe.has(b.anhang) || b.archiviert || b.offen || b.marke.anker !== undefined) continue
+    const wert = bewerte(bausteinFelder(b).slice(0, 3))
+    if (wert) gefunden.push({ tab: b.anhang, nr: b.marke.seite, y: b.marke.bereich.y * 1000, art: 'markierung', titel: b.titel, quelle: '', wert })
+  }
+  return gefunden
+    .sort((a, b) => b.wert - a.wert || reihe.get(a.tab)! - reihe.get(b.tab)! || a.nr - b.nr || a.y - b.y)
+    .map(({ wert: _w, ...t }) => t)
+}
