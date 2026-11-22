@@ -15,6 +15,8 @@ import {
   markeAn,
   ausSeitenbreiten,
   bildAn,
+  istTafel,
+  kopieVonAusschnitt,
   sichtbareMarken,
   pfade,
   platzFuerMarkierung,
@@ -44,15 +46,15 @@ import { loescheMarkierungMitMeldung, nimmVonDerSeiteMitMeldung, type AufDerSeit
 import { useEntfLoescht } from './entf'
 import { SymbolKnopf } from './BausteinMenue'
 import { ausAblage, letzterOrt, merkeOrt, useAblage } from './ablage'
-import { fuegeEinMitMeldung, useEinfuegeTaste, verhaeltnisVon } from './kopieren'
+import { fuegeEinMitMeldung, kopiere, useEinfuegeTaste, useKopierTaste, verhaeltnisVon } from './kopieren'
 
 export const LINEATUR_STANDARD: Lineatur = 'kariert'
 
 export const lineaturVon = (e: Eintrag | undefined): Lineatur => (typeof e?.felder.lineatur === 'string' ? (e.felder.lineatur as Lineatur) : LINEATUR_STANDARD)
 
-/** Alle Notizbücher, die nicht archiviert sind */
+/** Alle Notizbücher, die nicht archiviert sind; Tabs des Tafelwerks zählen nicht dazu (Lernen 1.13) */
 export function notizbuecher(dokumente: Iterable<Eintrag>): Eintrag[] {
-  return [...dokumente].filter((e) => e.typ === 'notizbuch' && e.felder.status !== 'archiviert')
+  return [...dokumente].filter((e) => e.typ === 'notizbuch' && e.felder.status !== 'archiviert' && !istTafel(e))
 }
 
 export const modulVonBuch = (e: Eintrag) => linkZiel(e.felder.modul)
@@ -291,6 +293,12 @@ function BuchBlatt({
     return v ? { art: 'marke', id: v.id } : { art: 'bild', id: bildId }
   }
   const nimm = (was: AufDerSeite) => void nimmVonDerSeiteMitMeldung(speicher, id, nr, was)
+  // Ein eingefügter Ausschnitt mit ✦ lässt sich weiterkopieren; die Kopie zeigt aufs Original (Lernen 1.13)
+  const kopierbar = (bildId: string) => {
+    const k = kopieVonAusschnitt(seite, bildId)
+    return k ? () => kopiere(k) : undefined
+  }
+  useKopierTaste(gewaehlt && markieren ? (kopierbar(gewaehlt) ?? null) : null)
   useEntfLoescht(
     auswahl?.marke
       ? () => {
@@ -356,6 +364,7 @@ function BuchBlatt({
               setGewaehlt(null)
               nimm(bildWeg(b.id))
             }}
+            onKopieren={kopierbar(b.id)}
           />
         ))}
         <TintenEbene

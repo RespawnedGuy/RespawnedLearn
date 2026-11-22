@@ -32,7 +32,8 @@ export function Werkzeugleiste({
   onWerkzeug,
   onFarbe,
   markierenText = 'Markieren',
-  onBilder
+  onBilder,
+  onEinfuegen
 }: {
   werkzeug: Werkzeug
   farbe: Farbe
@@ -40,6 +41,8 @@ export function Werkzeugleiste({
   onFarbe: (f: Farbe) => void
   markierenText?: string
   onBilder?: (dateien: File[]) => void
+  /** nur mit etwas in der Ablage (Kopieren, Lernen 1.12): die Kopie ins Buch legen */
+  onEinfuegen?: () => void
 }) {
   const bild = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -63,6 +66,7 @@ export function Werkzeugleiste({
     hinweis: `${titel} (Taste ${k.toUpperCase()}). ${HINWEIS[w]}`
   })
   const funktionen: Funktion[] = [werkzeugFn('lesen', 'Lesen', 'l'), werkzeugFn('stift', 'Stift', 's'), werkzeugFn('markieren', markierenText, 'm'), werkzeugFn('radierer', 'Radierer', 'r')]
+  if (onEinfuegen) funktionen.push({ id: 'einfuegen', titel: 'Einfügen', symbol: 'einfuegen', tun: onEinfuegen, hinweis: 'Einfügen: die kopierte Stelle an die zuletzt angetippte Stelle legen, sonst ans Ende des Buchs (Strg+V)' })
   if (onBilder) funktionen.push({ id: 'bild', titel: 'Bild', symbol: 'foto', tun: () => bild.current?.click(), hinweis: 'Foto, Screenshot oder Bild ins Buch legen (am PC auch mit Strg+V)' })
 
   const alltagSchwarz = farbe === 'alltag_schwarz'

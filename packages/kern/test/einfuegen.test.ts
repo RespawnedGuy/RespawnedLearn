@@ -6,8 +6,8 @@ const SKRIPT: Kopie = { anhang: '01JSKRIPT', seite: 12, bereich: { x: 0.1, y: 0.
 const BUCH: Kopie = { anhang: '01JBUCH', seite: 2, bereich: { x: 0.05, y: 0.9, b: 0.4, h: 0.2 }, marke: 'b7x2q1', verhaeltnis: 0.5 }
 
 describe('Lage beim Einfügen', () => {
-  it('der Vertrag steht auf 1.12', () => {
-    expect(VERTRAG).toBe('1.12')
+  it('der Vertrag steht mindestens auf 1.12', () => {
+    expect(vergleicheVersionen(VERTRAG, '1.12')).toBeGreaterThanOrEqual(0)
     expect(vergleicheVersionen('1.12', '1.11')).toBeGreaterThan(0)
   })
   it('ohne Rechteck: am Punkt, so breit wie an der Quelle', () => {

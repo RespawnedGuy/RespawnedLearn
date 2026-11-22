@@ -5,6 +5,8 @@ import { Werkzeugleiste, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { AnsichtKopf } from './Blaetter'
 import { BuchAnsicht, benenneNotizbuch, fotosInsBuch, lineaturVon, setzeBuchLineatur } from './Buch'
 import { NameFeld } from './NameFeld'
+import { useAblage } from './ablage'
+import { fuegeEinPerKnopf } from './kopieren'
 import { useLernzeit } from './lernzeitMessen'
 
 export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: number; marke?: string }) {
@@ -17,6 +19,7 @@ export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: 
   })
   const [werkzeug, setWerkzeug] = useState<Werkzeug>('stift')
   const [farbe, setFarbe] = useState<Farbe>('alltag')
+  const kopie = useAblage()
   const buch = bestand.dokumente.get(id)
   const modul = linkZiel(buch?.felder.modul)
   useLernzeit(modul ? { ziel: modul, art: 'sammeln' } : null)
@@ -32,7 +35,14 @@ export function BuchAlleinSeite({ id, seite = 0, marke }: { id: string; seite?: 
           </a>
         )}
         <span className="plan-luecke" />
-        <Werkzeugleiste werkzeug={werkzeug} farbe={farbe} onWerkzeug={setWerkzeug} onFarbe={setFarbe} onBilder={(d) => void fotosInsBuch(speicher, id, d)} />
+        <Werkzeugleiste
+          werkzeug={werkzeug}
+          farbe={farbe}
+          onWerkzeug={setWerkzeug}
+          onFarbe={setFarbe}
+          onBilder={(d) => void fotosInsBuch(speicher, id, d)}
+          onEinfuegen={kopie ? () => void fuegeEinPerKnopf(speicher, [id], kopie) : undefined}
+        />
         <span className="plan-luecke" />
       </div>
       <div className="buch-allein">

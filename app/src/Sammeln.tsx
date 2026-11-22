@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { eingabeVon, lesestand, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
+import { eingabeVon, istTafel, tafeln, lesestand, liesBausteinText, liesMarken, markeAn, modulVon, pfade, sichtbareMarken, type Bereich, type Eintrag, type Farbe, type Marke } from '@rl/kern'
 import { PdfAnsicht, Werkzeugleiste, ausschnitt, ZurueckPfeil, ersetzeOrt, haltSichtbar, melde, mitFinger, ortLink, useDaten, type Werkzeug } from '@rl/oberflaeche'
 import { kurzId, naechsteSeite, type Rueckweg } from '@rl/kern'
 import { benenneSkript, karteAusStelle, korrigiereFrage, merkeLesestelle, setzeBereich } from './wissen'
@@ -23,7 +23,8 @@ import { BausteinMenue, karteVon, schwebeLage } from './BausteinMenue'
 import { MarkeRahmen, type Uebernahme } from './MarkeRahmen'
 import { loescheMarkierungMitMeldung, loeseSeitenverweise } from './loeschen'
 import { useEntfLoescht } from './entf'
-import { kopiere, useKopierTaste, verhaeltnisVon } from './kopieren'
+import { fuegeEinPerKnopf, kopiere, useKopierTaste, verhaeltnisVon } from './kopieren'
+import { useAblage } from './ablage'
 
 const FARBE_MARKE: Partial<Record<Farbe, string>> = { wichtig: 'wichtig', ergaenzung: 'ergaenzung' }
 
@@ -76,6 +77,8 @@ function Angehoben({ quelle, seite }: { quelle: Eintrag; seite: number }) {
 }
 
 function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: number }) {
+  // Knopf „Einfügen“ in der Werkzeugleiste, sobald etwas kopiert ist
+  const ablage = useAblage()
   const { speicher, bestand } = useDaten()
   const breit = useBreit()
   // Die Seite in der Adresse ist ein Sprungziel (Lesestand, Inhalt, Link); beim Scrollen folgt `seite` der sichtbaren
@@ -144,7 +147,8 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
   const aktiv = useRef<{ id: string; nr: number; zeit: number } | null>(null)
   const aktivesBuch = () => {
     const a = aktiv.current
-    if (!a || Date.now() - a.zeit > 15 * 60_000) return null
+    // Tabs des Tafelwerks bekommen nie von selbst etwas (Lernen 1.13)
+    if (!a || Date.now() - a.zeit > 15 * 60_000 || istTafel(bestand.dokumente.get(a.id))) return null
     return ansichten.anordnung.ansichten.some((v) => v.id === a.id && !v.zu) ? a : null
   }
   const markierungAuchInsBuch = async (m: { seite: number; bereich: Bereich; marke: string }) => {
@@ -254,7 +258,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
 
   // Wohin Bilder gehen: ins erste offene Notizbuch; gibt es keins, entsteht eins zu diesem Skript
   const buchFuerBild = async (): Promise<string> => {
-    const da = ansichten.zielBuch()
+    const da = ansichten.zielBuch((id) => istTafel(bestand.dokumente.get(id)))
     if (da) return da
     const id = await neuesBuch(speicher, { titel: `Notizen ${quelle.titel}`, lineatur: 'kariert', modul: modul?.id ?? null })
     ansichten.zeigeBuch(id)
@@ -425,6 +429,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
       />
   )
   const alleOffen = ansichten.anordnung.ansichten.filter((v) => !v.zu)
+  const offeneBuecher = alleOffen.filter((v) => v.art === 'buch').map((v) => v.id)
   const handy = alleOffen.find((v) => v.id === handyWahl) ?? alleOffen[0]
   const offen = breit ? alleOffen : alleOffen.filter((v) => v === handy)
   const halten = useScrollHalten(offen.map((v) => v.id).join(' '))
@@ -445,6 +450,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           onWerkzeug={setWerkzeug}
           onFarbe={setFarbe}
           onBilder={(d) => void buchFuerBild().then((id) => fotosInsBuch(speicher, id, d))}
+          onEinfuegen={ablage && offeneBuecher.length ? () => void fuegeEinPerKnopf(speicher, offeneBuecher, ablage) : undefined}
         />
         <span className="plan-luecke" />
         {skriptZu ? (
@@ -505,7 +511,11 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
               <AnsichtKopf
                 ansicht={v}
                 name={
-                  v.art === 'pdf' ? 'Skript' : <NameFeld name={bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch'} art="Notizbuch" onName={(n) => void benenneNotizbuch(speicher, v.id, n)} />
+                  v.art === 'pdf' ? (
+                    'Skript'
+                  ) : (
+                    <NameFeld name={bestand.dokumente.get(v.id)?.titel ?? 'Notizbuch'} art={istTafel(bestand.dokumente.get(v.id)) ? 'Tab' : 'Notizbuch'} onName={(n) => void benenneNotizbuch(speicher, v.id, n)} />
+                  )
                 }
                 lineatur={v.art === 'buch' ? lineaturVon(bestand.dokumente.get(v.id)) : undefined}
                 erste={i === 0}
@@ -515,6 +525,7 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
                 onVerschiebe={(r) => ansichten.verschiebe(v.id, r)}
                 onSchliesse={() => ansichten.schliesse(v.id)}
               />
+              {v.art === 'buch' && istTafel(bestand.dokumente.get(v.id)) && <TafelTabs aktiv={v.id} offen={alleOffen.map((x) => x.id)} onWahl={(neu) => ansichten.tausche(v.id, neu)} />}
               {v.art === 'pdf' ? skript : v.art === 'buch' ? <BuchAnsicht id={v.id} werkzeug={werkzeug} farbe={farbe} ziel={ziel} sprung={buchSprung?.id === v.id ? buchSprung : null} onGeschrieben={(nr) => (aktiv.current = { id: v.id, nr, zeit: Date.now() })} /> : null}
             </section>
           </Fragment>
@@ -556,6 +567,22 @@ function Uebungsplatz({ quelle, seite: sprungSeite }: { quelle: Eintrag; seite: 
           }}
         />
       )}
+    </div>
+  )
+}
+
+/** Tabs des Tafelwerks im Kopf einer Spalte: antippen zeigt einen anderen Tab im selben Platz (Lernen 1.13) */
+function TafelTabs({ aktiv, offen, onWahl }: { aktiv: string; offen: string[]; onWahl: (id: string) => void }) {
+  const { bestand } = useDaten()
+  const tabs = tafeln(bestand.dokumente.values()).filter((t) => t.id === aktiv || !offen.includes(t.id))
+  if (tabs.length < 2) return null
+  return (
+    <div className="tafel-tabs tafel-tabs-spalte" role="tablist" aria-label="Tabs des Tafelwerks">
+      {tabs.map((t) => (
+        <button key={t.id} type="button" role="tab" aria-selected={t.id === aktiv} className={`chip${t.id === aktiv ? ' aktiv' : ''}`} onClick={() => t.id !== aktiv && onWahl(t.id)}>
+          {t.titel}
+        </button>
+      ))}
     </div>
   )
 }

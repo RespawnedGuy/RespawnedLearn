@@ -1,7 +1,7 @@
 // „+ Buch“ im Übungsplatz: Notizbuch wählen oder neu anlegen (Konzept Notizbücher, Skizze „Buch wählen“).
 // Oben die Bücher, die schon auf dieses Skript verweisen, dann die des Moduls, dann die übrigen.
 import { useEffect, useRef, useState } from 'react'
-import { LINEATUREN, type Eintrag, type Lineatur } from '@rl/kern'
+import { LINEATUREN, tafeln, type Eintrag, type Lineatur } from '@rl/kern'
 import { useDaten, type Speicher } from '@rl/oberflaeche'
 import { LineaturBild } from './Blaetter'
 import { modulVonBuch, neuesBuch, notizbuecher, seitenText, seitenVon } from './Buch'
@@ -36,6 +36,8 @@ export function BuchWahl({ quelle, modul, offen: schonDa, onWahl }: { quelle: Ei
   const hier = alle.filter((b) => verweistAuf(speicher, b.id, quelle.id)).sort(neueste)
   const imModul = alle.filter((b) => !hier.includes(b) && modul && modulVonBuch(b) === modul).sort(neueste)
   const weitere = alle.filter((b) => !hier.includes(b) && !imModul.includes(b)).sort(neueste)
+  // Tabs des Tafelwerks (Lernen 1.13): stehen wie ein Buch neben dem Skript, bekommen aber nie von selbst etwas
+  const tabs = auf ? tafeln(bestand.dokumente.values()).filter((b) => !schonDa.includes(b.id)) : []
   const waehle = (id: string) => {
     onWahl(id)
     setAuf(false)
@@ -69,6 +71,8 @@ export function BuchWahl({ quelle, modul, offen: schonDa, onWahl }: { quelle: Ei
           {imModul.map(zeile)}
           {weitere.length > 0 && <div className="klein-leise">{hier.length || imModul.length ? 'Weitere' : 'Notizbücher'}</div>}
           {weitere.slice(0, 8).map(zeile)}
+          {tabs.length > 0 && <div className="klein-leise">Tafelwerk</div>}
+          {tabs.map(zeile)}
           {!neu ? (
             <button type="button" role="menuitem" className="knopf still klein buch-neu" onClick={() => setNeu(true)}>
               + Neues Buch …

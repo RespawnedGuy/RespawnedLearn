@@ -3,6 +3,7 @@
 // Geräts; gespeichert wird erst das Eingefügte, als Bild und Verweis wie beim Markieren (Lernen 1.5).
 import type { Bereich } from './marken'
 import type { BuchBild, BuchSeite, Verweis } from './buecher'
+import { platzFuerMarkierung, type StrichLage } from './randmarken'
 import { SEITE_BREITE } from './tinte'
 
 /** Was in der Ablage liegt: eine gespeicherte Markierung und wie ihr Ausschnitt aussieht */
@@ -55,4 +56,24 @@ export function legeEin(
   const bild: BuchBild = { id: ids.bild, anhang: k.anhang, seite: k.seite, bereich: { ...k.bereich }, ...lage }
   const verweis: Verweis = { id: ids.verweis, y: lage.y, anhang: k.anhang, seite: k.seite, marke: k.marke, bild: ids.bild, am }
   return { seite: { ...s, bilder: [...s.bilder, bild], verweise: [...s.verweise, verweis] }, bild, verweis }
+}
+
+/**
+ * Kopie eines eingefügten Ausschnitts (Lernen 1.13): Sie zeigt auf das Original, aus dem er stammt, nicht auf die
+ * Buchseite, auf der er liegt. Nur Ausschnitte mit ✦-Marke lassen sich so kopieren; sonst null.
+ */
+export function kopieVonAusschnitt(s: BuchSeite, bildId: string): Kopie | null {
+  const bild = s.bilder.find((b) => b.id === bildId)
+  const v = s.verweise.find((w) => w.bild === bildId && w.marke !== undefined)
+  if (!bild?.bereich || bild.seite === undefined || !v?.marke || bild.b <= 0) return null
+  return { anhang: bild.anhang, seite: bild.seite, bereich: { ...bild.bereich }, marke: v.marke, verhaeltnis: bild.h / bild.b }
+}
+
+/**
+ * Wohin eine Kopie kommt, wenn keine Stelle angetippt ist: links unter das Unterste der Seite (Bilder und Striche),
+ * so breit wie an der Quelle. Passt sie dort nicht mehr hin, null: dann oben auf die nächste Seite.
+ */
+export function ortAmEnde(bilder: { y: number; h: number }[], striche: StrichLage[], k: Kopie, format: number): { x: number; y: number; b: number } | null {
+  const p = platzFuerMarkierung(bilder, striche, k.bereich.b, k.verhaeltnis, format)
+  return p && { x: p.x, y: p.y, b: p.b }
 }

@@ -4,6 +4,7 @@ import { Uebersicht } from './Uebersicht'
 import { startort, startZiel } from './startort'
 import { Lernen } from './Lernen'
 import { Nutzen } from './Nutzen'
+import { Tafelwerk } from './Tafelwerk'
 import { Konflikte } from './Konflikte'
 import { Einstellungen } from './Einstellungen'
 import { linkZiel, lernziele, modulVon } from '@rl/kern'
@@ -91,7 +92,7 @@ export function App() {
       <main id="inhalt">
       <AppHinweise neuererVertrag={neuererVertrag} inEinstellungen={bereich === 'einstellungen'} />
       <Fehlergrenze ort={ort.join('/')}>
-        {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : bereich === 'uebersicht' ? <Uebersicht /> : <Sammeln ort={ort} />}
+        {bereich === 'konflikte' ? <Konflikte /> : bereich === 'einstellungen' ? <Einstellungen /> : bereich === 'lernen' ? <Lernen key={ort.slice(1).join('/')} ort={ort} /> : bereich === 'nutzen' ? ort[1] === 'tafelwerk' ? <Tafelwerk tab={ort[2]} /> : <Nutzen key={ort[1] ?? ''} id={ort[1]} /> : bereich === 'uebersicht' ? <Uebersicht /> : <Sammeln ort={ort} />}
       </Fehlergrenze>
       </main>
       {leiste.length > 0 && (

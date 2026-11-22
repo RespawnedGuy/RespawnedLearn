@@ -561,3 +561,20 @@ input.name-feld { width: min(100%, 24em); box-shadow: inset 0 -1px 0 var(--akzen
 .seiten-blase-weg:hover, .seiten-blase-weg:focus-visible { background: var(--mulde-hell); color: var(--rot-text); }
 @media (pointer: coarse) { .seiten-blase-weg { min-width: 44px; min-height: 44px; } }
 .seiten-blase > button { position: relative; }
+
+/* Tafelwerk (Lernen 1.13): Umschalter in Nutzen, Tabs als Chips, Seiten wie ein Notizbuch */
+.nutzen-wahl { align-self: flex-start; margin-bottom: 12px; }
+.plan-leiste .nutzen-wahl { margin-bottom: 0; }
+.tafelwerk { width: 100%; max-width: 980px; margin: 0 auto; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 12px; }
+.tafel-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.tafel-tabs .chip { text-decoration: none; font-size: 0.875rem; padding: 6px 12px; min-height: 32px; border: none; font-family: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tafel-tabs .plan-luecke { flex: 1; }
+.tafel-tabs .chip.aktiv { background: var(--akzent-weich); color: var(--akzent-dunkel); box-shadow: inset 0 -2px 0 var(--akzent); }
+.tafel-seiten { width: 100%; box-sizing: border-box; }
+.tafel-tabs-spalte { padding: 4px 8px 8px; }
+.tafel-neu-tab { display: inline-flex; gap: 6px; align-items: center; max-width: 100%; }
+.tafel-neu-tab .eingabe { width: min(240px, 60vw); }
+.tafel-fuss { justify-content: flex-end; padding: 8px 0 24px; }
+.tafel-leer { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; text-align: left; }
+.tafel-wahl { flex-wrap: wrap; }
+.blatt-bild-kopie { position: absolute; top: -14px; right: 26px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--rand-stark); background: var(--flaeche); color: var(--tinte); display: grid; place-items: center; cursor: pointer; box-shadow: var(--schatten); }
